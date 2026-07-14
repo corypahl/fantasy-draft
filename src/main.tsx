@@ -141,20 +141,20 @@ const standardScoring: ScoringRules = {
 
 const leagueProfiles: LeagueProfile[] = [
   {
-    id: 'sleeper-main',
-    name: 'Sleeper League 1',
+    id: 'fanduel',
+    name: 'FanDuel',
     platform: 'sleeper',
-    externalLeagueId: 'TODO_SLEEPER_LEAGUE_ID_1',
+    externalLeagueId: '1257088161859772416',
     scoringPreset: 'halfPpr',
     rankingPreset: 'halfPpr',
     lineup: defaultLineup,
     scoring: halfPprScoring,
   },
   {
-    id: 'sleeper-superflex',
-    name: 'Sleeper League 2',
+    id: 'jackson',
+    name: 'Jackson',
     platform: 'sleeper',
-    externalLeagueId: 'TODO_SLEEPER_LEAGUE_ID_2',
+    externalLeagueId: '1257138560092348416',
     scoringPreset: 'ppr',
     rankingPreset: 'ppr',
     lineup: {
@@ -168,11 +168,11 @@ const leagueProfiles: LeagueProfile[] = [
     scoring: pprScoring,
   },
   {
-    id: 'espn-home',
-    name: 'ESPN League',
+    id: 'gvsu',
+    name: 'GVSU',
     platform: 'espn',
-    externalLeagueId: 'TODO_ESPN_LEAGUE_ID',
-    externalTeamId: 'TODO_ESPN_TEAM_ID',
+    externalLeagueId: '509557',
+    externalTeamId: '',
     scoringPreset: 'standard',
     rankingPreset: 'standard',
     lineup: {
@@ -296,22 +296,38 @@ function App() {
   }, [selectedLeagueId])
 
   useEffect(() => {
+    if (!profiles.some((profile) => profile.id === selectedLeagueId) && profiles[0]) {
+      setSelectedLeagueId(profiles[0].id)
+    }
+  }, [profiles, selectedLeagueId])
+
+  useEffect(() => {
     if (!API_URL) return
-    fetch(`${API_URL}/drafts/${draft.id}`, { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
-      .then((payload: { profiles?: LeagueProfile[]; draft?: DraftState } | null) => {
-        if (payload?.profiles) setProfiles(payload.profiles)
-        if (payload?.draft) setDraftsByLeague((current) => ({ ...current, [payload.draft!.leagueId]: payload.draft! }))
-        setRemoteLoaded(true)
+    Promise.all([
+      fetch(`${API_URL}/leagues`, { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+        .catch(() => null),
+      fetch(`${API_URL}/drafts/${draft.id}`, { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+        .catch(() => null),
+    ])
+      .then(([leaguePayload, draftPayload]: [{ leagues?: LeagueProfile[] } | null, { profiles?: LeagueProfile[]; draft?: DraftState } | null]) => {
+        const remoteProfiles = leaguePayload?.leagues?.length ? leaguePayload.leagues : draftPayload?.profiles
+        if (remoteProfiles?.length) setProfiles(remoteProfiles)
+        if (draftPayload?.draft) setDraftsByLeague((current) => ({ ...current, [draftPayload.draft!.leagueId]: draftPayload.draft! }))
       })
-      .catch(() => undefined)
       .finally(() => setRemoteLoaded(true))
   }, [])
 
   useEffect(() => {
     if (!remoteLoaded) return
-    persistState(profiles, draftsByLeague, draft)
+    persistState(profiles, draftsByLeague, draft).then(() => undefined)
   }, [profiles, draftsByLeague, draft, remoteLoaded])
+
+  useEffect(() => {
+    if (!remoteLoaded || !API_URL) return
+    Promise.all(profiles.map((profile) => persistLeagueProfile(profile))).then(() => undefined)
+  }, [profiles, remoteLoaded])
 
   const players = useMemo(() => {
     const fromData = data.scoring[selectedLeague.rankingPreset] || data.scoring.halfPpr || []
@@ -730,6 +746,18 @@ async function persistState(profiles: LeagueProfile[], draftsByLeague: Record<st
     return response.ok ? 'Synced' : 'Local'
   } catch {
     return 'Local'
+  }
+}
+
+async function persistLeagueProfile(profile: LeagueProfile) {
+  try {
+    await fetch(`${API_URL}/leagues/${profile.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    })
+  } catch {
+    // Local storage remains the offline fallback.
   }
 }
 

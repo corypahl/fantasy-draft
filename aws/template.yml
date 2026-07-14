@@ -6,6 +6,10 @@ Parameters:
   RankingsBucketName:
     Type: String
     Description: Existing S3 bucket name for generated rankings JSON.
+  LeagueTableName:
+    Type: String
+    Default: fantasy-leagues
+    Description: Existing DynamoDB table name for league profile records keyed by leagueId.
   AllowedOrigin:
     Type: String
     Default: "*"
@@ -73,11 +77,32 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref DraftStateTable
+          LEAGUE_TABLE_NAME: !Ref LeagueTableName
           ALLOWED_ORIGIN: !Ref AllowedOrigin
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DraftStateTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LeagueTableName
       Events:
+        ListLeagues:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /leagues
+            Method: GET
+        GetLeague:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /leagues/{leagueId}
+            Method: GET
+        PutLeague:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /leagues/{leagueId}
+            Method: PUT
         GetDraft:
           Type: HttpApi
           Properties:
@@ -153,3 +178,5 @@ Outputs:
     Value: !GetAtt GitHubActionsRole.Arn
   DraftStateTableName:
     Value: !Ref DraftStateTable
+  LeagueTableName:
+    Value: !Ref LeagueTableName
