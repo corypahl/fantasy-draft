@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Fantasy Draft Wizard rankings bucket and draft-state API.
+
+Parameters:
+  RankingsBucketName:
+    Type: String
+    Description: Globally unique S3 bucket name for generated rankings JSON.
+  AllowedOrigin:
+    Type: String
+    Default: "*"
+    Description: GitHub Pages origin allowed to call the draft API.
+  GitHubOrg:
+    Type: String
+    Default: corypahl
+  GitHubRepo:
+    Type: String
+    Default: fantasy-draft
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 10
+    MemorySize: 256
+
+Resources:
+  RankingsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref RankingsBucketName
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, HEAD]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+            MaxAge: 300
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: false
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: false
+
+  RankingsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RankingsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadRankings
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${RankingsBucket.Arn}/data/*"
+
+  DraftStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: leagueId
+          AttributeType: S
+        - AttributeName: updatedAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: league-updated-index
+          KeySchema:
+            - AttributeName: leagueId
+              KeyType: HASH
+            - AttributeName: updatedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  DraftStateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: draft_state_handler.handler
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref DraftStateTable
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DraftStateTable
+      Events:
+        GetDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /drafts/{draftId}
+            Method: GET
+        PutDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /drafts/{draftId}
+            Method: PUT
+        ListLeagueDrafts:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /leagues/{leagueId}/drafts
+            Method: GET
+
+  DraftHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref AllowedOrigin
+        AllowMethods:
+          - GET
+          - PUT
+          - OPTIONS
+        AllowHeaders:
+          - content-type
+
+  GitHubActionsOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubActionsOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOrg}/${GitHubRepo}:*"
+      Policies:
+        - PolicyName: UploadRankingsJson
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                Resource: !Sub "${RankingsBucket.Arn}/data/*"
+
+Outputs:
+  RankingsUrl:
+    Value: !Sub "https://${RankingsBucket}.s3.${AWS::Region}.amazonaws.com/data/fantasy-data.json"
+  DraftApiUrl:
+    Value: !Sub "https://${DraftHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  GitHubActionsRoleArn:
+    Value: !GetAtt GitHubActionsRole.Arn
+  DraftStateTableName:
+    Value: !Ref DraftStateTable

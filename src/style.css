@@ -1,0 +1,551 @@
+:root {
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a1f2e;
+  --bg-tertiary: #2a2f3e;
+  --bg-card: #1e2332;
+  --text-primary: #ffffff;
+  --text-secondary: #a0aec0;
+  --text-muted: #718096;
+  --border-color: #2d3748;
+  --accent-blue: #3182ce;
+  --accent-green: #38a169;
+  --accent-purple: #805ad5;
+  --accent-orange: #dd6b20;
+  --accent-red: #e53e3e;
+  --accent-yellow: #d69e2e;
+  --accent-teal: #319795;
+  --shadow-soft: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lift: 0 8px 25px rgba(0, 0, 0, 0.18);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--bg-primary);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+input,
+select {
+  color: var(--text-primary);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.shell {
+  width: min(1400px, 100%);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 1rem 2rem 2rem;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h2 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+h3 {
+  margin: 1.5rem 0 0.8rem;
+  color: var(--accent-blue);
+  font-size: 0.84rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.leagueSwitcher {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.leagueSwitcher button {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 92px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  color: var(--text-secondary);
+  padding: 1rem;
+  text-align: left;
+}
+
+.leagueSwitcher button:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-lift);
+}
+
+.leagueSwitcher button.selected {
+  border-color: var(--accent-green);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(56, 161, 105, 0.12) 100%);
+  box-shadow: 0 4px 12px rgba(56, 161, 105, 0.22);
+}
+
+.leagueSwitcher span {
+  color: var(--accent-blue);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.leagueSwitcher strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.leagueSwitcher small {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  padding: 0.5rem;
+}
+
+.tabs button,
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 0;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.tabs button {
+  min-width: 120px;
+  min-height: 40px;
+  background: transparent;
+  padding: 0 1rem;
+  white-space: nowrap;
+}
+
+.tabs button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.tabs button.active {
+  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
+}
+
+.draftGrid {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  gap: 1.25rem;
+}
+
+.panel,
+.board {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  padding: 1.5rem;
+}
+
+.panelHeader,
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.panelHeader {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+}
+
+.panelHeader h2 {
+  margin-bottom: 0;
+}
+
+.iconButton {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.iconButton:hover {
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.clock {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(56, 161, 105, 0.32);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(56, 161, 105, 0.1) 100%);
+  padding: 1.25rem;
+}
+
+.clock span,
+.clock small,
+.muted,
+.pickRow small,
+.playerRow small {
+  color: var(--text-secondary);
+}
+
+.clock strong {
+  color: var(--text-primary);
+  font-size: 1.65rem;
+}
+
+.needList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.needList span {
+  border-radius: 999px;
+  padding: 0.38rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.needOpen {
+  border: 1px solid rgba(221, 107, 32, 0.38);
+  background: rgba(221, 107, 32, 0.16);
+  color: #fbd38d;
+}
+
+.needFilled {
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.pickList {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pickRow {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 0.1rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  padding: 0.7rem;
+}
+
+.pickRow span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--accent-blue);
+  font-weight: 800;
+}
+
+.pickRow strong {
+  color: var(--text-primary);
+}
+
+.pickRow small {
+  grid-column: 2;
+}
+
+.filters {
+  margin-bottom: 1rem;
+}
+
+.searchBox,
+.selectBox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 46px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  padding: 0 0.85rem;
+}
+
+.searchBox {
+  flex: 1;
+}
+
+.searchBox svg,
+.selectBox svg {
+  color: var(--text-muted);
+}
+
+.searchBox:focus-within,
+.selectBox:focus-within {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.searchBox input,
+.selectBox select,
+.formGrid input,
+.formGrid select,
+.teamGrid input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.searchBox input::placeholder {
+  color: var(--text-muted);
+}
+
+.selectBox select option,
+.formGrid select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.table {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.tableHead,
+.playerRow {
+  display: grid;
+  grid-template-columns: 64px minmax(260px, 1fr) 92px 88px 88px 78px;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 60px;
+  padding: 0 1rem;
+}
+
+.tableHead {
+  min-height: 44px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.playerRow {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.playerRow:hover {
+  background: var(--bg-secondary);
+}
+
+.playerRow strong {
+  display: block;
+  color: var(--text-primary);
+}
+
+.playerRow > span:first-child {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.playerRow > span:nth-child(4),
+.playerRow > span:nth-child(5),
+.playerRow > span:nth-child(6) {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.position {
+  display: inline-flex;
+  width: fit-content;
+  min-width: 48px;
+  justify-content: center;
+  border-radius: 4px;
+  color: #ffffff;
+  padding: 0.32rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.positionQB {
+  background: var(--accent-red);
+}
+
+.positionRB {
+  background: var(--accent-green);
+}
+
+.positionWR {
+  background: var(--accent-blue);
+}
+
+.positionTE {
+  background: var(--accent-purple);
+}
+
+.positionK {
+  background: var(--accent-yellow);
+}
+
+.positionDST {
+  background: var(--accent-orange);
+}
+
+.settingsGrid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.wide {
+  max-width: 1120px;
+}
+
+.formGrid,
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.formGrid.compact {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.formGrid label,
+.teamGrid label {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.8rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.formGrid label:focus-within,
+.teamGrid label:focus-within {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+@media (max-width: 980px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leagueSwitcher,
+  .draftGrid,
+  .formGrid,
+  .formGrid.compact,
+  .teamGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .table {
+    overflow-x: auto;
+  }
+
+  .tableHead,
+  .playerRow {
+    min-width: 720px;
+  }
+}
