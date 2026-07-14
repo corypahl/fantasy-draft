@@ -16,6 +16,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Validate workflow configuration
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: |
+          test -n "$AWS_GITHUB_ACTIONS_ROLE_ARN" || { echo "::error::Missing repository secret AWS_GITHUB_ACTIONS_ROLE_ARN"; exit 1; }
+          test -n "$RANKINGS_BUCKET" || { echo "::error::Missing repository secret RANKINGS_BUCKET"; exit 1; }
+          test -n "$ESPN_SWID" || { echo "::error::Missing repository secret ESPN_SWID"; exit 1; }
+          test -n "$ESPN_S2" || { echo "::error::Missing repository secret ESPN_S2"; exit 1; }
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
