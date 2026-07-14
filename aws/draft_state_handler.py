@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -59,5 +60,11 @@ def respond(status_code, body):
             "Access-Control-Allow-Headers": "content-type",
             "Access-Control-Allow-Methods": "GET,PUT,OPTIONS",
         },
-        "body": "" if body is None else json.dumps(body),
+        "body": "" if body is None else json.dumps(body, default=encode_json),
     }
+
+
+def encode_json(value):
+    if isinstance(value, Decimal):
+        return int(value) if value % 1 == 0 else float(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")

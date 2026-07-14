@@ -5,7 +5,7 @@ Description: Fantasy Draft Wizard rankings bucket and draft-state API.
 Parameters:
   RankingsBucketName:
     Type: String
-    Description: Globally unique S3 bucket name for generated rankings JSON.
+    Description: Existing S3 bucket name for generated rankings JSON.
   AllowedOrigin:
     Type: String
     Default: "*"
@@ -24,26 +24,10 @@ Globals:
     MemorySize: 256
 
 Resources:
-  RankingsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Ref RankingsBucketName
-      CorsConfiguration:
-        CorsRules:
-          - AllowedMethods: [GET, HEAD]
-            AllowedOrigins: ["*"]
-            AllowedHeaders: ["*"]
-            MaxAge: 300
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: false
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: false
-
   RankingsBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref RankingsBucket
+      Bucket: !Ref RankingsBucketName
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -51,7 +35,7 @@ Resources:
             Effect: Allow
             Principal: "*"
             Action: s3:GetObject
-            Resource: !Sub "${RankingsBucket.Arn}/data/*"
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/data/*"
 
   DraftStateTable:
     Type: AWS::DynamoDB::Table
@@ -158,12 +142,11 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                  - s3:PutObjectAcl
-                Resource: !Sub "${RankingsBucket.Arn}/data/*"
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/data/*"
 
 Outputs:
   RankingsUrl:
-    Value: !Sub "https://${RankingsBucket}.s3.${AWS::Region}.amazonaws.com/data/fantasy-data.json"
+    Value: !Sub "https://${RankingsBucketName}.s3.${AWS::Region}.amazonaws.com/data/fantasy-data.json"
   DraftApiUrl:
     Value: !Sub "https://${DraftHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
   GitHubActionsRoleArn:
