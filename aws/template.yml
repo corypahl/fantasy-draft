@@ -168,6 +168,11 @@ Resources:
                 Action:
                   - s3:PutObject
                 Resource: !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/data/*"
+              - Effect: Allow
+                Action:
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource: !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${LeagueTableName}"
 
 Outputs:
   RankingsUrl:

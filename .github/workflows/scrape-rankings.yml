@@ -36,3 +36,12 @@ jobs:
           RANKINGS_KEY: ${{ vars.RANKINGS_KEY || 'data/fantasy-data.json' }}
           NFL_SEASON: ${{ vars.NFL_SEASON || '2026' }}
         run: python scripts/scrape_rankings.py
+
+      - name: Sync league settings
+        env:
+          LEAGUE_TABLE_NAME: ${{ vars.LEAGUE_TABLE_NAME || 'fantasy-leagues' }}
+          NFL_SEASON: ${{ vars.NFL_SEASON || '2026' }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_TEAM_ID: ${{ vars.ESPN_TEAM_ID || '' }}
+        run: python scripts/sync_leagues.py

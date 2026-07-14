@@ -13,6 +13,8 @@ dist-ssr
 dist-data
 .reference-repos
 *.local
+__pycache__/
+*.pyc
 
 # Editor directories and files
 .vscode/*
