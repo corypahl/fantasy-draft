@@ -29,25 +29,45 @@ jobs:
           test -n "$ESPN_S2" || { echo "::error::Missing repository secret ESPN_S2"; exit 1; }
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: |
+          oidc_token="$(
+            curl -sSfL \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+              | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])'
+          )"
+          read -r access_key secret_key session_token <<< "$(
+            aws sts assume-role-with-web-identity \
+              --role-arn "$AWS_GITHUB_ACTIONS_ROLE_ARN" \
+              --role-session-name fantasy-draft-scrape \
+              --web-identity-token "$oidc_token" \
+              --duration-seconds 3600 \
+              --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+              --output text
+          )"
+          {
+            echo "AWS_ACCESS_KEY_ID=$access_key"
+            echo "AWS_SECRET_ACCESS_KEY=$secret_key"
+            echo "AWS_SESSION_TOKEN=$session_token"
+            echo "AWS_REGION=$AWS_REGION"
+            echo "AWS_DEFAULT_REGION=$AWS_REGION"
+          } >> "$GITHUB_ENV"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Show Python version
+        run: python3 --version
 
       - name: Install scraper dependencies
-        run: pip install -r scripts/requirements.txt
+        run: python3 -m pip install -r scripts/requirements.txt
 
       - name: Scrape and upload rankings
         env:
           RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
           RANKINGS_KEY: ${{ vars.RANKINGS_KEY || 'data/fantasy-data.json' }}
           NFL_SEASON: ${{ vars.NFL_SEASON || '2026' }}
-        run: python scripts/scrape_rankings.py
+        run: python3 scripts/scrape_rankings.py
 
       - name: Sync league settings
         env:
@@ -56,4 +76,4 @@ jobs:
           ESPN_SWID: ${{ secrets.ESPN_SWID }}
           ESPN_S2: ${{ secrets.ESPN_S2 }}
           ESPN_TEAM_ID: ${{ vars.ESPN_TEAM_ID || '' }}
-        run: python scripts/sync_leagues.py
+        run: python3 scripts/sync_leagues.py
