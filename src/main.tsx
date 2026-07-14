@@ -94,8 +94,10 @@ type DraftState = {
   teamNames: string[]
 }
 
-const DATA_URL = import.meta.env.VITE_RANKINGS_URL || '/data/fantasy-data.json'
-const API_URL = import.meta.env.VITE_DRAFT_API_URL || ''
+const DEFAULT_RANKINGS_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amazonaws.com/data/fantasy-data.json'
+const DEFAULT_DRAFT_API_URL = 'https://dqen8hccb0.execute-api.us-east-1.amazonaws.com'
+const DATA_URL = import.meta.env.VITE_RANKINGS_URL || (import.meta.env.PROD ? DEFAULT_RANKINGS_URL : '/data/fantasy-data.json')
+const API_URL = import.meta.env.VITE_DRAFT_API_URL || (import.meta.env.PROD ? DEFAULT_DRAFT_API_URL : '')
 
 const defaultLineup: LineupSettings = {
   teams: 12,
@@ -145,27 +147,38 @@ const leagueProfiles: LeagueProfile[] = [
     name: 'FanDuel',
     platform: 'sleeper',
     externalLeagueId: '1257088161859772416',
-    scoringPreset: 'halfPpr',
-    rankingPreset: 'halfPpr',
-    lineup: defaultLineup,
-    scoring: halfPprScoring,
+    scoringPreset: 'ppr',
+    rankingPreset: 'ppr',
+    lineup: {
+      ...defaultLineup,
+      teams: 16,
+      rosterSpots: 12,
+      rb: 1,
+      flex: 2,
+      bench: 3,
+    },
+    scoring: {
+      ...pprScoring,
+      interception: -1,
+    },
   },
   {
     id: 'jackson',
     name: 'Jackson',
     platform: 'sleeper',
     externalLeagueId: '1257138560092348416',
-    scoringPreset: 'ppr',
-    rankingPreset: 'ppr',
+    scoringPreset: 'halfPpr',
+    rankingPreset: 'halfPpr',
     lineup: {
       ...defaultLineup,
-      teams: 10,
-      superflex: 1,
-      k: 0,
-      dst: 0,
-      bench: 7,
+      teams: 8,
+      rosterSpots: 15,
+      bench: 6,
     },
-    scoring: pprScoring,
+    scoring: {
+      ...halfPprScoring,
+      passingTd: 6,
+    },
   },
   {
     id: 'gvsu',
@@ -268,7 +281,7 @@ function createDraftState(profile: LeagueProfile): DraftState {
 
 function App() {
   const [data, setData] = useState<RankingsFile>(seedData)
-  const [profiles, setProfiles] = useState<LeagueProfile[]>(loadLocal('league-profiles', leagueProfiles))
+  const [profiles, setProfiles] = useState<LeagueProfile[]>(API_URL ? leagueProfiles : loadLocal('league-profiles', leagueProfiles))
   const [selectedLeagueId, setSelectedLeagueId] = useState(loadLocal('selected-league-id', leagueProfiles[0].id))
   const [draftsByLeague, setDraftsByLeague] = useState<Record<string, DraftState>>(
     loadLocal(
@@ -323,11 +336,6 @@ function App() {
     if (!remoteLoaded) return
     persistState(profiles, draftsByLeague, draft).then(() => undefined)
   }, [profiles, draftsByLeague, draft, remoteLoaded])
-
-  useEffect(() => {
-    if (!remoteLoaded || !API_URL) return
-    Promise.all(profiles.map((profile) => persistLeagueProfile(profile))).then(() => undefined)
-  }, [profiles, remoteLoaded])
 
   const players = useMemo(() => {
     const fromData = data.scoring[selectedLeague.rankingPreset] || data.scoring.halfPpr || []
@@ -746,18 +754,6 @@ async function persistState(profiles: LeagueProfile[], draftsByLeague: Record<st
     return response.ok ? 'Synced' : 'Local'
   } catch {
     return 'Local'
-  }
-}
-
-async function persistLeagueProfile(profile: LeagueProfile) {
-  try {
-    await fetch(`${API_URL}/leagues/${profile.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile),
-    })
-  } catch {
-    // Local storage remains the offline fallback.
   }
 }
 
