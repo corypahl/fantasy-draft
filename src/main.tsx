@@ -5,7 +5,6 @@ import {
   Baby,
   ClipboardList,
   ListTree,
-  RotateCcw,
   Search,
   Settings,
 } from 'lucide-react'
@@ -426,8 +425,6 @@ function App() {
   }, [data, selectedLeague])
 
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
-  const currentSlot = getDraftSlot(draft.currentPick, selectedLeague.lineup.teams)
-  const currentTeam = draft.teamNames[currentSlot - 1] || `Team ${currentSlot}`
   const availablePlayers = useMemo<RankedPlayer[]>(() => {
     const lowerQuery = query.toLowerCase().trim()
     return players
@@ -465,19 +462,8 @@ function App() {
       ),
     [data.rookies],
   )
-  const rosterNeeds = useMemo(() => calculateNeeds(selectedLeague, draft, currentTeam), [draft, selectedLeague, currentTeam])
-
   function updateDraft(nextDraft: DraftState) {
     setDraftsByLeague((current) => ({ ...current, [selectedLeague.id]: nextDraft }))
-  }
-
-  function undoPick() {
-    if (draft.drafted.length === 0) return
-    updateDraft({
-      ...draft,
-      currentPick: Math.max(1, draft.currentPick - 1),
-      drafted: draft.drafted.slice(0, -1),
-    })
   }
 
   function updateLeague(patch: Partial<LeagueProfile>) {
@@ -524,59 +510,16 @@ function App() {
       </nav>
 
       {activeTab === 'players' ? (
-        <section className="draftGrid">
-          <aside className="panel">
-            <div className="panelHeader">
-              <h2>Draft Status</h2>
-              <button className="iconButton" onClick={undoPick} title="Undo last pick" aria-label="Undo last pick">
-                <RotateCcw size={16} />
-              </button>
-            </div>
-            <div className="clock">
-              <span>
-                {selectedLeague.platform.toUpperCase()} - Round {Math.ceil(draft.currentPick / selectedLeague.lineup.teams)}
-              </span>
-              <strong>{currentTeam}</strong>
-              <small>
-                Slot {currentSlot} - {selectedLeague.lineup.teams} teams
-              </small>
-            </div>
-            <h3>Recent Picks</h3>
-            <div className="pickList">
-              {draft.drafted.slice(-10).reverse().map((pick) => {
-                const player = players.find((item) => item.id === pick.playerId)
-                return (
-                  <div className="pickRow" key={pick.pick}>
-                    <span>{pick.pick}</span>
-                    <strong>{player?.name || pick.playerId}</strong>
-                    <small>{pick.teamName}</small>
-                  </div>
-                )
-              })}
-              {draft.drafted.length === 0 ? <p className="muted">No picks yet.</p> : null}
-            </div>
-            <h3>Current Team Needs</h3>
-            <div className="needList">
-              {Object.entries(rosterNeeds).map(([key, value]) => (
-                <span key={key} className={value > 0 ? 'needOpen' : 'needFilled'}>
-                  {key.toUpperCase()} {value}
-                </span>
-              ))}
-            </div>
-          </aside>
-
-          <section className="board">
-            <PlayersBoard
-              availableCount={availablePlayers.length}
-              playersByPosition={playersByPosition}
-              query={query}
-              shortlistPlayers={shortlistPlayers}
-              togglePosition={togglePosition}
-              visiblePositions={visiblePositions}
-              onQueryChange={setQuery}
-            />
-          </section>
-        </section>
+        <PlayersBoard
+          availableCount={availablePlayers.length}
+          leagueName={selectedLeague.name}
+          playersByPosition={playersByPosition}
+          query={query}
+          shortlistPlayers={shortlistPlayers}
+          togglePosition={togglePosition}
+          visiblePositions={visiblePositions}
+          onQueryChange={setQuery}
+        />
       ) : null}
 
       {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} injuredNames={injuryNameSet} rookieNames={rookieNameSet} /> : null}
@@ -753,6 +696,7 @@ function slugify(value: string) {
 
 function PlayersBoard({
   availableCount,
+  leagueName,
   playersByPosition,
   query,
   shortlistPlayers,
@@ -761,6 +705,7 @@ function PlayersBoard({
   onQueryChange,
 }: {
   availableCount: number
+  leagueName: string
   playersByPosition: Record<Position, RankedPlayer[]>
   query: string
   shortlistPlayers: RankedPlayer[]
@@ -772,109 +717,129 @@ function PlayersBoard({
 
   return (
     <div className="playersBoard">
-      <div className="playersToolbar">
-        <div>
-          <h2>Players</h2>
-          <p className="muted">{availableCount} undrafted ranked players</p>
+      <section className="playerListPanel">
+        <div className="playerListHeader">
+          <h2>Available Players - {leagueName}</h2>
+          <div className="playerCount">{availableCount} players available</div>
         </div>
-        <label className="searchBox playerSearch">
-          <Search size={16} />
-          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
-        </label>
-      </div>
 
-      <div className="positionToggles" aria-label="Visible position columns">
-        {POSITION_ORDER.map((position) => (
-          <button
-            className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
-            key={position}
-            onClick={() => togglePosition(position)}
-            type="button"
-          >
-            {position}
-          </button>
-        ))}
-      </div>
-
-      <section className="shortlistPanel">
-        <div className="sectionTitle">
-          <h3>Overall Shortlist</h3>
-          <span className="countPill">Top {shortlistPlayers.length}</span>
+        <div className="playerControls">
+          <label className="searchBox playerSearch">
+            <Search size={14} />
+            <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
+          </label>
+          <div className="positionToggles" aria-label="Visible position columns">
+            {POSITION_ORDER.map((position) => (
+              <button
+                className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
+                key={position}
+                onClick={() => togglePosition(position)}
+                type="button"
+              >
+                {position}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="shortlistGrid">
+
+        <div className="playersContainer">
+          {availableCount === 0 ? (
+            <div className="noPlayers">All players have been drafted.</div>
+          ) : (
+            <section className="positionColumns">
+              {activePositions.map((position) => (
+                <div className={`positionColumn positionColumn${position}`} key={position}>
+                  <div className="positionHeader">
+                    <span className="positionLabel">{position}</span>
+                    <span className="positionCount">({playersByPosition[position].length})</span>
+                  </div>
+                  <div className="positionPlayers">
+                    {playersByPosition[position].map((player) => (
+                      <PlayerSummary key={player.id} player={player} variant="column" />
+                    ))}
+                    {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+        </div>
+      </section>
+
+      <aside className="shortlistRail">
+        <div className="shortlistHeader">
+          <h3>Shortlist</h3>
+          <div className="shortlistCount">{shortlistPlayers.length} shown</div>
+        </div>
+        <div className="shortlistContainer">
           {shortlistPlayers.map((player) => (
             <PlayerSummary key={player.id} player={player} variant="shortlist" />
           ))}
-          {shortlistPlayers.length === 0 ? <p className="muted">No matching available players.</p> : null}
+          {shortlistPlayers.length === 0 ? <p className="muted">No matching players.</p> : null}
         </div>
-      </section>
-
-      <section className="positionColumns">
-        {activePositions.map((position) => (
-          <div className={`positionColumn positionColumn${position}`} key={position}>
-            <div className="positionHeader">
-              <strong>{position}</strong>
-              <span>{playersByPosition[position].length}</span>
-            </div>
-            <div className="positionPlayers">
-              {playersByPosition[position].map((player) => (
-                <PlayerSummary key={player.id} player={player} variant="column" />
-              ))}
-              {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
-            </div>
-          </div>
-        ))}
-      </section>
+      </aside>
     </div>
   )
 }
 
 function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'shortlist' | 'column' }) {
-  return (
-    <article className={variant === 'shortlist' ? 'shortlistPlayer' : 'columnPlayer'}>
-      <span className="rankBadge" style={{ color: getTierColor(player.tier) }}>
-        #{player.rank}
-      </span>
-      <div className="playerCompact">
-        <div className="playerNameLine">
-          <strong>{player.name}</strong>
-          <span className={`position position${player.position}`}>{player.posRank || player.position}</span>
-        </div>
-        <small className="playerMeta">
-          <span>{player.team}</span>
-          {player.depthChart ? (
-            <span title={`${player.depthChart.source} depth chart`}>
-              {player.depthChart.position}{player.depthChart.order}
-            </span>
-          ) : null}
-          {player.injury ? (
-            <span className="warningTag" title={[player.injury.injury, player.injury.updated].filter(Boolean).join(' - ')}>
-              {player.injury.status}
-            </span>
-          ) : null}
-          {player.rookie ? (
-            <span title={`${player.rookie.source}${player.rookie.college ? ` - ${player.rookie.college}` : ''}`}>
-              Rookie{player.rookie.draftRound ? ` R${player.rookie.draftRound}` : ''}{player.rookie.draftPick ? ` #${player.rookie.draftPick}` : ''}
-            </span>
-          ) : null}
-        </small>
-        <div className="playerMetrics">
-          <span>Proj {player.projectedPoints.toFixed(1)}</span>
-          <span>Prev {player.previousYear?.fpts?.toFixed(1) || '-'}</span>
-          <span>Value {Math.round(player.draftScore)}</span>
-          <span>ADP {player.adp?.toFixed(1) || '-'}</span>
-        </div>
+  const tierColor = getTierColor(player.tier)
+  if (variant === 'shortlist') {
+    return (
+      <div className="shortlistItem" style={{ borderLeftColor: tierColor }}>
+        <span className="shortlistRank" style={{ color: tierColor }}>
+          #{player.rank}
+        </span>
+        <span className="shortlistName" style={{ color: tierColor }}>
+          {player.name}
+        </span>
+        <span className="shortlistMeta">
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | T{player.tier || '-'} | {player.adp?.toFixed(1) || '-'}
+        </span>
       </div>
-    </article>
+    )
+  }
+
+  return (
+    <div className="playerItem" style={{ borderLeftColor: tierColor }}>
+      <div className="playerRank" style={{ color: tierColor }}>
+        #{player.rank}
+      </div>
+      <div className="playerName" style={{ color: tierColor }}>
+        <span>{player.name}</span>
+        <span className="playerInlineMeta">
+          {player.adp ? (
+            <span className="adpValue" style={{ color: getAdpColor(player.adp) }}>
+              ({player.adp.toFixed(1)})
+            </span>
+          ) : null}
+          <span className="tierValue" style={{ color: tierColor }}>
+            T{player.tier || '-'}
+          </span>
+          {player.injury ? <span className="injuryDot">I</span> : null}
+          {player.rookie ? <span className="rookieDot">R</span> : null}
+        </span>
+      </div>
+    </div>
   )
 }
 
+function getAdpColor(adp: number | undefined) {
+  if (!adp) return '#4a5568'
+  if (adp <= 48) return '#38a169'
+  if (adp <= 96) return '#d69e2e'
+  if (adp <= 160) return '#dd6b20'
+  return '#e53e3e'
+}
+
 function getTierColor(tier: number | undefined) {
-  if (!tier || tier <= 1) return '#f6e05e'
-  if (tier <= 2) return '#68d391'
-  if (tier <= 3) return '#63b3ed'
-  if (tier <= 5) return '#b794f4'
-  return '#a0aec0'
+  if (!tier || tier === 0) return '#4a5568'
+  if (tier <= 2) return '#3182ce'
+  if (tier <= 4) return '#38a169'
+  if (tier <= 6) return '#d69e2e'
+  if (tier <= 8) return '#dd6b20'
+  if (tier <= 10) return '#e53e3e'
+  return '#718096'
 }
 
 function SettingsPanel({
@@ -1064,35 +1029,6 @@ function getStarterDemand(position: Position, lineup: LineupSettings) {
   if (position === 'TE') return lineup.te * 4 + lineup.flex
   if (position === 'K') return lineup.k
   return lineup.dst
-}
-
-function calculateNeeds(league: LeagueProfile, draft: DraftState, teamName: string) {
-  const ownPicks = draft.drafted.filter((pick) => pick.teamName === teamName)
-  const counts = { qb: 0, rb: 0, wr: 0, te: 0, k: 0, dst: 0 }
-  ownPicks.forEach((pick) => {
-    const position = pick.playerId.split('-').at(-1)
-    if (position === 'qb') counts.qb += 1
-    if (position === 'rb') counts.rb += 1
-    if (position === 'wr') counts.wr += 1
-    if (position === 'te') counts.te += 1
-    if (position === 'k') counts.k += 1
-    if (position === 'dst') counts.dst += 1
-  })
-  return {
-    qb: Math.max(0, league.lineup.qb + league.lineup.superflex - counts.qb),
-    rb: Math.max(0, league.lineup.rb - counts.rb),
-    wr: Math.max(0, league.lineup.wr - counts.wr),
-    te: Math.max(0, league.lineup.te - counts.te),
-    flex: Math.max(0, league.lineup.flex - Math.max(0, counts.rb + counts.wr + counts.te - league.lineup.rb - league.lineup.wr - league.lineup.te)),
-    k: Math.max(0, league.lineup.k - counts.k),
-    dst: Math.max(0, league.lineup.dst - counts.dst),
-  }
-}
-
-function getDraftSlot(pick: number, teams: number) {
-  const zeroBasedRound = Math.floor((pick - 1) / teams)
-  const index = (pick - 1) % teams
-  return zeroBasedRound % 2 === 0 ? index + 1 : teams - index
 }
 
 function value(input: number | undefined) {
