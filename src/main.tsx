@@ -450,6 +450,15 @@ function App() {
 
   const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => slugify(item.name))), [data.injuries])
   const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => slugify(item.name))), [data.rookies])
+  const playerTierByKey = useMemo(() => {
+    const tiers = new Map<string, number>()
+    players.forEach((player) => {
+      if (!player.tier) return
+      tiers.set(slugify(player.name), player.tier)
+      tiers.set(slugify(`${player.name}-${player.team}`), player.tier)
+    })
+    return tiers
+  }, [players])
   const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts), [data.depthCharts])
   const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => parseInjuryDate(b.updated) - parseInjuryDate(a.updated)), [data.injuries])
   const rookieRows = useMemo(
@@ -522,7 +531,7 @@ function App() {
         />
       ) : null}
 
-      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} injuredNames={injuryNameSet} rookieNames={rookieNameSet} /> : null}
+      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} injuredNames={injuryNameSet} rookieNames={rookieNameSet} playerTierByKey={playerTierByKey} /> : null}
       {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} /> : null}
       {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} /> : null}
       {activeTab === 'leagues' ? (
@@ -546,10 +555,12 @@ function DepthChartsPage({
   rows,
   injuredNames,
   rookieNames,
+  playerTierByKey,
 }: {
   rows: DepthChartTeamRow[]
   injuredNames: Set<string>
   rookieNames: Set<string>
+  playerTierByKey: Map<string, number>
 }) {
   const columns: DepthChartColumn[] = ['QB', 'RB', 'WR', 'TE', 'K']
   return (
@@ -578,15 +589,22 @@ function DepthChartsPage({
                   key={`${row.team}-${column}`}
                 >
                   {players.length ? (
-                    players.map((player) => (
-                      <span
-                        className={depthPlayerClass(player, injuredNames, rookieNames)}
-                        key={`${row.team}-${column}-${player.order}-${player.name}`}
-                        title={`${player.source} ${player.position}${player.order}`}
-                      >
-                        {player.name}
-                      </span>
-                    ))
+                    players.map((player) => {
+                      const isInjured = injuredNames.has(slugify(player.name))
+                      const isRookie = rookieNames.has(slugify(player.name))
+                      return (
+                        <span
+                          className={depthPlayerClass(player)}
+                          key={`${row.team}-${column}-${player.order}-${player.name}`}
+                          style={{ color: getTierColor(getDepthPlayerTier(player, playerTierByKey)) }}
+                          title={`${player.source} ${player.position}${player.order}`}
+                        >
+                          <span className="depthPlayerName">{player.name}</span>
+                          {isInjured ? <span className="depthMarker depthMarkerInjury" title="Injured">I</span> : null}
+                          {isRookie ? <span className="depthMarker depthMarkerRookie" title="Rookie">R</span> : null}
+                        </span>
+                      )
+                    })
                   ) : (
                     <span className="depthPlayer depthEmpty">-</span>
                   )}
@@ -711,11 +729,12 @@ function normalizeDisplayTeam(team: string) {
   return team
 }
 
-function depthPlayerClass(player: DepthChartEntry | undefined, injuredNames: Set<string>, rookieNames: Set<string>) {
+function getDepthPlayerTier(player: DepthChartEntry, playerTierByKey: Map<string, number>) {
+  return playerTierByKey.get(slugify(`${player.name}-${player.team}`)) || playerTierByKey.get(slugify(player.name))
+}
+
+function depthPlayerClass(player: DepthChartEntry | undefined) {
   if (!player) return 'depthPlayer depthEmpty'
-  const key = slugify(player.name)
-  if (injuredNames.has(key)) return 'depthPlayer depthInjured'
-  if (rookieNames.has(key)) return 'depthPlayer depthRookie'
   return 'depthPlayer'
 }
 

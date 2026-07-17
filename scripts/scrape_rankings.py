@@ -201,7 +201,7 @@ def main() -> None:
     projections = fetch_projections()
     sleeper_players = fetch_sleeper_players()
     depth_charts = fetch_depth_charts(sleeper_players)
-    injuries = fetch_injuries(sleeper_players)
+    injuries = fetch_injuries()
     rookies = fetch_rookies(args.season, sleeper_players)
     previous_year_results = fetch_previous_year_results(args.season - 1)
     enrichments = build_player_enrichments(depth_charts, injuries, rookies, previous_year_results, sleeper_players)
@@ -216,7 +216,7 @@ def main() -> None:
                 "projections": "FantasyPros",
                 "previousYearResults": "FantasyPros",
                 "depthCharts": "CBS Sports with Sleeper fallback",
-                "injuries": "CBS Sports with Sleeper fallback",
+                "injuries": "CBS Sports",
                 "rookies": "Pro Football Reference with Sleeper fallback",
             },
         },
@@ -394,12 +394,14 @@ def fetch_depth_charts(sleeper_players: Dict[str, Dict]) -> Dict[str, Dict[str, 
     return charts
 
 
-def fetch_injuries(sleeper_players: Dict[str, Dict]) -> List[Dict]:
+def fetch_injuries() -> List[Dict]:
     injuries = []
-    seen = set()
     try:
         soup = fetch_soup(CBS_INJURIES_URL)
         for table in soup.select("table.TableBase-table"):
+            table_base = table.find_parent("div", class_="TableBase")
+            team_title = table_base.select_one(".TableBase-title") if isinstance(table_base, Tag) else None
+            team = nfl_team_to_abbr(team_title.get_text(" ", strip=True) if team_title else "")
             for row in table.select("tr"):
                 name_tag = row.select_one("span.CellPlayerName--long")
                 cells = row.select("td.TableBase-bodyTd")
@@ -409,11 +411,10 @@ def fetch_injuries(sleeper_players: Dict[str, Dict]) -> List[Dict]:
                 if position not in {"QB", "RB", "WR", "TE", "K"}:
                     continue
                 name = clean_player_name(name_tag.get_text(strip=True))
-                key = slugify(name)
-                seen.add(key)
                 injuries.append(
                     {
                         "name": name,
+                        "team": team,
                         "position": position,
                         "updated": cells[2].get_text(strip=True),
                         "injury": cells[3].get_text(strip=True),
@@ -423,24 +424,6 @@ def fetch_injuries(sleeper_players: Dict[str, Dict]) -> List[Dict]:
                 )
     except requests.RequestException:
         pass
-
-    for player in sleeper_players.values():
-        status = player.get("injury_status")
-        name = player.get("full_name")
-        position = player.get("position")
-        if not status or not name or position not in {"QB", "RB", "WR", "TE", "K"} or slugify(name) in seen:
-            continue
-        injuries.append(
-            {
-                "name": name,
-                "team": normalize_team(player.get("team") or ""),
-                "position": position,
-                "updated": player.get("injury_start_date") or "",
-                "injury": player.get("injury_body_part") or player.get("injury_notes") or "",
-                "status": status,
-                "source": "Sleeper",
-            }
-        )
     return injuries
 
 
@@ -743,37 +726,69 @@ def normalize_team(team: str) -> str:
 
 def nfl_team_to_abbr(team: str) -> str:
     mapping = {
+        "ARIZONA": "ARI",
         "ARIZONA CARDINALS": "ARI",
+        "ATLANTA": "ATL",
         "ATLANTA FALCONS": "ATL",
+        "BALTIMORE": "BAL",
         "BALTIMORE RAVENS": "BAL",
+        "BUFFALO": "BUF",
         "BUFFALO BILLS": "BUF",
+        "CAROLINA": "CAR",
         "CAROLINA PANTHERS": "CAR",
+        "CHICAGO": "CHI",
         "CHICAGO BEARS": "CHI",
+        "CINCINNATI": "CIN",
         "CINCINNATI BENGALS": "CIN",
+        "CLEVELAND": "CLE",
         "CLEVELAND BROWNS": "CLE",
+        "DALLAS": "DAL",
         "DALLAS COWBOYS": "DAL",
+        "DENVER": "DEN",
         "DENVER BRONCOS": "DEN",
+        "DETROIT": "DET",
         "DETROIT LIONS": "DET",
+        "GREEN BAY": "GB",
         "GREEN BAY PACKERS": "GB",
+        "HOUSTON": "HOU",
         "HOUSTON TEXANS": "HOU",
+        "INDIANAPOLIS": "IND",
         "INDIANAPOLIS COLTS": "IND",
+        "JACKSONVILLE": "JAX",
         "JACKSONVILLE JAGUARS": "JAX",
+        "KANSAS CITY": "KC",
         "KANSAS CITY CHIEFS": "KC",
+        "LAS VEGAS": "LV",
         "LAS VEGAS RAIDERS": "LV",
+        "L.A. CHARGERS": "LAC",
         "LOS ANGELES CHARGERS": "LAC",
+        "L.A. RAMS": "LAR",
         "LOS ANGELES RAMS": "LAR",
+        "MIAMI": "MIA",
         "MIAMI DOLPHINS": "MIA",
+        "MINNESOTA": "MIN",
         "MINNESOTA VIKINGS": "MIN",
+        "NEW ENGLAND": "NE",
         "NEW ENGLAND PATRIOTS": "NE",
+        "NEW ORLEANS": "NO",
         "NEW ORLEANS SAINTS": "NO",
+        "N.Y. GIANTS": "NYG",
         "NEW YORK GIANTS": "NYG",
+        "N.Y. JETS": "NYJ",
         "NEW YORK JETS": "NYJ",
+        "PHILADELPHIA": "PHI",
         "PHILADELPHIA EAGLES": "PHI",
+        "PITTSBURGH": "PIT",
         "PITTSBURGH STEELERS": "PIT",
+        "SAN FRANCISCO": "SF",
         "SAN FRANCISCO 49ERS": "SF",
+        "SEATTLE": "SEA",
         "SEATTLE SEAHAWKS": "SEA",
+        "TAMPA BAY": "TB",
         "TAMPA BAY BUCCANEERS": "TB",
+        "TENNESSEE": "TEN",
         "TENNESSEE TITANS": "TEN",
+        "WASHINGTON": "WAS",
         "WASHINGTON COMMANDERS": "WAS",
     }
     cleaned = re.sub(r"\[[^\]]+\]", "", team).upper().strip()

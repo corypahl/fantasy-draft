@@ -963,21 +963,43 @@ h3 {
 }
 
 .depthPlayer {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
   width: 100%;
   background: var(--bg-card);
-  color: var(--text-primary);
   font-weight: 700;
   font-size: 0.88rem;
   line-height: 1.15;
 }
 
-.depthInjured {
-  color: #fc8181;
+.depthPlayerName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.depthRookie {
-  color: #63b3ed;
+.depthMarker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.depthMarkerInjury {
+  background: var(--accent-red);
+}
+
+.depthMarkerRookie {
+  background: var(--accent-blue);
 }
 
 .depthEmpty {
