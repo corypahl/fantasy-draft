@@ -14,7 +14,7 @@ type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
 type AppTab = 'players' | 'depth' | 'injuries' | 'rookies' | 'leagues'
-type DepthChartColumn = 'QB' | 'WR1' | 'WR2' | 'WR3' | 'TE' | 'RB1' | 'RB2'
+type DepthChartColumn = 'QB1' | 'QB2' | 'RB1' | 'RB2' | 'RB3' | 'WR1' | 'WR2' | 'WR3' | 'TE1' | 'TE2' | 'K1'
 type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry | undefined> & { team: string }
 
 type Player = {
@@ -551,7 +551,7 @@ function DepthChartsPage({
   injuredNames: Set<string>
   rookieNames: Set<string>
 }) {
-  const columns: DepthChartColumn[] = ['QB', 'WR1', 'WR2', 'WR3', 'TE', 'RB1', 'RB2']
+  const columns: DepthChartColumn[] = ['QB1', 'QB2', 'RB1', 'RB2', 'RB3', 'WR1', 'WR2', 'WR3', 'TE1', 'TE2', 'K1']
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
@@ -660,19 +660,44 @@ function RookiesPage({ rows }: { rows: RookieDetail[] }) {
 
 function buildDepthChartRows(depthCharts: RankingsFile['depthCharts']): DepthChartTeamRow[] {
   if (!depthCharts) return []
-  return Object.entries(depthCharts)
+  const mergedCharts = Object.entries(depthCharts).reduce<Record<string, Partial<Record<Position, DepthChartEntry[]>>>>((merged, [team, positions]) => {
+    const normalizedTeam = normalizeDisplayTeam(team)
+    const current = merged[normalizedTeam] || {}
+    POSITION_ORDER.forEach((position) => {
+      const nextEntries = positions[position]
+      if (!nextEntries?.length) return
+      const currentEntries = current[position] || []
+      const byOrder = new Map<number, DepthChartEntry>()
+      ;[...currentEntries, ...nextEntries.map((entry) => ({ ...entry, team: normalizedTeam }))].forEach((entry) => byOrder.set(entry.order, entry))
+      current[position] = [...byOrder.values()].sort((a, b) => a.order - b.order)
+    })
+    merged[normalizedTeam] = current
+    return merged
+  }, {})
+
+  return Object.entries(mergedCharts)
     .map(([team, positions]) => {
       const row = { team } as DepthChartTeamRow
-      row.QB = positions?.QB?.find((entry) => entry.order === 1)
+      row.QB1 = positions?.QB?.find((entry) => entry.order === 1)
+      row.QB2 = positions?.QB?.find((entry) => entry.order === 2)
+      row.RB1 = positions?.RB?.find((entry) => entry.order === 1)
+      row.RB2 = positions?.RB?.find((entry) => entry.order === 2)
+      row.RB3 = positions?.RB?.find((entry) => entry.order === 3)
       row.WR1 = positions?.WR?.find((entry) => entry.order === 1)
       row.WR2 = positions?.WR?.find((entry) => entry.order === 2)
       row.WR3 = positions?.WR?.find((entry) => entry.order === 3)
-      row.TE = positions?.TE?.find((entry) => entry.order === 1)
-      row.RB1 = positions?.RB?.find((entry) => entry.order === 1)
-      row.RB2 = positions?.RB?.find((entry) => entry.order === 2)
+      row.TE1 = positions?.TE?.find((entry) => entry.order === 1)
+      row.TE2 = positions?.TE?.find((entry) => entry.order === 2)
+      row.K1 = positions?.K?.find((entry) => entry.order === 1)
       return row
     })
     .sort((a, b) => a.team.localeCompare(b.team))
+}
+
+function normalizeDisplayTeam(team: string) {
+  if (team === 'TXSO') return 'WAS'
+  if (team === 'WSH') return 'WAS'
+  return team
 }
 
 function depthPlayerClass(player: DepthChartEntry | undefined, injuredNames: Set<string>, rookieNames: Set<string>) {

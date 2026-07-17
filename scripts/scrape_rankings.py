@@ -115,9 +115,10 @@ DEPTH_CHART_URLS = {
     "RB": "https://www.cbssports.com/fantasy/football/depth-chart/RB/",
     "WR": "https://www.cbssports.com/fantasy/football/depth-chart/WR/",
     "TE": "https://www.cbssports.com/fantasy/football/depth-chart/TE/",
+    "K": "https://www.cbssports.com/fantasy/football/depth-chart/K/",
 }
 
-DEPTH_LIMITS = {"QB": 1, "RB": 2, "WR": 3, "TE": 1}
+DEPTH_LIMITS = {"QB": 2, "RB": 3, "WR": 3, "TE": 2, "K": 1}
 
 SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl"
 CBS_INJURIES_URL = "https://www.cbssports.com/nfl/injuries/"
@@ -732,7 +733,12 @@ def normalize_position(position: str) -> str:
 
 def normalize_team(team: str) -> str:
     team = team.upper()
-    return "JAX" if team == "JAC" else team
+    aliases = {
+        "JAC": "JAX",
+        "WSH": "WAS",
+        "TXSO": "WAS",
+    }
+    return aliases.get(team, team)
 
 
 def nfl_team_to_abbr(team: str) -> str:

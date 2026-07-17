@@ -906,8 +906,8 @@ h3 {
 .depthMatrixHead,
 .depthMatrixRow {
   display: grid;
-  grid-template-columns: 88px 190px 190px 190px 190px 190px 190px 190px;
-  min-width: 1418px;
+  grid-template-columns: 78px repeat(11, 150px);
+  min-width: 1728px;
 }
 
 .depthMatrixHead span,
@@ -953,10 +953,15 @@ h3 {
   background: #2b4d1d;
 }
 
+.depthHeadingK {
+  background: #8a6b1f;
+}
+
 .depthPlayer {
   background: var(--bg-card);
   color: var(--text-primary);
   font-weight: 700;
+  font-size: 0.88rem;
 }
 
 .depthInjured {
