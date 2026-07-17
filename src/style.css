@@ -522,6 +522,87 @@ h3 {
   max-width: 1120px;
 }
 
+.pagePanel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.countPill {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.infoTable {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.infoHead,
+.infoRow {
+  display: grid;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0 1rem;
+}
+
+.depthTable .infoHead,
+.depthTable .infoRow {
+  grid-template-columns: 80px 88px 80px minmax(220px, 1fr) 150px;
+}
+
+.injuriesTable .infoHead,
+.injuriesTable .infoRow {
+  grid-template-columns: minmax(190px, 1.2fr) 72px 80px 140px minmax(180px, 1fr) 120px 130px;
+}
+
+.rookiesTable .infoHead,
+.rookiesTable .infoRow {
+  grid-template-columns: 80px minmax(200px, 1.1fr) 72px 80px minmax(180px, 1fr) 150px;
+}
+
+.infoHead {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.infoRow {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.infoRow strong {
+  color: var(--text-primary);
+}
+
+.infoRow small,
+.infoRow span {
+  color: var(--text-secondary);
+}
+
+.warningText {
+  color: #feb2b2 !important;
+  font-weight: 800;
+}
+
+.emptyState {
+  margin: 0;
+  padding: 1rem;
+  color: var(--text-secondary);
+}
+
 .formGrid,
 .teamGrid {
   display: grid;
@@ -576,8 +657,27 @@ h3 {
     overflow-x: auto;
   }
 
+  .infoTable {
+    overflow-x: auto;
+  }
+
   .tableHead,
   .playerRow {
     min-width: 720px;
+  }
+
+  .depthTable .infoHead,
+  .depthTable .infoRow {
+    min-width: 700px;
+  }
+
+  .injuriesTable .infoHead,
+  .injuriesTable .infoRow {
+    min-width: 1000px;
+  }
+
+  .rookiesTable .infoHead,
+  .rookiesTable .infoRow {
+    min-width: 820px;
   }
 }

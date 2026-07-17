@@ -1,8 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
+  Activity,
+  Baby,
+  ClipboardList,
   Filter,
-  Layers,
+  ListTree,
   RotateCcw,
   Search,
   Settings,
@@ -12,6 +15,7 @@ import './style.css'
 type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
+type AppTab = 'players' | 'depth' | 'injuries' | 'rookies' | 'leagues'
 
 type Player = {
   id: string
@@ -347,7 +351,7 @@ function App() {
   )
   const [query, setQuery] = useState('')
   const [position, setPosition] = useState<Position | 'ALL'>('ALL')
-  const [activeTab, setActiveTab] = useState<'board' | 'settings'>('board')
+  const [activeTab, setActiveTab] = useState<AppTab>('players')
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
@@ -417,6 +421,9 @@ function App() {
       .sort((a, b) => b.draftScore - a.draftScore)
   }, [draftedIds, players, position, query])
 
+  const depthRows = useMemo(() => flattenDepthCharts(data.depthCharts), [data.depthCharts])
+  const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => `${a.team || ''}${a.name}`.localeCompare(`${b.team || ''}${b.name}`)), [data.injuries])
+  const rookieRows = useMemo(() => [...(data.rookies || [])].sort((a, b) => (a.draftPick || 9999) - (b.draftPick || 9999) || a.name.localeCompare(b.name)), [data.rookies])
   const rosterNeeds = useMemo(() => calculateNeeds(selectedLeague, draft, currentTeam), [draft, selectedLeague, currentTeam])
 
   function updateDraft(nextDraft: DraftState) {
@@ -454,15 +461,24 @@ function App() {
   return (
     <main className="shell">
       <nav className="tabs" aria-label="Draft views">
-        <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>
-          <Layers size={16} /> Board
+        <button className={activeTab === 'players' ? 'active' : ''} onClick={() => setActiveTab('players')}>
+          <ClipboardList size={16} /> Players
         </button>
-        <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
-          <Settings size={16} /> League
+        <button className={activeTab === 'depth' ? 'active' : ''} onClick={() => setActiveTab('depth')}>
+          <ListTree size={16} /> Depth Charts
+        </button>
+        <button className={activeTab === 'injuries' ? 'active' : ''} onClick={() => setActiveTab('injuries')}>
+          <Activity size={16} /> Injuries
+        </button>
+        <button className={activeTab === 'rookies' ? 'active' : ''} onClick={() => setActiveTab('rookies')}>
+          <Baby size={16} /> Rookies
+        </button>
+        <button className={activeTab === 'leagues' ? 'active' : ''} onClick={() => setActiveTab('leagues')}>
+          <Settings size={16} /> Leagues
         </button>
       </nav>
 
-      {activeTab === 'board' ? (
+      {activeTab === 'players' ? (
         <section className="draftGrid">
           <aside className="panel">
             <div className="panelHeader">
@@ -568,7 +584,12 @@ function App() {
             </div>
           </section>
         </section>
-      ) : (
+      ) : null}
+
+      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} /> : null}
+      {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} /> : null}
+      {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} /> : null}
+      {activeTab === 'leagues' ? (
         <SettingsPanel
           draft={draft}
           league={selectedLeague}
@@ -580,9 +601,120 @@ function App() {
           updateLineup={updateLineup}
           updateScoring={updateScoring}
         />
-      )}
+      ) : null}
     </main>
   )
+}
+
+function DepthChartsPage({ rows }: { rows: DepthChartEntry[] }) {
+  return (
+    <section className="panel pagePanel">
+      <div className="panelHeader">
+        <h2>Depth Charts</h2>
+        <span className="countPill">{rows.length} players</span>
+      </div>
+      <div className="infoTable depthTable">
+        <div className="infoHead">
+          <span>Team</span>
+          <span>Pos</span>
+          <span>Order</span>
+          <span>Player</span>
+          <span>Source</span>
+        </div>
+        {rows.map((row) => (
+          <div className="infoRow" key={`${row.team}-${row.position}-${row.order}-${row.name}`}>
+            <span>{row.team}</span>
+            <span className={`position position${row.position}`}>{row.position}</span>
+            <span>{row.order}</span>
+            <strong>{row.name}</strong>
+            <small>{row.source}</small>
+          </div>
+        ))}
+        {rows.length === 0 ? <p className="emptyState">No depth chart data has been published yet.</p> : null}
+      </div>
+    </section>
+  )
+}
+
+function InjuriesPage({ rows }: { rows: InjuryDetail[] }) {
+  return (
+    <section className="panel pagePanel">
+      <div className="panelHeader">
+        <h2>Injuries</h2>
+        <span className="countPill">{rows.length} reports</span>
+      </div>
+      <div className="infoTable injuriesTable">
+        <div className="infoHead">
+          <span>Player</span>
+          <span>Team</span>
+          <span>Pos</span>
+          <span>Status</span>
+          <span>Injury</span>
+          <span>Updated</span>
+          <span>Source</span>
+        </div>
+        {rows.map((row) => (
+          <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}`}>
+            <strong>{row.name}</strong>
+            <span>{row.team || '-'}</span>
+            <span className={`position position${row.position}`}>{row.position}</span>
+            <span className="warningText">{row.status}</span>
+            <span>{row.injury || '-'}</span>
+            <small>{row.updated || '-'}</small>
+            <small>{row.source}</small>
+          </div>
+        ))}
+        {rows.length === 0 ? <p className="emptyState">No injury reports have been published yet.</p> : null}
+      </div>
+    </section>
+  )
+}
+
+function RookiesPage({ rows }: { rows: RookieDetail[] }) {
+  return (
+    <section className="panel pagePanel">
+      <div className="panelHeader">
+        <h2>Rookies</h2>
+        <span className="countPill">{rows.length} players</span>
+      </div>
+      <div className="infoTable rookiesTable">
+        <div className="infoHead">
+          <span>Pick</span>
+          <span>Player</span>
+          <span>Team</span>
+          <span>Pos</span>
+          <span>College</span>
+          <span>Source</span>
+        </div>
+        {rows.map((row) => (
+          <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.draftPick || row.rookieYear || 'rookie'}`}>
+            <span>{row.draftPick ? `#${row.draftPick}` : '-'}</span>
+            <strong>{row.name}</strong>
+            <span>{row.team || '-'}</span>
+            <span className={`position position${row.position}`}>{row.position}</span>
+            <span>{row.college || '-'}</span>
+            <small>{row.source}</small>
+          </div>
+        ))}
+        {rows.length === 0 ? <p className="emptyState">No rookie data has been published yet.</p> : null}
+      </div>
+    </section>
+  )
+}
+
+function flattenDepthCharts(depthCharts: RankingsFile['depthCharts']) {
+  if (!depthCharts) return []
+  return Object.entries(depthCharts)
+    .flatMap(([team, positions]) =>
+      Object.entries(positions || {}).flatMap(([position, entries]) =>
+        (entries || []).map((entry) => ({
+          ...entry,
+          team: entry.team || team,
+          position: position as Position,
+        })),
+      ),
+    )
+    .sort((a, b) => a.team.localeCompare(b.team) || a.position.localeCompare(b.position) || a.order - b.order)
 }
 
 function SettingsPanel({
