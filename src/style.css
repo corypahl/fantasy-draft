@@ -340,6 +340,248 @@ h3 {
   margin-bottom: 1rem;
 }
 
+.playersBoard {
+  display: grid;
+  gap: 1rem;
+}
+
+.playersToolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: end;
+}
+
+.playersToolbar h2 {
+  margin-bottom: 0.1rem;
+}
+
+.playerSearch {
+  width: 100%;
+}
+
+.positionToggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  padding: 0.65rem;
+}
+
+.positionToggle {
+  min-width: 54px;
+  min-height: 34px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.positionToggle.active {
+  color: #ffffff;
+  box-shadow: var(--shadow-soft);
+}
+
+.positionToggleQB.active {
+  border-color: var(--accent-red);
+  background: var(--accent-red);
+}
+
+.positionToggleRB.active {
+  border-color: var(--accent-green);
+  background: var(--accent-green);
+}
+
+.positionToggleWR.active {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue);
+}
+
+.positionToggleTE.active {
+  border-color: var(--accent-purple);
+  background: var(--accent-purple);
+}
+
+.positionToggleK.active {
+  border-color: var(--accent-yellow);
+  background: var(--accent-yellow);
+}
+
+.positionToggleDST.active {
+  border-color: var(--accent-orange);
+  background: var(--accent-orange);
+}
+
+.shortlistPanel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sectionTitle h3 {
+  margin: 0;
+}
+
+.shortlistGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.6rem;
+}
+
+.shortlistPlayer,
+.columnPlayer {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  padding: 0.7rem;
+}
+
+.columnPlayer {
+  border-radius: 6px;
+  background: var(--bg-card);
+  padding: 0.6rem;
+}
+
+.shortlistPlayer:hover,
+.columnPlayer:hover {
+  border-color: rgba(49, 130, 206, 0.55);
+  background: var(--bg-tertiary);
+}
+
+.rankBadge {
+  min-width: 38px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.playerCompact {
+  min-width: 0;
+}
+
+.playerNameLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.playerNameLine strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerMetrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.playerMetrics span {
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  padding: 0.18rem 0.3rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.positionColumns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.positionColumn {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.positionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 42px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  padding: 0 0.75rem;
+}
+
+.positionHeader strong {
+  color: var(--text-primary);
+  font-size: 0.94rem;
+}
+
+.positionHeader span {
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.positionColumnQB .positionHeader {
+  border-top: 3px solid var(--accent-red);
+}
+
+.positionColumnRB .positionHeader {
+  border-top: 3px solid var(--accent-green);
+}
+
+.positionColumnWR .positionHeader {
+  border-top: 3px solid var(--accent-blue);
+}
+
+.positionColumnTE .positionHeader {
+  border-top: 3px solid var(--accent-purple);
+}
+
+.positionColumnK .positionHeader {
+  border-top: 3px solid var(--accent-yellow);
+}
+
+.positionColumnDST .positionHeader {
+  border-top: 3px solid var(--accent-orange);
+}
+
+.positionPlayers {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 680px;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
 .searchBox,
 .selectBox {
   display: flex;
@@ -707,6 +949,19 @@ h3 {
 @media (max-width: 980px) {
   .shell {
     padding: 1rem;
+  }
+
+  .playersToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .shortlistGrid,
+  .positionColumns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .playerMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .filters {

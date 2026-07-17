@@ -4,7 +4,6 @@ import {
   Activity,
   Baby,
   ClipboardList,
-  Filter,
   ListTree,
   RotateCcw,
   Search,
@@ -36,6 +35,11 @@ type Player = {
   rookie?: RookieDetail
   previousYear?: PreviousYearResult
   sleeper?: SleeperDetail
+}
+
+type RankedPlayer = Player & {
+  projectedPoints: number
+  draftScore: number
 }
 
 type DepthChartEntry = {
@@ -83,6 +87,16 @@ type SleeperDetail = {
   age?: number
   yearsExp?: number
   college?: string
+}
+
+const POSITION_ORDER: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
+  QB: true,
+  RB: true,
+  WR: true,
+  TE: true,
+  K: false,
+  DST: false,
 }
 
 type RankingsFile = {
@@ -352,7 +366,7 @@ function App() {
     ),
   )
   const [query, setQuery] = useState('')
-  const [position, setPosition] = useState<Position | 'ALL'>('ALL')
+  const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
   const [activeTab, setActiveTab] = useState<AppTab>('players')
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
 
@@ -414,14 +428,28 @@ function App() {
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
   const currentSlot = getDraftSlot(draft.currentPick, selectedLeague.lineup.teams)
   const currentTeam = draft.teamNames[currentSlot - 1] || `Team ${currentSlot}`
-  const availablePlayers = useMemo(() => {
+  const availablePlayers = useMemo<RankedPlayer[]>(() => {
     const lowerQuery = query.toLowerCase().trim()
     return players
       .filter((player) => !draftedIds.has(player.id))
-      .filter((player) => position === 'ALL' || player.position === position)
       .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
       .sort((a, b) => b.draftScore - a.draftScore)
-  }, [draftedIds, players, position, query])
+  }, [draftedIds, players, query])
+
+  const shortlistPlayers = useMemo(() => availablePlayers.slice(0, 12), [availablePlayers])
+  const playersByPosition = useMemo(() => {
+    const grouped: Record<Position, RankedPlayer[]> = {
+      QB: [],
+      RB: [],
+      WR: [],
+      TE: [],
+      K: [],
+      DST: [],
+    }
+    availablePlayers.forEach((player) => grouped[player.position].push(player))
+    POSITION_ORDER.forEach((item) => grouped[item].sort((a, b) => a.rank - b.rank))
+    return grouped
+  }, [availablePlayers])
 
   const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => slugify(item.name))), [data.injuries])
   const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => slugify(item.name))), [data.rookies])
@@ -469,6 +497,10 @@ function App() {
 
   function updateLineup(key: keyof LineupSettings, value: number) {
     updateLeague({ lineup: { ...selectedLeague.lineup, [key]: value } })
+  }
+
+  function togglePosition(nextPosition: Position) {
+    setVisiblePositions((current) => ({ ...current, [nextPosition]: !current[nextPosition] }))
   }
 
   return (
@@ -534,67 +566,15 @@ function App() {
           </aside>
 
           <section className="board">
-            <div className="filters">
-              <label className="searchBox">
-                <Search size={16} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search players, teams, positions" />
-              </label>
-              <label className="selectBox">
-                <Filter size={16} />
-                <select value={position} onChange={(event) => setPosition(event.target.value as Position | 'ALL')}>
-                  <option value="ALL">All positions</option>
-                  <option value="QB">QB</option>
-                  <option value="RB">RB</option>
-                  <option value="WR">WR</option>
-                  <option value="TE">TE</option>
-                  <option value="K">K</option>
-                  <option value="DST">DST</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="table">
-              <div className="tableHead">
-                <span>Rank</span>
-                <span>Player</span>
-                <span>Pos</span>
-                <span>Proj</span>
-                <span>Prev</span>
-                <span>Value</span>
-                <span>ADP</span>
-              </div>
-              {availablePlayers.slice(0, 80).map((player) => (
-                <div className="playerRow" key={player.id}>
-                  <span>{player.rank}</span>
-                  <div>
-                    <strong>{player.name}</strong>
-                    <small className="playerMeta">
-                      <span>{player.team}</span>
-                      {player.depthChart ? (
-                        <span title={`${player.depthChart.source} depth chart`}>
-                          {player.depthChart.position}{player.depthChart.order}
-                        </span>
-                      ) : null}
-                      {player.injury ? (
-                        <span className="warningTag" title={[player.injury.injury, player.injury.updated].filter(Boolean).join(' - ')}>
-                          {player.injury.status}
-                        </span>
-                      ) : null}
-                      {player.rookie ? (
-                        <span title={`${player.rookie.source}${player.rookie.college ? ` - ${player.rookie.college}` : ''}`}>
-                          Rookie{player.rookie.draftPick ? ` #${player.rookie.draftPick}` : ''}
-                        </span>
-                      ) : null}
-                    </small>
-                  </div>
-                  <span className={`position position${player.position}`}>{player.posRank || player.position}</span>
-                  <span>{player.projectedPoints.toFixed(1)}</span>
-                  <span>{player.previousYear?.fpts?.toFixed(1) || '-'}</span>
-                  <span>{Math.round(player.draftScore)}</span>
-                  <span>{player.adp?.toFixed(1) || '-'}</span>
-                </div>
-              ))}
-            </div>
+            <PlayersBoard
+              availableCount={availablePlayers.length}
+              playersByPosition={playersByPosition}
+              query={query}
+              shortlistPlayers={shortlistPlayers}
+              togglePosition={togglePosition}
+              visiblePositions={visiblePositions}
+              onQueryChange={setQuery}
+            />
           </section>
         </section>
       ) : null}
@@ -769,6 +749,132 @@ function parseInjuryDate(value: string | undefined) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function PlayersBoard({
+  availableCount,
+  playersByPosition,
+  query,
+  shortlistPlayers,
+  togglePosition,
+  visiblePositions,
+  onQueryChange,
+}: {
+  availableCount: number
+  playersByPosition: Record<Position, RankedPlayer[]>
+  query: string
+  shortlistPlayers: RankedPlayer[]
+  togglePosition: (position: Position) => void
+  visiblePositions: Record<Position, boolean>
+  onQueryChange: (query: string) => void
+}) {
+  const activePositions = POSITION_ORDER.filter((position) => visiblePositions[position])
+
+  return (
+    <div className="playersBoard">
+      <div className="playersToolbar">
+        <div>
+          <h2>Players</h2>
+          <p className="muted">{availableCount} undrafted ranked players</p>
+        </div>
+        <label className="searchBox playerSearch">
+          <Search size={16} />
+          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
+        </label>
+      </div>
+
+      <div className="positionToggles" aria-label="Visible position columns">
+        {POSITION_ORDER.map((position) => (
+          <button
+            className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
+            key={position}
+            onClick={() => togglePosition(position)}
+            type="button"
+          >
+            {position}
+          </button>
+        ))}
+      </div>
+
+      <section className="shortlistPanel">
+        <div className="sectionTitle">
+          <h3>Overall Shortlist</h3>
+          <span className="countPill">Top {shortlistPlayers.length}</span>
+        </div>
+        <div className="shortlistGrid">
+          {shortlistPlayers.map((player) => (
+            <PlayerSummary key={player.id} player={player} variant="shortlist" />
+          ))}
+          {shortlistPlayers.length === 0 ? <p className="muted">No matching available players.</p> : null}
+        </div>
+      </section>
+
+      <section className="positionColumns">
+        {activePositions.map((position) => (
+          <div className={`positionColumn positionColumn${position}`} key={position}>
+            <div className="positionHeader">
+              <strong>{position}</strong>
+              <span>{playersByPosition[position].length}</span>
+            </div>
+            <div className="positionPlayers">
+              {playersByPosition[position].map((player) => (
+                <PlayerSummary key={player.id} player={player} variant="column" />
+              ))}
+              {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
+            </div>
+          </div>
+        ))}
+      </section>
+    </div>
+  )
+}
+
+function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'shortlist' | 'column' }) {
+  return (
+    <article className={variant === 'shortlist' ? 'shortlistPlayer' : 'columnPlayer'}>
+      <span className="rankBadge" style={{ color: getTierColor(player.tier) }}>
+        #{player.rank}
+      </span>
+      <div className="playerCompact">
+        <div className="playerNameLine">
+          <strong>{player.name}</strong>
+          <span className={`position position${player.position}`}>{player.posRank || player.position}</span>
+        </div>
+        <small className="playerMeta">
+          <span>{player.team}</span>
+          {player.depthChart ? (
+            <span title={`${player.depthChart.source} depth chart`}>
+              {player.depthChart.position}{player.depthChart.order}
+            </span>
+          ) : null}
+          {player.injury ? (
+            <span className="warningTag" title={[player.injury.injury, player.injury.updated].filter(Boolean).join(' - ')}>
+              {player.injury.status}
+            </span>
+          ) : null}
+          {player.rookie ? (
+            <span title={`${player.rookie.source}${player.rookie.college ? ` - ${player.rookie.college}` : ''}`}>
+              Rookie{player.rookie.draftRound ? ` R${player.rookie.draftRound}` : ''}{player.rookie.draftPick ? ` #${player.rookie.draftPick}` : ''}
+            </span>
+          ) : null}
+        </small>
+        <div className="playerMetrics">
+          <span>Proj {player.projectedPoints.toFixed(1)}</span>
+          <span>Prev {player.previousYear?.fpts?.toFixed(1) || '-'}</span>
+          <span>Value {Math.round(player.draftScore)}</span>
+          <span>ADP {player.adp?.toFixed(1) || '-'}</span>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function getTierColor(tier: number | undefined) {
+  if (!tier || tier <= 1) return '#f6e05e'
+  if (tier <= 2) return '#68d391'
+  if (tier <= 3) return '#63b3ed'
+  if (tier <= 5) return '#b794f4'
+  return '#a0aec0'
 }
 
 function SettingsPanel({
