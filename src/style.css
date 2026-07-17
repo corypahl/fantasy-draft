@@ -399,7 +399,7 @@ h3 {
 .tableHead,
 .playerRow {
   display: grid;
-  grid-template-columns: 64px minmax(260px, 1fr) 92px 88px 88px 78px;
+  grid-template-columns: 64px minmax(260px, 1fr) 92px 88px 88px 88px 78px;
   align-items: center;
   gap: 0.75rem;
   min-height: 60px;
@@ -440,9 +440,41 @@ h3 {
 
 .playerRow > span:nth-child(4),
 .playerRow > span:nth-child(5),
-.playerRow > span:nth-child(6) {
+.playerRow > span:nth-child(6),
+.playerRow > span:nth-child(7) {
   color: var(--text-primary);
   font-weight: 700;
+}
+
+.playerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.playerMeta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+}
+
+.playerMeta span:not(:first-child) {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  padding: 0.08rem 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.playerMeta .warningTag {
+  border-color: rgba(229, 62, 62, 0.45);
+  background: rgba(229, 62, 62, 0.12);
+  color: #feb2b2;
 }
 
 .position {

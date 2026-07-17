@@ -87,22 +87,39 @@ Enable GitHub Pages with source set to GitHub Actions.
 
 ## Data refresh
 
-The scheduled workflow runs daily at `10:17 UTC` and can also be started manually from the Actions tab. It refreshes rankings/projections in S3, then syncs league settings into DynamoDB.
+The scheduled workflow runs daily at `10:17 UTC` and can also be started manually from the Actions tab. It refreshes draft data in S3, then syncs league settings into DynamoDB.
 
-The scraper currently targets public FantasyPros ranking/projection pages and normalizes them into:
+The scraper currently targets public FantasyPros, CBS Sports, Sleeper, and Pro Football Reference data when available. It normalizes them into:
 
 ```json
 {
   "generatedAt": "2026-07-14T00:00:00Z",
   "season": 2026,
-  "source": "FantasyPros consensus rankings and projections",
+  "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, Pro Football Reference draft results when available",
   "scoring": {
     "standard": [],
     "halfPpr": [],
     "ppr": []
+  },
+  "depthCharts": {},
+  "injuries": [],
+  "rookies": [],
+  "previousYearResults": {
+    "QB": [],
+    "RB": [],
+    "WR": [],
+    "TE": []
   }
 }
 ```
+
+Player rows are enriched when matching data is available:
+
+- `depthChart`: CBS depth order, with Sleeper fallback.
+- `injury`: CBS injury report, with Sleeper fallback.
+- `rookie`: rookie draft details from Pro Football Reference when available, with Sleeper rookie metadata fallback.
+- `previousYear`: prior-season FantasyPros stats and fantasy points.
+- `sleeper`: Sleeper player ID and metadata.
 
 ## Next integration points
 

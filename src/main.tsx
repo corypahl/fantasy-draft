@@ -25,6 +25,58 @@ type Player = {
   adp?: number
   points?: number
   projections?: Record<string, number>
+  depthChart?: DepthChartEntry
+  injury?: InjuryDetail
+  rookie?: RookieDetail
+  previousYear?: PreviousYearResult
+  sleeper?: SleeperDetail
+}
+
+type DepthChartEntry = {
+  name: string
+  team: string
+  position: Position
+  order: number
+  source: string
+}
+
+type InjuryDetail = {
+  name: string
+  team?: string
+  position: Position
+  updated?: string
+  injury?: string
+  status: string
+  source: string
+}
+
+type RookieDetail = {
+  name: string
+  team?: string
+  position: Position
+  college?: string
+  draftRound?: number
+  draftPick?: number
+  rookieYear?: number
+  source: string
+}
+
+type PreviousYearResult = {
+  name: string
+  team: string
+  position: Position
+  rank?: number
+  games?: number
+  fpts?: number
+  fpts_per_game?: number
+}
+
+type SleeperDetail = {
+  playerId?: string
+  status?: string
+  age?: number
+  yearsExp?: number
+  college?: string
 }
 
 type RankingsFile = {
@@ -32,6 +84,10 @@ type RankingsFile = {
   season: number
   source: string
   scoring: Partial<Record<ScoringPreset, Player[]>>
+  depthCharts?: Record<string, Partial<Record<Position, DepthChartEntry[]>>>
+  injuries?: InjuryDetail[]
+  rookies?: RookieDetail[]
+  previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
 }
 
 type LineupSettings = {
@@ -474,6 +530,7 @@ function App() {
                 <span>Player</span>
                 <span>Pos</span>
                 <span>Proj</span>
+                <span>Prev</span>
                 <span>Value</span>
                 <span>ADP</span>
               </div>
@@ -482,10 +539,28 @@ function App() {
                   <span>{player.rank}</span>
                   <div>
                     <strong>{player.name}</strong>
-                    <small>{player.team}</small>
+                    <small className="playerMeta">
+                      <span>{player.team}</span>
+                      {player.depthChart ? (
+                        <span title={`${player.depthChart.source} depth chart`}>
+                          {player.depthChart.position}{player.depthChart.order}
+                        </span>
+                      ) : null}
+                      {player.injury ? (
+                        <span className="warningTag" title={[player.injury.injury, player.injury.updated].filter(Boolean).join(' - ')}>
+                          {player.injury.status}
+                        </span>
+                      ) : null}
+                      {player.rookie ? (
+                        <span title={`${player.rookie.source}${player.rookie.college ? ` - ${player.rookie.college}` : ''}`}>
+                          Rookie{player.rookie.draftPick ? ` #${player.rookie.draftPick}` : ''}
+                        </span>
+                      ) : null}
+                    </small>
                   </div>
                   <span className={`position position${player.position}`}>{player.posRank || player.position}</span>
                   <span>{player.projectedPoints.toFixed(1)}</span>
+                  <span>{player.previousYear?.fpts?.toFixed(1) || '-'}</span>
                   <span>{Math.round(player.draftScore)}</span>
                   <span>{player.adp?.toFixed(1) || '-'}</span>
                 </div>
