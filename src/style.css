@@ -554,11 +554,6 @@ h3 {
   padding: 0 1rem;
 }
 
-.depthTable .infoHead,
-.depthTable .infoRow {
-  grid-template-columns: 80px 88px 80px minmax(220px, 1fr) 150px;
-}
-
 .injuriesTable .infoHead,
 .injuriesTable .infoRow {
   grid-template-columns: minmax(190px, 1.2fr) 72px 80px 140px minmax(180px, 1fr) 120px 130px;
@@ -566,7 +561,7 @@ h3 {
 
 .rookiesTable .infoHead,
 .rookiesTable .infoRow {
-  grid-template-columns: 80px minmax(200px, 1.1fr) 72px 80px minmax(180px, 1fr) 150px;
+  grid-template-columns: 80px 80px minmax(200px, 1.1fr) 72px 80px minmax(180px, 1fr) 150px;
 }
 
 .infoHead {
@@ -601,6 +596,80 @@ h3 {
   margin: 0;
   padding: 1rem;
   color: var(--text-secondary);
+}
+
+.depthMatrix {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.depthMatrixHead,
+.depthMatrixRow {
+  display: grid;
+  grid-template-columns: 88px 190px 190px 190px 190px 190px 190px 190px;
+  min-width: 1418px;
+}
+
+.depthMatrixHead span,
+.depthMatrixRow strong,
+.depthPlayer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.35rem 0.55rem;
+  text-align: center;
+}
+
+.depthMatrixHead span {
+  color: #ffffff;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.depthMatrixHead span:first-child,
+.depthMatrixRow strong {
+  justify-content: flex-start;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 900;
+}
+
+.depthHeadingQB {
+  background: #8f1d16;
+}
+
+.depthHeadingWR {
+  background: #28477f;
+}
+
+.depthHeadingTE {
+  background: #a9601c;
+}
+
+.depthHeadingRB {
+  background: #2b4d1d;
+}
+
+.depthPlayer {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.depthInjured {
+  color: #fc8181;
+}
+
+.depthRookie {
+  color: #63b3ed;
+}
+
+.depthEmpty {
+  color: var(--text-muted);
 }
 
 .formGrid,
@@ -666,11 +735,6 @@ h3 {
     min-width: 720px;
   }
 
-  .depthTable .infoHead,
-  .depthTable .infoRow {
-    min-width: 700px;
-  }
-
   .injuriesTable .infoHead,
   .injuriesTable .infoRow {
     min-width: 1000px;
@@ -678,6 +742,6 @@ h3 {
 
   .rookiesTable .infoHead,
   .rookiesTable .infoRow {
-    min-width: 820px;
+    min-width: 900px;
   }
 }

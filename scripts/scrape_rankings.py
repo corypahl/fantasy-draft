@@ -122,6 +122,7 @@ DEPTH_LIMITS = {"QB": 1, "RB": 2, "WR": 3, "TE": 1}
 SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl"
 CBS_INJURIES_URL = "https://www.cbssports.com/nfl/injuries/"
 PFR_DRAFT_URL = "https://www.pro-football-reference.com/years/{year}/draft.htm"
+WIKIPEDIA_DRAFT_URL = "https://en.wikipedia.org/wiki/{year}_NFL_draft"
 
 PROJECTION_KEYS = {
     "QB": [
@@ -445,29 +446,18 @@ def fetch_injuries(sleeper_players: Dict[str, Dict]) -> List[Dict]:
 def fetch_rookies(season: int, sleeper_players: Dict[str, Dict]) -> List[Dict]:
     rookies = []
     seen = set()
-    try:
-        soup = fetch_soup(PFR_DRAFT_URL.format(year=season))
-        table = soup.find("table", id="drafts")
-        if table:
-            for row in table.select("tbody tr"):
-                name = get_stat_cell(row, "player")
-                position = get_stat_cell(row, "pos")
-                if not name or position not in {"QB", "RB", "WR", "TE"}:
-                    continue
-                seen.add(slugify(name))
-                rookies.append(
-                    {
-                        "name": clean_player_name(name),
-                        "position": position,
-                        "team": normalize_team(get_stat_cell(row, "team")),
-                        "college": get_stat_cell(row, "college_id"),
-                        "draftRound": parse_int(get_stat_cell(row, "draft_round")),
-                        "draftPick": parse_int(get_stat_cell(row, "draft_pick")),
-                        "source": "Pro Football Reference",
-                    }
-                )
-    except requests.RequestException:
-        pass
+    draft_year = season
+    draft_results = fetch_pfr_rookies(draft_year) or fetch_wikipedia_rookies(draft_year)
+    if not draft_results:
+        draft_year = season - 1
+        draft_results = fetch_pfr_rookies(draft_year) or fetch_wikipedia_rookies(draft_year)
+
+    for rookie in draft_results:
+        key = slugify(rookie["name"])
+        if key in seen:
+            continue
+        seen.add(key)
+        rookies.append(rookie)
 
     for player in sleeper_players.values():
         metadata = player.get("metadata") or {}
@@ -478,7 +468,7 @@ def fetch_rookies(season: int, sleeper_players: Dict[str, Dict]) -> List[Dict]:
             continue
         if slugify(name) in seen:
             continue
-        if player.get("years_exp") != 0 and rookie_year != str(season):
+        if player.get("years_exp") != 0 and rookie_year != str(draft_year):
             continue
         if name.lower() == "player invalid":
             continue
@@ -488,11 +478,80 @@ def fetch_rookies(season: int, sleeper_players: Dict[str, Dict]) -> List[Dict]:
                 "position": position,
                 "team": normalize_team(player.get("team") or ""),
                 "college": player.get("college") or "",
-                "rookieYear": parse_int(rookie_year) or season,
+                "rookieYear": parse_int(rookie_year) or draft_year,
                 "source": "Sleeper",
             }
         )
-    return sorted(rookies, key=lambda item: (item.get("draftPick") or 9999, item["name"]))[:300]
+    return sorted(rookies, key=lambda item: (item.get("draftRound") or 99, item.get("draftPick") or 9999, item["name"]))[:300]
+
+
+def fetch_pfr_rookies(year: int) -> List[Dict]:
+    rookies = []
+    try:
+        soup = fetch_soup(PFR_DRAFT_URL.format(year=year))
+    except requests.RequestException:
+        return rookies
+    table = soup.find("table", id="drafts")
+    if not table:
+        return rookies
+    for row in table.select("tbody tr"):
+        name = get_stat_cell(row, "player")
+        position = get_stat_cell(row, "pos")
+        if not name or position not in {"QB", "RB", "WR", "TE"}:
+            continue
+        rookies.append(
+            {
+                "name": clean_player_name(name),
+                "position": position,
+                "team": normalize_team(get_stat_cell(row, "team")),
+                "college": get_stat_cell(row, "college_id"),
+                "draftRound": parse_int(get_stat_cell(row, "draft_round")),
+                "draftPick": parse_int(get_stat_cell(row, "draft_pick")),
+                "rookieYear": year,
+                "source": "Pro Football Reference",
+            }
+        )
+    return rookies
+
+
+def fetch_wikipedia_rookies(year: int) -> List[Dict]:
+    rookies = []
+    try:
+        soup = fetch_soup(WIKIPEDIA_DRAFT_URL.format(year=year))
+    except requests.RequestException:
+        return rookies
+    for table in soup.select("table.wikitable"):
+        headers = [header.get_text(" ", strip=True).lower() for header in table.select("tr th")]
+        if "rnd." not in headers or "pick" not in headers or "player" not in headers:
+            continue
+        for row in table.select("tr"):
+            cells = [cell.get_text(" ", strip=True) for cell in row.select("td, th")]
+            if len(cells) < 7:
+                continue
+            offset = 1 if not parse_int(cells[0]) and len(cells) >= 8 else 0
+            draft_round = parse_int(cells[offset])
+            draft_pick = parse_int(cells[offset + 1])
+            team = cells[offset + 2]
+            name = clean_player_name(cells[offset + 3])
+            position = cells[offset + 4].upper()
+            college = cells[offset + 5]
+            if not name or position not in {"QB", "RB", "WR", "TE"}:
+                continue
+            rookies.append(
+                {
+                    "name": name,
+                    "position": position,
+                    "team": nfl_team_to_abbr(team),
+                    "college": college,
+                    "draftRound": draft_round,
+                    "draftPick": draft_pick,
+                    "rookieYear": year,
+                    "source": "Wikipedia",
+                }
+            )
+        if rookies:
+            return rookies
+    return rookies
 
 
 def fetch_previous_year_results(previous_year: int) -> Dict[str, List[Dict]]:
@@ -676,8 +735,49 @@ def normalize_team(team: str) -> str:
     return "JAX" if team == "JAC" else team
 
 
+def nfl_team_to_abbr(team: str) -> str:
+    mapping = {
+        "ARIZONA CARDINALS": "ARI",
+        "ATLANTA FALCONS": "ATL",
+        "BALTIMORE RAVENS": "BAL",
+        "BUFFALO BILLS": "BUF",
+        "CAROLINA PANTHERS": "CAR",
+        "CHICAGO BEARS": "CHI",
+        "CINCINNATI BENGALS": "CIN",
+        "CLEVELAND BROWNS": "CLE",
+        "DALLAS COWBOYS": "DAL",
+        "DENVER BRONCOS": "DEN",
+        "DETROIT LIONS": "DET",
+        "GREEN BAY PACKERS": "GB",
+        "HOUSTON TEXANS": "HOU",
+        "INDIANAPOLIS COLTS": "IND",
+        "JACKSONVILLE JAGUARS": "JAX",
+        "KANSAS CITY CHIEFS": "KC",
+        "LAS VEGAS RAIDERS": "LV",
+        "LOS ANGELES CHARGERS": "LAC",
+        "LOS ANGELES RAMS": "LAR",
+        "MIAMI DOLPHINS": "MIA",
+        "MINNESOTA VIKINGS": "MIN",
+        "NEW ENGLAND PATRIOTS": "NE",
+        "NEW ORLEANS SAINTS": "NO",
+        "NEW YORK GIANTS": "NYG",
+        "NEW YORK JETS": "NYJ",
+        "PHILADELPHIA EAGLES": "PHI",
+        "PITTSBURGH STEELERS": "PIT",
+        "SAN FRANCISCO 49ERS": "SF",
+        "SEATTLE SEAHAWKS": "SEA",
+        "TAMPA BAY BUCCANEERS": "TB",
+        "TENNESSEE TITANS": "TEN",
+        "WASHINGTON COMMANDERS": "WAS",
+    }
+    cleaned = re.sub(r"\[[^\]]+\]", "", team).upper().strip()
+    return mapping.get(cleaned, normalize_team(cleaned))
+
+
 def clean_player_name(value: str) -> str:
     value = re.sub(r"\([^)]*\)", "", value)
+    value = re.sub(r"\[[^\]]+\]", "", value)
+    value = value.replace("†", "").replace("*", "")
     value = re.sub(r"\b(QB|RB|WR|TE|K|DST|DEF)\d*\b", "", value)
     value = re.sub(r"\s+", " ", value).strip(" -")
     suffixes = {"JR", "JR.", "SR", "SR.", "II", "III", "IV", "V"}

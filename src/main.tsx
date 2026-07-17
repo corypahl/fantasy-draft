@@ -16,6 +16,8 @@ type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
 type AppTab = 'players' | 'depth' | 'injuries' | 'rookies' | 'leagues'
+type DepthChartColumn = 'QB' | 'WR1' | 'WR2' | 'WR3' | 'TE' | 'RB1' | 'RB2'
+type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry | undefined> & { team: string }
 
 type Player = {
   id: string
@@ -421,9 +423,20 @@ function App() {
       .sort((a, b) => b.draftScore - a.draftScore)
   }, [draftedIds, players, position, query])
 
-  const depthRows = useMemo(() => flattenDepthCharts(data.depthCharts), [data.depthCharts])
-  const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => `${a.team || ''}${a.name}`.localeCompare(`${b.team || ''}${b.name}`)), [data.injuries])
-  const rookieRows = useMemo(() => [...(data.rookies || [])].sort((a, b) => (a.draftPick || 9999) - (b.draftPick || 9999) || a.name.localeCompare(b.name)), [data.rookies])
+  const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => slugify(item.name))), [data.injuries])
+  const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => slugify(item.name))), [data.rookies])
+  const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts), [data.depthCharts])
+  const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => parseInjuryDate(b.updated) - parseInjuryDate(a.updated)), [data.injuries])
+  const rookieRows = useMemo(
+    () =>
+      [...(data.rookies || [])].sort(
+        (a, b) =>
+          (a.draftRound || 99) - (b.draftRound || 99) ||
+          (a.draftPick || 9999) - (b.draftPick || 9999) ||
+          a.name.localeCompare(b.name),
+      ),
+    [data.rookies],
+  )
   const rosterNeeds = useMemo(() => calculateNeeds(selectedLeague, draft, currentTeam), [draft, selectedLeague, currentTeam])
 
   function updateDraft(nextDraft: DraftState) {
@@ -586,7 +599,7 @@ function App() {
         </section>
       ) : null}
 
-      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} /> : null}
+      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} injuredNames={injuryNameSet} rookieNames={rookieNameSet} /> : null}
       {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} /> : null}
       {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} /> : null}
       {activeTab === 'leagues' ? (
@@ -606,28 +619,46 @@ function App() {
   )
 }
 
-function DepthChartsPage({ rows }: { rows: DepthChartEntry[] }) {
+function DepthChartsPage({
+  rows,
+  injuredNames,
+  rookieNames,
+}: {
+  rows: DepthChartTeamRow[]
+  injuredNames: Set<string>
+  rookieNames: Set<string>
+}) {
+  const columns: DepthChartColumn[] = ['QB', 'WR1', 'WR2', 'WR3', 'TE', 'RB1', 'RB2']
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
         <h2>Depth Charts</h2>
-        <span className="countPill">{rows.length} players</span>
+        <span className="countPill">{rows.length} teams</span>
       </div>
-      <div className="infoTable depthTable">
-        <div className="infoHead">
+      <div className="depthMatrix">
+        <div className="depthMatrixHead">
           <span>Team</span>
-          <span>Pos</span>
-          <span>Order</span>
-          <span>Player</span>
-          <span>Source</span>
+          {columns.map((column) => (
+            <span key={column} className={`depthHeading depthHeading${column.replace(/\d/g, '')}`}>
+              {column}
+            </span>
+          ))}
         </div>
         {rows.map((row) => (
-          <div className="infoRow" key={`${row.team}-${row.position}-${row.order}-${row.name}`}>
-            <span>{row.team}</span>
-            <span className={`position position${row.position}`}>{row.position}</span>
-            <span>{row.order}</span>
-            <strong>{row.name}</strong>
-            <small>{row.source}</small>
+          <div className="depthMatrixRow" key={row.team}>
+            <strong>{row.team}</strong>
+            {columns.map((column) => {
+              const player = row[column]
+              return (
+                <span
+                  className={depthPlayerClass(player, injuredNames, rookieNames)}
+                  key={`${row.team}-${column}`}
+                  title={player ? `${player.source} ${player.position}${player.order}` : ''}
+                >
+                  {player?.name || '-'}
+                </span>
+              )
+            })}
           </div>
         ))}
         {rows.length === 0 ? <p className="emptyState">No depth chart data has been published yet.</p> : null}
@@ -679,6 +710,7 @@ function RookiesPage({ rows }: { rows: RookieDetail[] }) {
       </div>
       <div className="infoTable rookiesTable">
         <div className="infoHead">
+          <span>Round</span>
           <span>Pick</span>
           <span>Player</span>
           <span>Team</span>
@@ -688,6 +720,7 @@ function RookiesPage({ rows }: { rows: RookieDetail[] }) {
         </div>
         {rows.map((row) => (
           <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.draftPick || row.rookieYear || 'rookie'}`}>
+            <span>{row.draftRound || '-'}</span>
             <span>{row.draftPick ? `#${row.draftPick}` : '-'}</span>
             <strong>{row.name}</strong>
             <span>{row.team || '-'}</span>
@@ -702,19 +735,40 @@ function RookiesPage({ rows }: { rows: RookieDetail[] }) {
   )
 }
 
-function flattenDepthCharts(depthCharts: RankingsFile['depthCharts']) {
+function buildDepthChartRows(depthCharts: RankingsFile['depthCharts']): DepthChartTeamRow[] {
   if (!depthCharts) return []
   return Object.entries(depthCharts)
-    .flatMap(([team, positions]) =>
-      Object.entries(positions || {}).flatMap(([position, entries]) =>
-        (entries || []).map((entry) => ({
-          ...entry,
-          team: entry.team || team,
-          position: position as Position,
-        })),
-      ),
-    )
-    .sort((a, b) => a.team.localeCompare(b.team) || a.position.localeCompare(b.position) || a.order - b.order)
+    .map(([team, positions]) => {
+      const row = { team } as DepthChartTeamRow
+      row.QB = positions?.QB?.find((entry) => entry.order === 1)
+      row.WR1 = positions?.WR?.find((entry) => entry.order === 1)
+      row.WR2 = positions?.WR?.find((entry) => entry.order === 2)
+      row.WR3 = positions?.WR?.find((entry) => entry.order === 3)
+      row.TE = positions?.TE?.find((entry) => entry.order === 1)
+      row.RB1 = positions?.RB?.find((entry) => entry.order === 1)
+      row.RB2 = positions?.RB?.find((entry) => entry.order === 2)
+      return row
+    })
+    .sort((a, b) => a.team.localeCompare(b.team))
+}
+
+function depthPlayerClass(player: DepthChartEntry | undefined, injuredNames: Set<string>, rookieNames: Set<string>) {
+  if (!player) return 'depthPlayer depthEmpty'
+  const key = slugify(player.name)
+  if (injuredNames.has(key)) return 'depthPlayer depthInjured'
+  if (rookieNames.has(key)) return 'depthPlayer depthRookie'
+  return 'depthPlayer'
+}
+
+function parseInjuryDate(value: string | undefined) {
+  if (!value) return 0
+  const now = new Date()
+  const parsed = Date.parse(`${value} ${now.getFullYear()}`)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function slugify(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 }
 
 function SettingsPanel({
