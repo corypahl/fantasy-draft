@@ -809,7 +809,7 @@ function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'sh
         <span>{player.name}</span>
         <span className="playerInlineMeta">
           {player.adp ? (
-            <span className="adpValue" style={{ color: getAdpColor(player.adp) }}>
+            <span className="adpValue">
               ({player.adp.toFixed(1)})
             </span>
           ) : null}
@@ -822,14 +822,6 @@ function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'sh
       </div>
     </div>
   )
-}
-
-function getAdpColor(adp: number | undefined) {
-  if (!adp) return '#4a5568'
-  if (adp <= 48) return '#38a169'
-  if (adp <= 96) return '#d69e2e'
-  if (adp <= 160) return '#dd6b20'
-  return '#e53e3e'
 }
 
 function getTierColor(tier: number | undefined) {
