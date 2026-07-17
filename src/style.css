@@ -561,7 +561,7 @@ h3 {
   flex-shrink: 0;
   align-items: center;
   gap: 0.3rem;
-  color: var(--text-muted);
+  color: inherit;
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -626,7 +626,7 @@ h3 {
 
 .shortlistMeta {
   grid-column: 2;
-  color: var(--text-muted);
+  color: inherit;
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.1;
