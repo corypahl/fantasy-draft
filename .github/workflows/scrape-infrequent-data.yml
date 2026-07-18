@@ -1,8 +1,6 @@
 name: Scrape infrequent fantasy data
 
 on:
-  schedule:
-    - cron: "37 11 * * 0"
   workflow_dispatch:
 
 permissions:
