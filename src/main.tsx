@@ -89,6 +89,7 @@ type SleeperDetail = {
 }
 
 const POSITION_ORDER: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+const NFL_REGULAR_SEASON_GAMES = 17
 const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
   QB: true,
   RB: true,
@@ -993,6 +994,7 @@ function PlayersBoard({
 function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer; leagueTeams: number; variant: 'shortlist' | 'column' }) {
   const tierColor = getTierColor(player.tier)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
+  const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
   if (variant === 'shortlist') {
     return (
       <div className="shortlistItem" style={{ borderLeftColor: tierColor }}>
@@ -1003,7 +1005,7 @@ function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer;
           {player.name}
         </span>
         <span className="shortlistMeta">
-          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | T{player.tier || '-'} | {adpLabel}
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
         </span>
       </div>
     )
@@ -1022,8 +1024,8 @@ function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer;
               ({adpLabel})
             </span>
           ) : null}
-          <span className="tierValue" style={{ color: tierColor }}>
-            T{player.tier || '-'}
+          <span className="projectionValue" style={{ color: tierColor }} title={`${player.projectedPoints.toFixed(1)} projected season points`}>
+            {projectedPointsPerGame}
           </span>
           {player.injury ? <span className="injuryDot">I</span> : null}
           {player.rookie ? <span className="rookieDot">R</span> : null}
@@ -1039,6 +1041,11 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
   const round = Math.ceil(overallPick / teams)
   const pick = ((overallPick - 1) % teams) + 1
   return `R${round}.${pick.toString().padStart(2, '0')}`
+}
+
+function formatProjectedPointsPerGame(projectedPoints: number) {
+  if (!Number.isFinite(projectedPoints) || projectedPoints <= 0) return '-'
+  return `${(projectedPoints / NFL_REGULAR_SEASON_GAMES).toFixed(1)}/g`
 }
 
 function getTierColor(tier: number | undefined) {
