@@ -1054,7 +1054,7 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
   const overallPick = Math.max(1, Math.round(adp))
   const round = Math.ceil(overallPick / teams)
   const pick = ((overallPick - 1) % teams) + 1
-  return `R${round}.${pick.toString().padStart(2, '0')}`
+  return `${round}.${pick.toString().padStart(2, '0')}`
 }
 
 function formatProjectedPointsPerGame(projectedPoints: number) {
