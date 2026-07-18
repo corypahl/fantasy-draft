@@ -873,6 +873,7 @@ h3 {
 }
 
 .infoRow {
+  border-left: 4px solid transparent;
   border-top: 1px solid var(--border-color);
   background: var(--bg-card);
 }

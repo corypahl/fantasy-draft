@@ -570,8 +570,8 @@ function App() {
           playerTierByKey={playerTierByKey}
         />
       ) : null}
-      {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} /> : null}
-      {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} /> : null}
+      {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} playerTierByKey={playerTierByKey} /> : null}
+      {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} playerTierByKey={playerTierByKey} /> : null}
       {activeTab === 'leagues' ? (
         <SettingsPanel
           draft={draft}
@@ -662,7 +662,7 @@ function DepthChartsPage({
   )
 }
 
-function InjuriesPage({ rows }: { rows: InjuryDetail[] }) {
+function InjuriesPage({ rows, playerTierByKey }: { rows: InjuryDetail[]; playerTierByKey: Map<string, number> }) {
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
@@ -679,24 +679,27 @@ function InjuriesPage({ rows }: { rows: InjuryDetail[] }) {
           <span>Updated</span>
           <span>Source</span>
         </div>
-        {rows.map((row) => (
-          <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}`}>
-            <strong>{row.name}</strong>
-            <span>{row.team || '-'}</span>
-            <span className={`position position${row.position}`}>{row.position}</span>
-            <span className="warningText">{row.status}</span>
-            <span>{row.injury || '-'}</span>
-            <small>{row.updated || '-'}</small>
-            <small>{row.source}</small>
-          </div>
-        ))}
+        {rows.map((row) => {
+          const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
+          return (
+            <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}`} style={{ borderLeftColor: tierColor }}>
+              <strong style={{ color: tierColor }}>{row.name}</strong>
+              <span>{row.team || '-'}</span>
+              <span className={`position position${row.position}`}>{row.position}</span>
+              <span className="warningText">{row.status}</span>
+              <span>{row.injury || '-'}</span>
+              <small>{row.updated || '-'}</small>
+              <small>{row.source}</small>
+            </div>
+          )
+        })}
         {rows.length === 0 ? <p className="emptyState">No injury reports have been published yet.</p> : null}
       </div>
     </section>
   )
 }
 
-function RookiesPage({ rows }: { rows: RookieDetail[] }) {
+function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTierByKey: Map<string, number> }) {
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
@@ -713,17 +716,20 @@ function RookiesPage({ rows }: { rows: RookieDetail[] }) {
           <span>College</span>
           <span>Source</span>
         </div>
-        {rows.map((row) => (
-          <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.draftPick || row.rookieYear || 'rookie'}`}>
-            <span>{row.draftRound || '-'}</span>
-            <span>{row.draftPick ? `#${row.draftPick}` : '-'}</span>
-            <strong>{row.name}</strong>
-            <span>{row.team || '-'}</span>
-            <span className={`position position${row.position}`}>{row.position}</span>
-            <span>{row.college || '-'}</span>
-            <small>{row.source}</small>
-          </div>
-        ))}
+        {rows.map((row) => {
+          const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
+          return (
+            <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.draftPick || row.rookieYear || 'rookie'}`} style={{ borderLeftColor: tierColor }}>
+              <span>{row.draftRound || '-'}</span>
+              <span>{row.draftPick ? `#${row.draftPick}` : '-'}</span>
+              <strong style={{ color: tierColor }}>{row.name}</strong>
+              <span>{row.team || '-'}</span>
+              <span className={`position position${row.position}`}>{row.position}</span>
+              <span>{row.college || '-'}</span>
+              <small>{row.source}</small>
+            </div>
+          )
+        })}
         {rows.length === 0 ? <p className="emptyState">No rookie data has been published yet.</p> : null}
       </div>
     </section>
@@ -773,7 +779,11 @@ function normalizeDisplayTeam(team: string) {
 }
 
 function getDepthPlayerTier(player: DepthChartEntry, playerTierByKey: Map<string, number>) {
-  return playerTierByKey.get(slugify(`${player.name}-${player.team}`)) || playerTierByKey.get(slugify(player.name))
+  return getPlayerTier(player.name, player.team, playerTierByKey)
+}
+
+function getPlayerTier(name: string, team: string | undefined, playerTierByKey: Map<string, number>) {
+  return (team ? playerTierByKey.get(slugify(`${name}-${team}`)) : undefined) || playerTierByKey.get(slugify(name))
 }
 
 function getDepthPlayerPosRank(player: DepthChartEntry, playerPosRankByKey: Map<string, string>) {
