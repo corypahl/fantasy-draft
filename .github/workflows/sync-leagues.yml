@@ -1,8 +1,8 @@
-name: Scrape daily fantasy data
+name: Sync league data
 
 on:
   schedule:
-    - cron: "17 10 * * *"
+    - cron: "47 10 * * *"
   workflow_dispatch:
 
 permissions:
@@ -10,25 +10,9 @@ permissions:
   id-token: write
 
 jobs:
-  scrape-data:
-    name: Scrape ${{ matrix.dataset }}
+  sync-leagues:
+    name: Sync league settings
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - dataset: rankings
-            key: data/rankings.json
-            output: dist-data/rankings.json
-          - dataset: projections
-            key: data/projections.json
-            output: dist-data/projections.json
-          - dataset: depth-charts
-            key: data/depth-charts.json
-            output: dist-data/depth-charts.json
-          - dataset: injuries
-            key: data/injuries.json
-            output: dist-data/injuries.json
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -36,10 +20,12 @@ jobs:
       - name: Validate workflow configuration
         env:
           AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
-          RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
         run: |
           test -n "$AWS_GITHUB_ACTIONS_ROLE_ARN" || { echo "::error::Missing repository secret AWS_GITHUB_ACTIONS_ROLE_ARN"; exit 1; }
-          test -n "$RANKINGS_BUCKET" || { echo "::error::Missing repository secret RANKINGS_BUCKET"; exit 1; }
+          test -n "$ESPN_SWID" || { echo "::error::Missing repository secret ESPN_SWID"; exit 1; }
+          test -n "$ESPN_S2" || { echo "::error::Missing repository secret ESPN_S2"; exit 1; }
 
       - name: Configure AWS credentials
         env:
@@ -55,7 +41,7 @@ jobs:
           read -r access_key secret_key session_token <<< "$(
             aws sts assume-role-with-web-identity \
               --role-arn "$AWS_GITHUB_ACTIONS_ROLE_ARN" \
-              --role-session-name fantasy-draft-${{ matrix.dataset }} \
+              --role-session-name fantasy-draft-sync-leagues \
               --web-identity-token "$oidc_token" \
               --duration-seconds 3600 \
               --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
@@ -72,15 +58,14 @@ jobs:
       - name: Show Python version
         run: python3 --version
 
-      - name: Install scraper dependencies
+      - name: Install sync dependencies
         run: python3 -m pip install -r scripts/requirements.txt
 
-      - name: Scrape and upload ${{ matrix.dataset }}
+      - name: Sync league settings
         env:
-          RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
+          LEAGUE_TABLE_NAME: ${{ vars.LEAGUE_TABLE_NAME || 'fantasy-leagues' }}
           NFL_SEASON: ${{ vars.NFL_SEASON || '2026' }}
-        run: >
-          python3 scripts/scrape_rankings.py
-          --dataset "${{ matrix.dataset }}"
-          --output "${{ matrix.output }}"
-          --key "${{ matrix.key }}"
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          ESPN_TEAM_ID: ${{ vars.ESPN_TEAM_ID || '' }}
+        run: python3 scripts/sync_leagues.py

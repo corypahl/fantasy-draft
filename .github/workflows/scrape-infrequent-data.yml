@@ -1,8 +1,8 @@
-name: Scrape daily fantasy data
+name: Scrape infrequent fantasy data
 
 on:
   schedule:
-    - cron: "17 10 * * *"
+    - cron: "37 11 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -10,25 +10,19 @@ permissions:
   id-token: write
 
 jobs:
-  scrape-data:
+  scrape-infrequent-data:
     name: Scrape ${{ matrix.dataset }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - dataset: rankings
-            key: data/rankings.json
-            output: dist-data/rankings.json
-          - dataset: projections
-            key: data/projections.json
-            output: dist-data/projections.json
-          - dataset: depth-charts
-            key: data/depth-charts.json
-            output: dist-data/depth-charts.json
-          - dataset: injuries
-            key: data/injuries.json
-            output: dist-data/injuries.json
+          - dataset: rookies
+            key: data/rookies.json
+            output: dist-data/rookies.json
+          - dataset: previous-year-results
+            key: data/previous-year-results.json
+            output: dist-data/previous-year-results.json
     steps:
       - name: Checkout
         uses: actions/checkout@v5
