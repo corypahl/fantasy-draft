@@ -722,7 +722,6 @@ function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTi
           <span>Team</span>
           <span>Pos</span>
           <span>College</span>
-          <span>Source</span>
         </div>
         {rows.map((row) => {
           const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
@@ -734,7 +733,6 @@ function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTi
               <span>{row.team || '-'}</span>
               <span className={`position position${row.position}`}>{row.position}</span>
               <span>{row.college || '-'}</span>
-              <small>{row.source}</small>
             </div>
           )
         })}

@@ -860,7 +860,7 @@ h3 {
 
 .rookiesTable .infoHead,
 .rookiesTable .infoRow {
-  grid-template-columns: 80px 80px minmax(200px, 1.1fr) 72px 80px minmax(180px, 1fr) 150px;
+  grid-template-columns: 80px 80px minmax(220px, 1.2fr) 72px 80px minmax(220px, 1fr);
 }
 
 .infoHead {
@@ -1103,7 +1103,7 @@ h3 {
 
   .rookiesTable .infoHead,
   .rookiesTable .infoRow {
-    min-width: 900px;
+    min-width: 760px;
   }
 }
 

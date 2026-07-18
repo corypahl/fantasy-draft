@@ -258,8 +258,8 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
         return {
             "generatedAt": generated_at,
             "season": season,
-            "source": "Pro Football Reference or Wikipedia rookie draft results with Sleeper fallback",
-            "rookies": fetch_rookies(season, fetch_sleeper_players()),
+            "source": "Wikipedia rookie draft results",
+            "rookies": fetch_rookies(season),
         }
     if dataset == "previous-year-results":
         return {
@@ -279,13 +279,13 @@ def build_combined_payload(season: int) -> Dict:
     sleeper_players = fetch_sleeper_players()
     depth_charts = fetch_depth_charts(sleeper_players)
     injuries = fetch_injuries()
-    rookies = fetch_rookies(season, sleeper_players)
+    rookies = fetch_rookies(season)
     previous_year_results = fetch_previous_year_results(season - 1)
     enrichments = build_player_enrichments(depth_charts, injuries, rookies, previous_year_results, sleeper_players)
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "season": season,
-        "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, Pro Football Reference draft results when available",
+        "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, Wikipedia rookie draft results",
         "metadata": {
             "previousSeason": season - 1,
             "sources": {
@@ -294,7 +294,7 @@ def build_combined_payload(season: int) -> Dict:
                 "previousYearResults": "FantasyPros",
                 "depthCharts": "CBS Sports with Sleeper fallback",
                 "injuries": "CBS Sports",
-                "rookies": "Pro Football Reference with Sleeper fallback",
+                "rookies": "Wikipedia",
             },
         },
         "scoring": {
@@ -507,14 +507,14 @@ def fetch_injuries() -> List[Dict]:
     return injuries
 
 
-def fetch_rookies(season: int, sleeper_players: Dict[str, Dict]) -> List[Dict]:
+def fetch_rookies(season: int) -> List[Dict]:
     rookies = []
     seen = set()
     draft_year = season
-    draft_results = fetch_pfr_rookies(draft_year) or fetch_wikipedia_rookies(draft_year)
+    draft_results = fetch_wikipedia_rookies(draft_year)
     if not draft_results:
         draft_year = season - 1
-        draft_results = fetch_pfr_rookies(draft_year) or fetch_wikipedia_rookies(draft_year)
+        draft_results = fetch_wikipedia_rookies(draft_year)
 
     for rookie in draft_results:
         key = slugify(rookie["name"])
@@ -523,29 +523,6 @@ def fetch_rookies(season: int, sleeper_players: Dict[str, Dict]) -> List[Dict]:
         seen.add(key)
         rookies.append(rookie)
 
-    for player in sleeper_players.values():
-        metadata = player.get("metadata") or {}
-        name = player.get("full_name")
-        position = player.get("position")
-        rookie_year = str(metadata.get("rookie_year") or "")
-        if not name or position not in {"QB", "RB", "WR", "TE"}:
-            continue
-        if slugify(name) in seen:
-            continue
-        if player.get("years_exp") != 0 and rookie_year != str(draft_year):
-            continue
-        if name.lower() == "player invalid":
-            continue
-        rookies.append(
-            {
-                "name": name,
-                "position": position,
-                "team": normalize_team(player.get("team") or ""),
-                "college": player.get("college") or "",
-                "rookieYear": parse_int(rookie_year) or draft_year,
-                "source": "Sleeper",
-            }
-        )
     return sorted(rookies, key=lambda item: (item.get("draftRound") or 99, item.get("draftPick") or 9999, item["name"]))[:300]
 
 
