@@ -827,6 +827,180 @@ h3 {
   padding: 1.25rem;
 }
 
+.draftBoardPanel {
+  min-height: calc(100vh - 118px);
+}
+
+.draftBoardHeader {
+  align-items: flex-start;
+}
+
+.draftBoardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.draftBoardMeta span:not(:last-child)::after {
+  content: "•";
+  margin-left: 0.45rem;
+  color: var(--text-muted);
+}
+
+.sleeperSync {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 0.5rem;
+  width: min(460px, 100%);
+}
+
+.sleeperSync input {
+  min-height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  padding: 0 0.75rem;
+}
+
+.iconTextButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 38px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 0 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.iconTextButton:hover {
+  border-color: var(--accent-blue);
+}
+
+.syncStatus {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.draftBoardScroller {
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.draftBoardGrid {
+  display: grid;
+  min-width: fit-content;
+}
+
+.draftBoardCorner,
+.draftBoardTeam,
+.draftBoardRound,
+.draftBoardCell {
+  min-height: 38px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.draftBoardCorner,
+.draftBoardTeam {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-tertiary);
+}
+
+.draftBoardCorner,
+.draftBoardRound {
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.draftBoardTeam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.draftBoardTeam span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draftBoardRound {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-secondary);
+}
+
+.draftBoardCorner {
+  left: 0;
+  z-index: 3;
+}
+
+.draftBoardCell {
+  display: grid;
+  place-items: center;
+  padding: 0.25rem;
+  background: var(--bg-card);
+}
+
+.draftBoardCell.current {
+  background: rgba(214, 158, 46, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(214, 158, 46, 0.65);
+}
+
+.draftBoardPlayer {
+  display: grid;
+  gap: 0.05rem;
+  width: 100%;
+  min-height: 30px;
+  border-left: 4px solid var(--text-muted);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  padding: 0.25rem 0.35rem;
+  text-align: center;
+}
+
+.draftBoardPlayer strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draftBoardPlayer span,
+.draftBoardPick {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
 .countPill {
   border: 1px solid var(--border-color);
   border-radius: 999px;

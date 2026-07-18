@@ -4,7 +4,9 @@ import {
   Activity,
   Baby,
   ClipboardList,
+  LayoutGrid,
   ListTree,
+  RefreshCw,
   Search,
   Settings,
 } from 'lucide-react'
@@ -13,7 +15,7 @@ import './style.css'
 type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
-type AppTab = 'players' | 'depth' | 'injuries' | 'rookies' | 'leagues'
+type AppTab = 'players' | 'board' | 'depth' | 'injuries' | 'rookies' | 'leagues'
 type DepthChartColumn = 'QB' | 'RB' | 'WR' | 'TE' | 'K'
 type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string }
 
@@ -174,6 +176,9 @@ type DraftPick = {
   slot: number
   teamName: string
   playerId: string
+  playerName?: string
+  position?: Position
+  team?: string
 }
 
 type DraftState = {
@@ -182,11 +187,18 @@ type DraftState = {
   currentPick: number
   drafted: DraftPick[]
   teamNames: string[]
+  sleeperDraftId?: string
+  source?: 'manual' | 'sleeper'
+  status?: string
+  totalRounds?: number
+  leagueName?: string
+  lastSyncedAt?: string
 }
 
 const DEFAULT_DATA_BASE_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amazonaws.com/data'
 const DEFAULT_RANKINGS_URL = `${DEFAULT_DATA_BASE_URL}/fantasy-data.json`
 const DEFAULT_DRAFT_API_URL = 'https://dqen8hccb0.execute-api.us-east-1.amazonaws.com'
+const SLEEPER_API_BASE = 'https://api.sleeper.app/v1'
 const DATA_BASE_URL = import.meta.env.VITE_DATA_BASE_URL || (import.meta.env.PROD ? DEFAULT_DATA_BASE_URL : '/data')
 const DATA_URL = import.meta.env.VITE_RANKINGS_URL || (import.meta.env.PROD ? DEFAULT_RANKINGS_URL : '/data/fantasy-data.json')
 const API_URL = import.meta.env.VITE_DRAFT_API_URL || (import.meta.env.PROD ? DEFAULT_DRAFT_API_URL : '')
@@ -385,9 +397,16 @@ function App() {
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
   const [activeTab, setActiveTab] = useState<AppTab>('players')
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
+  const [sleeperInput, setSleeperInput] = useState('')
+  const [sleeperStatus, setSleeperStatus] = useState('')
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
+
+  useEffect(() => {
+    setSleeperInput(draft.sleeperDraftId || selectedLeague.externalLeagueId || '')
+    setSleeperStatus('')
+  }, [draft.sleeperDraftId, selectedLeague.externalLeagueId, selectedLeague.id])
 
   useEffect(() => {
     fetchSplitData()
@@ -446,13 +465,14 @@ function App() {
   }, [data, selectedLeague])
 
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
+  const draftedPlayerKeys = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerName).filter(Boolean).map((name) => playerKey(name!))), [draft.drafted])
   const availablePlayers = useMemo<RankedPlayer[]>(() => {
     const lowerQuery = query.toLowerCase().trim()
     return players
-      .filter((player) => !draftedIds.has(player.id))
+      .filter((player) => !draftedIds.has(player.id) && !draftedPlayerKeys.has(playerKey(player.name)))
       .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
       .sort((a, b) => b.draftScore - a.draftScore)
-  }, [draftedIds, players, query])
+  }, [draftedIds, draftedPlayerKeys, players, query])
 
   const shortlistPlayers = useMemo(() => availablePlayers.slice(0, 12), [availablePlayers])
   const playersByPosition = useMemo(() => {
@@ -536,11 +556,31 @@ function App() {
     setVisiblePositions((current) => ({ ...current, [nextPosition]: !current[nextPosition] }))
   }
 
+  async function syncSleeperDraft() {
+    const sourceId = sleeperInput.trim() || selectedLeague.externalLeagueId
+    if (!sourceId) {
+      setSleeperStatus('Enter a Sleeper draft or league ID.')
+      return
+    }
+    setSleeperStatus('Loading Sleeper draft...')
+    try {
+      const nextDraft = await fetchSleeperDraftState(sourceId, selectedLeague, draft)
+      updateDraft(nextDraft)
+      setSleeperInput(nextDraft.sleeperDraftId || sourceId)
+      setSleeperStatus(`Synced ${nextDraft.drafted.length} picks.`)
+    } catch (error) {
+      setSleeperStatus(error instanceof Error ? error.message : 'Unable to load Sleeper draft.')
+    }
+  }
+
   return (
     <main className="shell">
       <nav className="tabs" aria-label="Draft views">
         <button className={activeTab === 'players' ? 'active' : ''} onClick={() => setActiveTab('players')}>
           <ClipboardList size={16} /> Players
+        </button>
+        <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>
+          <LayoutGrid size={16} /> Board
         </button>
         <button className={activeTab === 'depth' ? 'active' : ''} onClick={() => setActiveTab('depth')}>
           <ListTree size={16} /> Depth Charts
@@ -567,6 +607,17 @@ function App() {
           togglePosition={togglePosition}
           visiblePositions={visiblePositions}
           onQueryChange={setQuery}
+        />
+      ) : null}
+
+      {activeTab === 'board' ? (
+        <DraftBoardPage
+          draft={draft}
+          league={selectedLeague}
+          sleeperInput={sleeperInput}
+          sleeperStatus={sleeperStatus}
+          onSleeperInputChange={setSleeperInput}
+          onSyncSleeperDraft={syncSleeperDraft}
         />
       ) : null}
 
@@ -666,6 +717,94 @@ function DepthChartsPage({
           </div>
         ))}
         {rows.length === 0 ? <p className="emptyState">No depth chart data has been published yet.</p> : null}
+      </div>
+    </section>
+  )
+}
+
+function DraftBoardPage({
+  draft,
+  league,
+  sleeperInput,
+  sleeperStatus,
+  onSleeperInputChange,
+  onSyncSleeperDraft,
+}: {
+  draft: DraftState
+  league: LeagueProfile
+  sleeperInput: string
+  sleeperStatus: string
+  onSleeperInputChange: (value: string) => void
+  onSyncSleeperDraft: () => void
+}) {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const totalRounds = draft.totalRounds || league.lineup.rosterSpots
+  const picksBySlotRound = useMemo(() => {
+    const picks = new Map<string, DraftPick>()
+    draft.drafted.forEach((pick) => picks.set(`${pick.slot}-${pick.round}`, pick))
+    return picks
+  }, [draft.drafted])
+
+  return (
+    <section className="panel pagePanel draftBoardPanel">
+      <div className="panelHeader draftBoardHeader">
+        <div>
+          <h2>Draft Board</h2>
+          <div className="draftBoardMeta">
+            <span>{league.name}</span>
+            {draft.leagueName ? <span>{draft.leagueName}</span> : null}
+            {draft.status ? <span>{draft.status.replace(/_/g, ' ')}</span> : null}
+            {draft.lastSyncedAt ? <span>Synced {new Date(draft.lastSyncedAt).toLocaleTimeString()}</span> : null}
+          </div>
+        </div>
+        <div className="sleeperSync">
+          <input
+            aria-label="Sleeper draft or league ID"
+            placeholder="Sleeper draft or league ID"
+            value={sleeperInput}
+            onChange={(event) => onSleeperInputChange(event.target.value)}
+          />
+          <button className="iconTextButton" onClick={onSyncSleeperDraft} type="button">
+            <RefreshCw size={15} /> Sync
+          </button>
+        </div>
+      </div>
+      {sleeperStatus ? <div className="syncStatus">{sleeperStatus}</div> : null}
+      <div className="draftBoardScroller">
+        <div className="draftBoardGrid" style={{ gridTemplateColumns: `56px repeat(${totalTeams}, minmax(118px, 1fr))` }}>
+          <div className="draftBoardCorner">Rd</div>
+          {draft.teamNames.map((teamName, index) => (
+            <div className="draftBoardTeam" key={`${teamName}-${index}`}>
+              <span>{teamName}</span>
+            </div>
+          ))}
+          {Array.from({ length: totalRounds }, (_, roundIndex) => {
+            const round = roundIndex + 1
+            return (
+              <React.Fragment key={round}>
+                <div className="draftBoardRound">{round}</div>
+                {draft.teamNames.map((_, slotIndex) => {
+                  const slot = slotIndex + 1
+                  const pickNumber = getPickNumberForSlotRound(slot, round, totalTeams)
+                  const pick = picksBySlotRound.get(`${slot}-${round}`)
+                  const isCurrent = pickNumber === draft.currentPick
+                  return (
+                    <div className={`draftBoardCell ${isCurrent ? 'current' : ''}`} key={`${slot}-${round}`}>
+                      {pick ? (
+                        <div className="draftBoardPlayer" style={{ borderLeftColor: getPositionColor(pick.position) }}>
+                          <strong style={{ color: getPositionColor(pick.position) }}>{formatShortPlayerName(pick.playerName || pick.playerId)}</strong>
+                          <span>{pick.position || '-'} {pick.team || ''}</span>
+                        </div>
+                      ) : (
+                        <span className="draftBoardPick">#{pickNumber}</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </React.Fragment>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
@@ -805,6 +944,27 @@ function formatPositionRank(posRank: string) {
   return posRank.replace(/^[A-Z]+/, '')
 }
 
+function getPickNumberForSlotRound(slot: number, round: number, totalTeams: number) {
+  const roundSlot = round % 2 === 1 ? slot : totalTeams - slot + 1
+  return (round - 1) * totalTeams + roundSlot
+}
+
+function getPositionColor(position: Position | undefined) {
+  if (position === 'QB') return '#e53e3e'
+  if (position === 'RB') return '#38a169'
+  if (position === 'WR') return '#3182ce'
+  if (position === 'TE') return '#805ad5'
+  if (position === 'K') return '#d69e2e'
+  if (position === 'DST') return '#dd6b20'
+  return '#718096'
+}
+
+function formatShortPlayerName(name: string) {
+  const parts = normalizePlayerName(name).split(' ').filter(Boolean)
+  if (parts.length < 2) return name
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`
+}
+
 function depthPlayerClass(player: DepthChartEntry | undefined) {
   if (!player) return 'depthPlayer depthEmpty'
   return 'depthPlayer'
@@ -833,6 +993,104 @@ function normalizePlayerName(value: string) {
 
 function playerKey(name: string, team?: string) {
   return slugify(team ? `${normalizePlayerName(name)}-${team}` : normalizePlayerName(name))
+}
+
+async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, currentDraft: DraftState): Promise<DraftState> {
+  const draftData = await resolveSleeperDraft(sourceId)
+  const draftId = String(draftData.draft_id || sourceId)
+  const draftOrderUserIds = Object.keys(draftData.draft_order || {})
+  const [picksData, rostersData, usersData] = await Promise.all([
+    fetchSleeperJson<any[]>(`/draft/${draftId}/picks`).catch(() => []),
+    draftData.league_id ? fetchSleeperJson<any[]>(`/league/${draftData.league_id}/rosters`).catch(() => []) : Promise.resolve([]),
+    draftData.league_id
+      ? fetchSleeperJson<any[]>(`/league/${draftData.league_id}/users`).catch(() => [])
+      : Promise.all(draftOrderUserIds.map((userId) => fetchSleeperJson<any>(`/user/${userId}`).catch(() => null))).then((users) => users.filter(Boolean)),
+  ])
+  const totalTeams = Number(draftData.settings?.teams || league.lineup.teams || currentDraft.teamNames.length || 12)
+  const totalRounds = Number(draftData.settings?.rounds || league.lineup.rosterSpots || currentDraft.totalRounds || 16)
+  const teamNames = buildSleeperTeamNames(totalTeams, draftData.slot_to_roster_id || {}, draftData.draft_order || {}, rostersData, usersData)
+  const drafted = [...picksData]
+    .sort((a, b) => Number(a.pick_no || 0) - Number(b.pick_no || 0))
+    .map((pick) => {
+      const playerName = getSleeperPickPlayerName(pick)
+      const slot = Number(pick.draft_slot || 1)
+      return {
+        pick: Number(pick.pick_no || getPickNumberForSlotRound(slot, Number(pick.round || 1), totalTeams)),
+        round: Number(pick.round || Math.ceil(Number(pick.pick_no || 1) / totalTeams)),
+        slot,
+        teamName: teamNames[slot - 1] || `Team ${slot}`,
+        playerId: String(pick.player_id || playerKey(playerName)),
+        playerName,
+        position: normalizeSleeperPosition(pick.metadata?.position),
+        team: normalizeSleeperTeam(pick.metadata?.team),
+      }
+    })
+  const totalPicks = totalTeams * totalRounds
+
+  return {
+    ...currentDraft,
+    id: draftId,
+    leagueId: league.id,
+    currentPick: Math.min(drafted.length + 1, totalPicks + 1),
+    drafted,
+    teamNames,
+    sleeperDraftId: draftId,
+    source: 'sleeper',
+    status: draftData.status || 'unknown',
+    totalRounds,
+    leagueName: draftData.metadata?.name || draftData.league_id || league.name,
+    lastSyncedAt: new Date().toISOString(),
+  }
+}
+
+async function resolveSleeperDraft(sourceId: string) {
+  const directDraft = await fetchSleeperJson<any>(`/draft/${sourceId}`).catch(() => null)
+  if (directDraft?.draft_id) return directDraft
+
+  const leagueDrafts = await fetchSleeperJson<any[]>(`/league/${sourceId}/drafts`).catch(() => [])
+  const sortedDrafts = [...leagueDrafts].sort((a, b) => Number(b.created || 0) - Number(a.created || 0))
+  const activeDraft = sortedDrafts.find((draft) => ['drafting', 'paused', 'pre_draft'].includes(draft.status))
+  const selectedDraft = activeDraft || sortedDrafts[0]
+  if (!selectedDraft?.draft_id) throw new Error('No Sleeper draft found for that draft or league ID.')
+  return selectedDraft
+}
+
+async function fetchSleeperJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${SLEEPER_API_BASE}${path}`, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Sleeper request failed: ${response.status}`)
+  return response.json()
+}
+
+function buildSleeperTeamNames(totalTeams: number, slotToRosterId: Record<string, number>, draftOrder: Record<string, number>, rosters: any[], users: any[]) {
+  const usersById = new Map(users.map((user) => [user.user_id, user]))
+  const rostersById = new Map(rosters.map((roster) => [String(roster.roster_id), roster]))
+  const userIdBySlot = new Map(Object.entries(draftOrder).map(([userId, slot]) => [Number(slot), userId]))
+  return Array.from({ length: totalTeams }, (_, index) => {
+    const slot = index + 1
+    const rosterId = String(slotToRosterId[String(slot)] || slot)
+    const roster = rostersById.get(rosterId)
+    const user = roster?.owner_id ? usersById.get(roster.owner_id) : usersById.get(userIdBySlot.get(slot))
+    return user?.metadata?.team_name || user?.display_name || `Team ${slot}`
+  })
+}
+
+function getSleeperPickPlayerName(pick: any) {
+  const firstName = pick.metadata?.first_name || ''
+  const lastName = pick.metadata?.last_name || ''
+  return `${firstName} ${lastName}`.trim() || pick.metadata?.player_name || 'Unknown Player'
+}
+
+function normalizeSleeperPosition(position: string | undefined): Position | undefined {
+  if (!position) return undefined
+  const normalized = position === 'DEF' ? 'DST' : position
+  return POSITION_ORDER.includes(normalized as Position) ? (normalized as Position) : undefined
+}
+
+function normalizeSleeperTeam(team: string | undefined) {
+  if (!team) return undefined
+  if (team === 'JAC') return 'JAX'
+  if (team === 'WSH') return 'WAS'
+  return team
 }
 
 async function fetchSplitData(): Promise<RankingsFile> {
