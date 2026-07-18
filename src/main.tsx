@@ -489,7 +489,15 @@ function App() {
     return ranks
   }, [players])
   const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts), [data.depthCharts])
-  const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => parseInjuryDate(b.updated) - parseInjuryDate(a.updated)), [data.injuries])
+  const injuryRows = useMemo(
+    () =>
+      [...(data.injuries || [])].sort(
+        (a, b) =>
+          getSortableTier(a.name, a.team, playerTierByKey) - getSortableTier(b.name, b.team, playerTierByKey) ||
+          parseInjuryDate(b.updated) - parseInjuryDate(a.updated),
+      ),
+    [data.injuries, playerTierByKey],
+  )
   const rookieRows = useMemo(
     () =>
       [...(data.rookies || [])].sort(
@@ -784,6 +792,10 @@ function getDepthPlayerTier(player: DepthChartEntry, playerTierByKey: Map<string
 
 function getPlayerTier(name: string, team: string | undefined, playerTierByKey: Map<string, number>) {
   return (team ? playerTierByKey.get(slugify(`${name}-${team}`)) : undefined) || playerTierByKey.get(slugify(name))
+}
+
+function getSortableTier(name: string, team: string | undefined, playerTierByKey: Map<string, number>) {
+  return getPlayerTier(name, team, playerTierByKey) || 999
 }
 
 function getDepthPlayerPosRank(player: DepthChartEntry, playerPosRankByKey: Map<string, string>) {
