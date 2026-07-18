@@ -479,6 +479,15 @@ function App() {
     })
     return tiers
   }, [players])
+  const playerPosRankByKey = useMemo(() => {
+    const ranks = new Map<string, string>()
+    players.forEach((player) => {
+      if (!player.posRank) return
+      ranks.set(slugify(player.name), player.posRank)
+      ranks.set(slugify(`${player.name}-${player.team}`), player.posRank)
+    })
+    return ranks
+  }, [players])
   const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts), [data.depthCharts])
   const injuryRows = useMemo(() => [...(data.injuries || [])].sort((a, b) => parseInjuryDate(b.updated) - parseInjuryDate(a.updated)), [data.injuries])
   const rookieRows = useMemo(
@@ -542,6 +551,7 @@ function App() {
         <PlayersBoard
           availableCount={availablePlayers.length}
           leagueName={selectedLeague.name}
+          leagueTeams={selectedLeague.lineup.teams}
           playersByPosition={playersByPosition}
           query={query}
           shortlistPlayers={shortlistPlayers}
@@ -551,7 +561,15 @@ function App() {
         />
       ) : null}
 
-      {activeTab === 'depth' ? <DepthChartsPage rows={depthRows} injuredNames={injuryNameSet} rookieNames={rookieNameSet} playerTierByKey={playerTierByKey} /> : null}
+      {activeTab === 'depth' ? (
+        <DepthChartsPage
+          rows={depthRows}
+          injuredNames={injuryNameSet}
+          rookieNames={rookieNameSet}
+          playerPosRankByKey={playerPosRankByKey}
+          playerTierByKey={playerTierByKey}
+        />
+      ) : null}
       {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} /> : null}
       {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} /> : null}
       {activeTab === 'leagues' ? (
@@ -575,11 +593,13 @@ function DepthChartsPage({
   rows,
   injuredNames,
   rookieNames,
+  playerPosRankByKey,
   playerTierByKey,
 }: {
   rows: DepthChartTeamRow[]
   injuredNames: Set<string>
   rookieNames: Set<string>
+  playerPosRankByKey: Map<string, string>
   playerTierByKey: Map<string, number>
 }) {
   const columns: DepthChartColumn[] = ['QB', 'RB', 'WR', 'TE', 'K']
@@ -612,6 +632,7 @@ function DepthChartsPage({
                     players.map((player) => {
                       const isInjured = injuredNames.has(slugify(player.name))
                       const isRookie = rookieNames.has(slugify(player.name))
+                      const posRank = getDepthPlayerPosRank(player, playerPosRankByKey)
                       return (
                         <span
                           className={depthPlayerClass(player)}
@@ -619,7 +640,9 @@ function DepthChartsPage({
                           style={{ color: getTierColor(getDepthPlayerTier(player, playerTierByKey)) }}
                           title={`${player.source} ${player.position}${player.order}`}
                         >
-                          <span className="depthPlayerName">{player.name}</span>
+                          <span className="depthPlayerName">
+                            {player.name}{posRank ? ` (${formatPositionRank(posRank)})` : ''}
+                          </span>
                           {isInjured ? <span className="depthMarker depthMarkerInjury" title="Injured">I</span> : null}
                           {isRookie ? <span className="depthMarker depthMarkerRookie" title="Rookie">R</span> : null}
                         </span>
@@ -753,6 +776,14 @@ function getDepthPlayerTier(player: DepthChartEntry, playerTierByKey: Map<string
   return playerTierByKey.get(slugify(`${player.name}-${player.team}`)) || playerTierByKey.get(slugify(player.name))
 }
 
+function getDepthPlayerPosRank(player: DepthChartEntry, playerPosRankByKey: Map<string, string>) {
+  return playerPosRankByKey.get(slugify(`${player.name}-${player.team}`)) || playerPosRankByKey.get(slugify(player.name))
+}
+
+function formatPositionRank(posRank: string) {
+  return posRank.replace(/^[A-Z]+/, '')
+}
+
 function depthPlayerClass(player: DepthChartEntry | undefined) {
   if (!player) return 'depthPlayer depthEmpty'
   return 'depthPlayer'
@@ -852,6 +883,7 @@ function mergeClientEnrichment(enrichments: Map<string, Partial<Player>>, name: 
 function PlayersBoard({
   availableCount,
   leagueName,
+  leagueTeams,
   playersByPosition,
   query,
   shortlistPlayers,
@@ -861,6 +893,7 @@ function PlayersBoard({
 }: {
   availableCount: number
   leagueName: string
+  leagueTeams: number
   playersByPosition: Record<Position, RankedPlayer[]>
   query: string
   shortlistPlayers: RankedPlayer[]
@@ -910,7 +943,7 @@ function PlayersBoard({
                   </div>
                   <div className="positionPlayers">
                     {playersByPosition[position].map((player) => (
-                      <PlayerSummary key={player.id} player={player} variant="column" />
+                      <PlayerSummary key={player.id} leagueTeams={leagueTeams} player={player} variant="column" />
                     ))}
                     {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
                   </div>
@@ -928,7 +961,7 @@ function PlayersBoard({
         </div>
         <div className="shortlistContainer">
           {shortlistPlayers.map((player) => (
-            <PlayerSummary key={player.id} player={player} variant="shortlist" />
+            <PlayerSummary key={player.id} leagueTeams={leagueTeams} player={player} variant="shortlist" />
           ))}
           {shortlistPlayers.length === 0 ? <p className="muted">No matching players.</p> : null}
         </div>
@@ -937,8 +970,9 @@ function PlayersBoard({
   )
 }
 
-function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'shortlist' | 'column' }) {
+function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer; leagueTeams: number; variant: 'shortlist' | 'column' }) {
   const tierColor = getTierColor(player.tier)
+  const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
   if (variant === 'shortlist') {
     return (
       <div className="shortlistItem" style={{ borderLeftColor: tierColor }}>
@@ -949,7 +983,7 @@ function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'sh
           {player.name}
         </span>
         <span className="shortlistMeta">
-          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | T{player.tier || '-'} | {player.adp?.toFixed(1) || '-'}
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | T{player.tier || '-'} | {adpLabel}
         </span>
       </div>
     )
@@ -963,9 +997,9 @@ function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'sh
       <div className="playerName" style={{ color: tierColor }}>
         <span>{player.name}</span>
         <span className="playerInlineMeta">
-          {player.adp ? (
-            <span className="adpValue">
-              ({player.adp.toFixed(1)})
+          {adpLabel !== '-' ? (
+            <span className="adpValue" title={player.adp ? `Overall average rank ${player.adp.toFixed(1)}` : ''}>
+              ({adpLabel})
             </span>
           ) : null}
           <span className="tierValue" style={{ color: tierColor }}>
@@ -977,6 +1011,14 @@ function PlayerSummary({ player, variant }: { player: RankedPlayer; variant: 'sh
       </div>
     </div>
   )
+}
+
+function formatAdpRoundPick(adp: number | undefined, teams: number) {
+  if (!adp || !teams) return '-'
+  const overallPick = Math.max(1, Math.round(adp))
+  const round = Math.ceil(overallPick / teams)
+  const pick = ((overallPick - 1) % teams) + 1
+  return `R${round}.${pick.toString().padStart(2, '0')}`
 }
 
 function getTierColor(tier: number | undefined) {
