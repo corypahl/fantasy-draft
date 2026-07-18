@@ -469,14 +469,14 @@ function App() {
     return grouped
   }, [availablePlayers])
 
-  const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => slugify(item.name))), [data.injuries])
-  const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => slugify(item.name))), [data.rookies])
+  const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => playerKey(item.name))), [data.injuries])
+  const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => playerKey(item.name))), [data.rookies])
   const playerTierByKey = useMemo(() => {
     const tiers = new Map<string, number>()
     players.forEach((player) => {
       if (!player.tier) return
-      tiers.set(slugify(player.name), player.tier)
-      tiers.set(slugify(`${player.name}-${player.team}`), player.tier)
+      tiers.set(playerKey(player.name), player.tier)
+      tiers.set(playerKey(player.name, player.team), player.tier)
     })
     return tiers
   }, [players])
@@ -484,8 +484,8 @@ function App() {
     const ranks = new Map<string, string>()
     players.forEach((player) => {
       if (!player.posRank) return
-      ranks.set(slugify(player.name), player.posRank)
-      ranks.set(slugify(`${player.name}-${player.team}`), player.posRank)
+      ranks.set(playerKey(player.name), player.posRank)
+      ranks.set(playerKey(player.name, player.team), player.posRank)
     })
     return ranks
   }, [players])
@@ -639,8 +639,8 @@ function DepthChartsPage({
                 >
                   {players.length ? (
                     players.map((player) => {
-                      const isInjured = injuredNames.has(slugify(player.name))
-                      const isRookie = rookieNames.has(slugify(player.name))
+                      const isInjured = injuredNames.has(playerKey(player.name))
+                      const isRookie = rookieNames.has(playerKey(player.name))
                       const posRank = getDepthPlayerPosRank(player, playerPosRankByKey)
                       return (
                         <span
@@ -790,7 +790,7 @@ function getDepthPlayerTier(player: DepthChartEntry, playerTierByKey: Map<string
 }
 
 function getPlayerTier(name: string, team: string | undefined, playerTierByKey: Map<string, number>) {
-  return (team ? playerTierByKey.get(slugify(`${name}-${team}`)) : undefined) || playerTierByKey.get(slugify(name))
+  return (team ? playerTierByKey.get(playerKey(name, team)) : undefined) || playerTierByKey.get(playerKey(name))
 }
 
 function getSortableTier(name: string, team: string | undefined, playerTierByKey: Map<string, number>) {
@@ -798,7 +798,7 @@ function getSortableTier(name: string, team: string | undefined, playerTierByKey
 }
 
 function getDepthPlayerPosRank(player: DepthChartEntry, playerPosRankByKey: Map<string, string>) {
-  return playerPosRankByKey.get(slugify(`${player.name}-${player.team}`)) || playerPosRankByKey.get(slugify(player.name))
+  return playerPosRankByKey.get(playerKey(player.name, player.team)) || playerPosRankByKey.get(playerKey(player.name))
 }
 
 function formatPositionRank(posRank: string) {
@@ -819,6 +819,20 @@ function parseInjuryDate(value: string | undefined) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function normalizePlayerName(value: string) {
+  return value
+    .replace(/\([^)]*\)/g, '')
+    .replace(/\[[^\]]+\]/g, '')
+    .replace(/\b(QB|RB|WR|TE|K|DST|DEF)\d*\b/g, '')
+    .replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function playerKey(name: string, team?: string) {
+  return slugify(team ? `${normalizePlayerName(name)}-${team}` : normalizePlayerName(name))
 }
 
 async function fetchSplitData(): Promise<RankingsFile> {
@@ -855,8 +869,8 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
       Object.entries(files.rankings.scoring).map(([scoring, players]) => [
         scoring,
         (players || []).map((player) => {
-          const projection = files.projections.projections?.[slugify(player.name)]
-          const enrichment = enrichments.get(slugify(`${player.name}-${player.team}`)) || enrichments.get(slugify(player.name)) || {}
+          const projection = files.projections.projections?.[playerKey(player.name, player.team)] || files.projections.projections?.[playerKey(player.name)]
+          const enrichment = enrichments.get(playerKey(player.name, player.team)) || enrichments.get(playerKey(player.name)) || {}
           return {
             ...player,
             points: projection?.points ?? player.points,
@@ -896,8 +910,8 @@ function buildClientEnrichments(
 }
 
 function mergeClientEnrichment(enrichments: Map<string, Partial<Player>>, name: string, team: string, patch: Partial<Player>) {
-  const cleanName = slugify(name)
-  const keys = team ? [cleanName, slugify(`${name}-${team}`)] : [cleanName]
+  const cleanName = playerKey(name)
+  const keys = team ? [cleanName, playerKey(name, team)] : [cleanName]
   keys.forEach((key) => enrichments.set(key, { ...(enrichments.get(key) || {}), ...patch }))
 }
 
@@ -1045,7 +1059,7 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
 
 function formatProjectedPointsPerGame(projectedPoints: number) {
   if (!Number.isFinite(projectedPoints) || projectedPoints <= 0) return '-'
-  return `${(projectedPoints / NFL_REGULAR_SEASON_GAMES).toFixed(1)}/g`
+  return (projectedPoints / NFL_REGULAR_SEASON_GAMES).toFixed(1)
 }
 
 function getTierColor(tier: number | undefined) {

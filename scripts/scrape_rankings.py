@@ -35,6 +35,15 @@ PROJECTION_URLS = {
     "DST": "https://www.fantasypros.com/nfl/projections/dst.php?week=draft",
 }
 
+CBS_PROJECTION_URLS = {
+    "QB": "https://www.cbssports.com/fantasy/football/stats/QB/{year}/season/projections/ppr/",
+    "RB": "https://www.cbssports.com/fantasy/football/stats/RB/{year}/season/projections/ppr/",
+    "WR": "https://www.cbssports.com/fantasy/football/stats/WR/{year}/season/projections/ppr/",
+    "TE": "https://www.cbssports.com/fantasy/football/stats/TE/{year}/season/projections/ppr/",
+    "K": "https://www.cbssports.com/fantasy/football/stats/K/{year}/season/projections/ppr/",
+    "DST": "https://www.cbssports.com/fantasy/football/stats/DST/{year}/season/projections/ppr/",
+}
+
 STAT_URLS = {
     "QB": "https://www.fantasypros.com/nfl/stats/qb.php?year={year}",
     "RB": "https://www.fantasypros.com/nfl/stats/rb.php?year={year}",
@@ -237,8 +246,8 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
         return {
             "generatedAt": generated_at,
             "season": season,
-            "source": "FantasyPros projections",
-            "projections": fetch_projections(),
+            "source": "FantasyPros projections with CBS Sports fallback",
+            "projections": fetch_projections(season),
         }
     if dataset == "depth-charts":
         return {
@@ -275,7 +284,7 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
 
 
 def build_combined_payload(season: int) -> Dict:
-    projections = fetch_projections()
+    projections = fetch_projections(season)
     sleeper_players = fetch_sleeper_players()
     depth_charts = fetch_depth_charts(sleeper_players)
     injuries = fetch_injuries()
@@ -290,7 +299,7 @@ def build_combined_payload(season: int) -> Dict:
             "previousSeason": season - 1,
             "sources": {
                 "rankings": "FantasyPros",
-                "projections": "FantasyPros",
+                "projections": "FantasyPros with CBS Sports fallback",
                 "previousYearResults": "FantasyPros",
                 "depthCharts": "CBS Sports with Sleeper fallback",
                 "injuries": "CBS Sports",
@@ -382,7 +391,7 @@ def fetch_rankings(url: str) -> List[Dict]:
     return players
 
 
-def fetch_projections() -> Dict[str, Dict]:
+def fetch_projections(season: int) -> Dict[str, Dict]:
     projections = {}
     for position, url in PROJECTION_URLS.items():
         soup = fetch_soup(url)
@@ -402,11 +411,144 @@ def fetch_projections() -> Dict[str, Dict]:
                 key = keys[index - 1] if index - 1 < len(keys) else f"stat_{index}"
                 projection[key] = parse_float(value)
             points = projection.get("fpts") or projection.get("fantasy-points")
-            projections[slugify(player["name"])] = {
+            projection_detail = {
                 "points": points,
                 "projections": projection,
             }
+            projections[player_key(player["name"])] = projection_detail
+            projections[player_key(player["name"], player["team"])] = projection_detail
+    projections.update({key: value for key, value in fetch_cbs_projections(season).items() if key not in projections})
     return projections
+
+
+def fetch_cbs_projections(season: int) -> Dict[str, Dict]:
+    projections = {}
+    for position, url_template in CBS_PROJECTION_URLS.items():
+        try:
+            url = url_template.format(year=season)
+            soup = fetch_soup(url)
+        except requests.RequestException:
+            continue
+        for row in soup.select("tbody tr"):
+            player = parse_cbs_player_cell(row, position)
+            if not player:
+                continue
+            projection = parse_cbs_projection_row(row, position)
+            points = projection.get("fpts")
+            projection_detail = {
+                "points": points,
+                "projections": projection,
+            }
+            projections[player_key(player["name"])] = projection_detail
+            projections[player_key(player["name"], player["team"])] = projection_detail
+    return projections
+
+
+def parse_cbs_player_cell(row: Tag, position: str) -> Optional[Dict]:
+    player_cell = row.select_one("td")
+    if not player_cell:
+        return None
+    long_name = player_cell.select_one(".CellPlayerName--long a")
+    name = clean_player_name(long_name.get_text(strip=True) if long_name else player_cell.get_text(" ", strip=True))
+    team_node = player_cell.select_one(".CellPlayerName--long .CellPlayerName-team")
+    team = normalize_team(team_node.get_text(strip=True) if team_node else "")
+    if position == "DST":
+        name = f"{name} DST"
+        team = nfl_team_to_abbr(name.replace(" DST", ""))
+    if not name:
+        return None
+    return {"name": name, "team": team or "FA", "position": position}
+
+
+def parse_cbs_projection_row(row: Tag, position: str) -> Dict[str, Optional[float]]:
+    values = [parse_float(cell.get_text(" ", strip=True)) for cell in row.select("td")[1:]]
+    if position == "QB":
+        return pick_projection_values(
+            values,
+            {
+                "games": 0,
+                "passing_att": 1,
+                "passing_cmp": 2,
+                "passing_yds": 3,
+                "passing_tds": 5,
+                "passing_ints": 6,
+                "rushing_att": 8,
+                "rushing_yds": 9,
+                "rushing_tds": 11,
+                "fumbles_lost": 12,
+                "fpts": 13,
+                "fppg": 14,
+            },
+        )
+    if position == "RB":
+        return pick_projection_values(
+            values,
+            {
+                "games": 0,
+                "rushing_att": 1,
+                "rushing_yds": 2,
+                "rushing_tds": 4,
+                "receiving_tgt": 5,
+                "receiving_rec": 6,
+                "receiving_yds": 7,
+                "receiving_tds": 10,
+                "fumbles_lost": 11,
+                "fpts": 12,
+                "fppg": 13,
+            },
+        )
+    if position == "WR":
+        return pick_projection_values(
+            values,
+            {
+                "games": 0,
+                "receiving_tgt": 1,
+                "receiving_rec": 2,
+                "receiving_yds": 3,
+                "receiving_tds": 6,
+                "rushing_att": 7,
+                "rushing_yds": 8,
+                "rushing_tds": 10,
+                "fumbles_lost": 11,
+                "fpts": 12,
+                "fppg": 13,
+            },
+        )
+    if position == "TE":
+        return pick_projection_values(
+            values,
+            {
+                "games": 0,
+                "receiving_tgt": 1,
+                "receiving_rec": 2,
+                "receiving_yds": 3,
+                "receiving_tds": 6,
+                "fumbles_lost": 7,
+                "fpts": 8,
+                "fppg": 9,
+            },
+        )
+    if position == "K":
+        return pick_projection_values(values, {"games": 0, "fg": 1, "fga": 2, "xpt": 15, "fpts": 17, "fppg": 18})
+    return pick_projection_values(
+        values,
+        {
+            "int": 0,
+            "safety": 1,
+            "sack": 2,
+            "fr": 4,
+            "ff": 5,
+            "td": 6,
+            "pa": 7,
+            "yds_agn": 12,
+            "fpts": 14,
+            "fppg": 15,
+        },
+    )
+
+
+def pick_projection_values(values: List[Optional[float]], keys: Dict[str, int]) -> Dict[str, Optional[float]]:
+    return {key: values[index] for key, index in keys.items() if index < len(values)}
 
 
 def fetch_sleeper_players() -> Dict[str, Dict]:
@@ -695,18 +837,17 @@ def merge_enrichment(enrichments: Dict[str, Dict], name: str, team: str, patch: 
 
 
 def enrichment_keys(name: str, team: str) -> Tuple[str, str]:
-    clean_name = clean_player_name(name)
     clean_team = normalize_team(team or "")
-    return (slugify(clean_name), slugify(f"{clean_name}-{clean_team}") if clean_team else slugify(clean_name))
+    return (player_key(name), player_key(name, clean_team) if clean_team else player_key(name))
 
 
 def enrich_players(players: List[Dict], projections: Dict[str, Dict], enrichments: Dict[str, Dict]) -> List[Dict]:
     for player in players:
-        projection = projections.get(slugify(player["name"]))
+        projection = projections.get(player_key(player["name"], player.get("team", ""))) or projections.get(player_key(player["name"]))
         if projection:
             player["points"] = projection.get("points")
             player["projections"] = projection.get("projections", {})
-        enrichment = enrichments.get(slugify(f"{player['name']}-{player['team']}")) or enrichments.get(slugify(player["name"]))
+        enrichment = enrichments.get(player_key(player["name"], player["team"])) or enrichments.get(player_key(player["name"]))
         if enrichment:
             player.update(enrichment)
     return players
@@ -739,15 +880,17 @@ def parse_player_cell(value: str, fallback_position: Optional[str] = None) -> Op
     pos_rank = re.search(r"\b(QB|RB|WR|TE|K|DST|DEF)\d+\b", cleaned)
     position = normalize_position(pos_rank.group(0)[:3].rstrip("0123456789")) if pos_rank else fallback_position
     team = None
-    team_match = re.search(r"\b([A-Z]{2,3})\b", cleaned)
-    if team_match:
-        team = normalize_team(team_match.group(1))
+    team_match = None
+    team_matches = re.findall(r"\b([A-Z]{2,3})\b", cleaned)
+    if team_matches:
+        team_match = team_matches[-1]
+        team = normalize_team(team_match)
 
     name = cleaned
     if pos_rank:
         name = name.replace(pos_rank.group(0), "")
-    if team:
-        name = re.sub(rf"\b{team}\b", "", name)
+    if team_match:
+        name = re.sub(rf"\b{team_match}\b", "", name)
     name = clean_player_name(name)
 
     if not name or not position:
@@ -863,6 +1006,12 @@ def clean_player_name(value: str) -> str:
     while parts and parts[-1].upper().strip(".") in {suffix.strip(".") for suffix in suffixes}:
         parts.pop()
     return " ".join(parts)
+
+
+def player_key(name: str, team: str = "") -> str:
+    clean_name = clean_player_name(name)
+    clean_team = normalize_team(team) if team else ""
+    return slugify(f"{clean_name}-{clean_team}") if clean_team else slugify(clean_name)
 
 
 def parse_int(value: Optional[str]) -> Optional[int]:
