@@ -109,6 +109,20 @@ type RankingsFile = {
   previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
 }
 
+type ProjectionDetail = {
+  points?: number
+  projections?: Record<string, number>
+}
+
+type SplitDataFiles = {
+  rankings: Pick<RankingsFile, 'generatedAt' | 'season' | 'source' | 'scoring'>
+  projections: { projections?: Record<string, ProjectionDetail> }
+  depthCharts: { depthCharts?: RankingsFile['depthCharts'] }
+  injuries: { injuries?: InjuryDetail[] }
+  rookies: { rookies?: RookieDetail[] }
+  previousYearResults: { previousYearResults?: RankingsFile['previousYearResults']; previousSeason?: number }
+}
+
 type LineupSettings = {
   teams: number
   rosterSpots: number
@@ -169,8 +183,10 @@ type DraftState = {
   teamNames: string[]
 }
 
-const DEFAULT_RANKINGS_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amazonaws.com/data/fantasy-data.json'
+const DEFAULT_DATA_BASE_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amazonaws.com/data'
+const DEFAULT_RANKINGS_URL = `${DEFAULT_DATA_BASE_URL}/fantasy-data.json`
 const DEFAULT_DRAFT_API_URL = 'https://dqen8hccb0.execute-api.us-east-1.amazonaws.com'
+const DATA_BASE_URL = import.meta.env.VITE_DATA_BASE_URL || (import.meta.env.PROD ? DEFAULT_DATA_BASE_URL : '/data')
 const DATA_URL = import.meta.env.VITE_RANKINGS_URL || (import.meta.env.PROD ? DEFAULT_RANKINGS_URL : '/data/fantasy-data.json')
 const API_URL = import.meta.env.VITE_DRAFT_API_URL || (import.meta.env.PROD ? DEFAULT_DRAFT_API_URL : '')
 
@@ -373,10 +389,14 @@ function App() {
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
 
   useEffect(() => {
-    fetch(DATA_URL, { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
-      .then((payload: RankingsFile) => setData(payload))
-      .catch(() => setData(seedData))
+    fetchSplitData()
+      .then((payload) => setData(payload))
+      .catch(() =>
+        fetch(DATA_URL, { cache: 'no-store' })
+          .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+          .then((payload: RankingsFile) => setData(payload))
+          .catch(() => setData(seedData)),
+      )
   }, [])
 
   useEffect(() => {
@@ -747,6 +767,86 @@ function parseInjuryDate(value: string | undefined) {
 
 function slugify(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+async function fetchSplitData(): Promise<RankingsFile> {
+  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults] = await Promise.all([
+    fetchJson<SplitDataFiles['rankings']>(`${DATA_BASE_URL}/rankings.json`),
+    fetchJson<SplitDataFiles['projections']>(`${DATA_BASE_URL}/projections.json`),
+    fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`),
+    fetchJson<SplitDataFiles['injuries']>(`${DATA_BASE_URL}/injuries.json`),
+    fetchJson<SplitDataFiles['rookies']>(`${DATA_BASE_URL}/rookies.json`),
+    fetchJson<SplitDataFiles['previousYearResults']>(`${DATA_BASE_URL}/previous-year-results.json`),
+  ])
+
+  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults })
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const response = await fetch(url, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Failed to load ${url}: ${response.statusText}`)
+  return response.json()
+}
+
+function composeSplitData(files: SplitDataFiles): RankingsFile {
+  const depthCharts = files.depthCharts.depthCharts
+  const injuries = files.injuries.injuries || []
+  const rookies = files.rookies.rookies || []
+  const previousYearResults = files.previousYearResults.previousYearResults || {}
+  const enrichments = buildClientEnrichments(depthCharts, injuries, rookies, previousYearResults)
+
+  return {
+    generatedAt: files.rankings.generatedAt,
+    season: files.rankings.season,
+    source: 'Split data files: FantasyPros rankings/projections/stats, CBS injuries/depth charts, rookie draft results',
+    scoring: Object.fromEntries(
+      Object.entries(files.rankings.scoring).map(([scoring, players]) => [
+        scoring,
+        (players || []).map((player) => {
+          const projection = files.projections.projections?.[slugify(player.name)]
+          const enrichment = enrichments.get(slugify(`${player.name}-${player.team}`)) || enrichments.get(slugify(player.name)) || {}
+          return {
+            ...player,
+            points: projection?.points ?? player.points,
+            projections: projection?.projections ?? player.projections,
+            ...enrichment,
+          }
+        }),
+      ]),
+    ) as Partial<Record<ScoringPreset, Player[]>>,
+    depthCharts,
+    injuries,
+    rookies,
+    previousYearResults,
+  }
+}
+
+function buildClientEnrichments(
+  depthCharts: RankingsFile['depthCharts'],
+  injuries: InjuryDetail[],
+  rookies: RookieDetail[],
+  previousYearResults: RankingsFile['previousYearResults'],
+) {
+  const enrichments = new Map<string, Partial<Player>>()
+
+  Object.entries(depthCharts || {}).forEach(([team, positions]) => {
+    Object.values(positions || {}).forEach((entries) => {
+      ;(entries || []).forEach((entry) => mergeClientEnrichment(enrichments, entry.name, team, { depthChart: entry }))
+    })
+  })
+  injuries.forEach((injury) => mergeClientEnrichment(enrichments, injury.name, injury.team || '', { injury }))
+  rookies.forEach((rookie) => mergeClientEnrichment(enrichments, rookie.name, rookie.team || '', { rookie }))
+  Object.values(previousYearResults || {}).forEach((entries) => {
+    ;(entries || []).forEach((entry) => mergeClientEnrichment(enrichments, entry.name, entry.team || '', { previousYear: entry }))
+  })
+
+  return enrichments
+}
+
+function mergeClientEnrichment(enrichments: Map<string, Partial<Player>>, name: string, team: string, patch: Partial<Player>) {
+  const cleanName = slugify(name)
+  const keys = team ? [cleanName, slugify(`${name}-${team}`)] : [cleanName]
+  keys.forEach((key) => enrichments.set(key, { ...(enrichments.get(key) || {}), ...patch }))
 }
 
 function PlayersBoard({

@@ -33,6 +33,7 @@ jobs:
       - name: Build
         env:
           GITHUB_PAGES: "true"
+          VITE_DATA_BASE_URL: ${{ vars.VITE_DATA_BASE_URL }}
           VITE_RANKINGS_URL: ${{ vars.VITE_RANKINGS_URL }}
           VITE_DRAFT_API_URL: ${{ vars.VITE_DRAFT_API_URL }}
         run: npm run build

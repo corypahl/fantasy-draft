@@ -1,4 +1,4 @@
-name: Scrape rankings
+name: Scrape fantasy data
 
 on:
   schedule:
@@ -10,8 +10,31 @@ permissions:
   id-token: write
 
 jobs:
-  scrape:
+  scrape-data:
+    name: Scrape ${{ matrix.dataset }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dataset: rankings
+            key: data/rankings.json
+            output: dist-data/rankings.json
+          - dataset: projections
+            key: data/projections.json
+            output: dist-data/projections.json
+          - dataset: depth-charts
+            key: data/depth-charts.json
+            output: dist-data/depth-charts.json
+          - dataset: injuries
+            key: data/injuries.json
+            output: dist-data/injuries.json
+          - dataset: rookies
+            key: data/rookies.json
+            output: dist-data/rookies.json
+          - dataset: previous-year-results
+            key: data/previous-year-results.json
+            output: dist-data/previous-year-results.json
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -20,13 +43,9 @@ jobs:
         env:
           AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
           RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
-          ESPN_SWID: ${{ secrets.ESPN_SWID }}
-          ESPN_S2: ${{ secrets.ESPN_S2 }}
         run: |
           test -n "$AWS_GITHUB_ACTIONS_ROLE_ARN" || { echo "::error::Missing repository secret AWS_GITHUB_ACTIONS_ROLE_ARN"; exit 1; }
           test -n "$RANKINGS_BUCKET" || { echo "::error::Missing repository secret RANKINGS_BUCKET"; exit 1; }
-          test -n "$ESPN_SWID" || { echo "::error::Missing repository secret ESPN_SWID"; exit 1; }
-          test -n "$ESPN_S2" || { echo "::error::Missing repository secret ESPN_S2"; exit 1; }
 
       - name: Configure AWS credentials
         env:
@@ -42,7 +61,7 @@ jobs:
           read -r access_key secret_key session_token <<< "$(
             aws sts assume-role-with-web-identity \
               --role-arn "$AWS_GITHUB_ACTIONS_ROLE_ARN" \
-              --role-session-name fantasy-draft-scrape \
+              --role-session-name fantasy-draft-${{ matrix.dataset }} \
               --web-identity-token "$oidc_token" \
               --duration-seconds 3600 \
               --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
@@ -62,12 +81,66 @@ jobs:
       - name: Install scraper dependencies
         run: python3 -m pip install -r scripts/requirements.txt
 
-      - name: Scrape and upload rankings
+      - name: Scrape and upload ${{ matrix.dataset }}
         env:
           RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
-          RANKINGS_KEY: ${{ vars.RANKINGS_KEY || 'data/fantasy-data.json' }}
           NFL_SEASON: ${{ vars.NFL_SEASON || '2026' }}
-        run: python3 scripts/scrape_rankings.py
+        run: >
+          python3 scripts/scrape_rankings.py
+          --dataset "${{ matrix.dataset }}"
+          --output "${{ matrix.output }}"
+          --key "${{ matrix.key }}"
+
+  sync-leagues:
+    name: Sync league settings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate workflow configuration
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+        run: |
+          test -n "$AWS_GITHUB_ACTIONS_ROLE_ARN" || { echo "::error::Missing repository secret AWS_GITHUB_ACTIONS_ROLE_ARN"; exit 1; }
+          test -n "$ESPN_SWID" || { echo "::error::Missing repository secret ESPN_SWID"; exit 1; }
+          test -n "$ESPN_S2" || { echo "::error::Missing repository secret ESPN_S2"; exit 1; }
+
+      - name: Configure AWS credentials
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: |
+          oidc_token="$(
+            curl -sSfL \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+              | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])'
+          )"
+          read -r access_key secret_key session_token <<< "$(
+            aws sts assume-role-with-web-identity \
+              --role-arn "$AWS_GITHUB_ACTIONS_ROLE_ARN" \
+              --role-session-name fantasy-draft-sync-leagues \
+              --web-identity-token "$oidc_token" \
+              --duration-seconds 3600 \
+              --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+              --output text
+          )"
+          {
+            echo "AWS_ACCESS_KEY_ID=$access_key"
+            echo "AWS_SECRET_ACCESS_KEY=$secret_key"
+            echo "AWS_SESSION_TOKEN=$session_token"
+            echo "AWS_REGION=$AWS_REGION"
+            echo "AWS_DEFAULT_REGION=$AWS_REGION"
+          } >> "$GITHUB_ENV"
+
+      - name: Show Python version
+        run: python3 --version
+
+      - name: Install sync dependencies
+        run: python3 -m pip install -r scripts/requirements.txt
 
       - name: Sync league settings
         env:

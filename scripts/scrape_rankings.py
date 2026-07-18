@@ -16,6 +16,16 @@ SCORING_URLS = {
     "ppr": "https://www.fantasypros.com/nfl/rankings/ppr-cheatsheets.php",
 }
 
+DATASET_KEYS = {
+    "rankings": "data/rankings.json",
+    "projections": "data/projections.json",
+    "depth-charts": "data/depth-charts.json",
+    "injuries": "data/injuries.json",
+    "rookies": "data/rookies.json",
+    "previous-year-results": "data/previous-year-results.json",
+    "combined": "data/fantasy-data.json",
+}
+
 PROJECTION_URLS = {
     "QB": "https://www.fantasypros.com/nfl/projections/qb.php?week=draft",
     "RB": "https://www.fantasypros.com/nfl/projections/rb.php?week=draft",
@@ -192,25 +202,92 @@ HEADERS = {
 
 def main() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--dataset",
+        choices=[*DATASET_KEYS.keys(), "all"],
+        default=os.environ.get("SCRAPE_DATASET", "combined"),
+        help="Logical data pull to scrape. Use 'all' to generate every split file locally.",
+    )
     parser.add_argument("--bucket", default=os.environ.get("RANKINGS_BUCKET"))
-    parser.add_argument("--key", default=os.environ.get("RANKINGS_KEY", "data/fantasy-data.json"))
-    parser.add_argument("--output", default="dist-data/fantasy-data.json")
+    parser.add_argument("--key", default=os.environ.get("RANKINGS_KEY"))
+    parser.add_argument("--output")
     parser.add_argument("--season", type=int, default=int(os.environ.get("NFL_SEASON", datetime.now(timezone.utc).year)))
     args = parser.parse_args()
 
+    datasets = [dataset for dataset in DATASET_KEYS if dataset != "combined"] if args.dataset == "all" else [args.dataset]
+    for dataset in datasets:
+        output = args.output or f"dist-data/{dataset}.json"
+        key = args.key or DATASET_KEYS[dataset]
+        payload = build_dataset_payload(dataset, args.season)
+        write_payload(payload, output)
+        if args.bucket:
+            upload_payload(output, args.bucket, key)
+
+
+def build_dataset_payload(dataset: str, season: int) -> Dict:
+    generated_at = datetime.now(timezone.utc).isoformat()
+    if dataset == "rankings":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "FantasyPros rankings",
+            "scoring": {scoring: fetch_rankings(url) for scoring, url in SCORING_URLS.items()},
+        }
+    if dataset == "projections":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "FantasyPros projections",
+            "projections": fetch_projections(),
+        }
+    if dataset == "depth-charts":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "CBS Sports depth charts with Sleeper fallback",
+            "depthCharts": fetch_depth_charts(fetch_sleeper_players()),
+        }
+    if dataset == "injuries":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "CBS Sports injuries",
+            "injuries": fetch_injuries(),
+        }
+    if dataset == "rookies":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "Pro Football Reference or Wikipedia rookie draft results with Sleeper fallback",
+            "rookies": fetch_rookies(season, fetch_sleeper_players()),
+        }
+    if dataset == "previous-year-results":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "FantasyPros previous-year results",
+            "previousSeason": season - 1,
+            "previousYearResults": fetch_previous_year_results(season - 1),
+        }
+    if dataset == "combined":
+        return build_combined_payload(season)
+    raise ValueError(f"Unsupported dataset: {dataset}")
+
+
+def build_combined_payload(season: int) -> Dict:
     projections = fetch_projections()
     sleeper_players = fetch_sleeper_players()
     depth_charts = fetch_depth_charts(sleeper_players)
     injuries = fetch_injuries()
-    rookies = fetch_rookies(args.season, sleeper_players)
-    previous_year_results = fetch_previous_year_results(args.season - 1)
+    rookies = fetch_rookies(season, sleeper_players)
+    previous_year_results = fetch_previous_year_results(season - 1)
     enrichments = build_player_enrichments(depth_charts, injuries, rookies, previous_year_results, sleeper_players)
-    payload = {
+    return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "season": args.season,
+        "season": season,
         "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, Pro Football Reference draft results when available",
         "metadata": {
-            "previousSeason": args.season - 1,
+            "previousSeason": season - 1,
             "sources": {
                 "rankings": "FantasyPros",
                 "projections": "FantasyPros",
@@ -230,20 +307,23 @@ def main() -> None:
         "previousYearResults": previous_year_results,
     }
 
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as output_file:
+
+def write_payload(payload: Dict, output: str) -> None:
+    os.makedirs(os.path.dirname(output), exist_ok=True)
+    with open(output, "w", encoding="utf-8") as output_file:
         json.dump(payload, output_file, indent=2)
 
-    if args.bucket:
-        boto3.client("s3").upload_file(
-            args.output,
-            args.bucket,
-            args.key,
-            ExtraArgs={
-                "CacheControl": "public, max-age=300",
-                "ContentType": "application/json",
-            },
-        )
+
+def upload_payload(output: str, bucket: str, key: str) -> None:
+    boto3.client("s3").upload_file(
+        output,
+        bucket,
+        key,
+        ExtraArgs={
+            "CacheControl": "public, max-age=300",
+            "ContentType": "application/json",
+        },
+    )
 
 
 def fetch_rankings(url: str) -> List[Dict]:
