@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import {
   Activity,
   Baby,
+  BarChart3,
   ClipboardList,
   LayoutGrid,
   ListTree,
@@ -15,7 +16,7 @@ import './style.css'
 type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
-type AppTab = 'players' | 'board' | 'depth' | 'injuries' | 'rookies' | 'leagues'
+type AppTab = 'players' | 'board' | 'consistency' | 'depth' | 'injuries' | 'rookies' | 'leagues'
 type DepthChartColumn = 'QB' | 'RB' | 'WR' | 'TE' | 'K'
 type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string; projectedWinTotal?: number }
 
@@ -82,6 +83,55 @@ type PreviousYearResult = {
   fpts_per_game?: number
 }
 
+type PreviousYearWeeklyResult = PreviousYearResult & {
+  week: number
+  opponent?: string
+  passing_td?: number
+  passing_tds?: number
+  passing_int?: number
+  passing_ints?: number
+  passing_yds?: number
+  rushing_td?: number
+  rushing_tds?: number
+  rushing_yds?: number
+  receiving_rec?: number
+  receiving_td?: number
+  receiving_tds?: number
+  receiving_yds?: number
+  fumbles_lost?: number
+  fg?: number
+  xpt?: number
+  sack?: number
+  int?: number
+  fr?: number
+  td?: number
+  special_teams_td?: number
+  safety?: number
+}
+
+type ConsistencyWeek = {
+  week: number
+  points: number
+  rank: number
+  opponent?: string
+}
+
+type ConsistencyPlayerRow = {
+  id: string
+  name: string
+  team: string
+  position: Position
+  rank: number
+  games: number
+  totalPoints: number
+  ppg: number
+  consistencyScore: number
+  top6: number
+  top12: number
+  top24: number
+  weeks: Record<number, ConsistencyWeek>
+}
+
 type SleeperDetail = {
   playerId?: string
   status?: string
@@ -111,6 +161,7 @@ type RankingsFile = {
   injuries?: InjuryDetail[]
   rookies?: RookieDetail[]
   previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
+  previousYearWeeklyResults?: Partial<Record<Position, PreviousYearWeeklyResult[]>>
 }
 
 type TeamWinTotal = {
@@ -132,6 +183,7 @@ type SplitDataFiles = {
   injuries: { injuries?: InjuryDetail[] }
   rookies: { rookies?: RookieDetail[] }
   previousYearResults: { previousYearResults?: RankingsFile['previousYearResults']; previousSeason?: number }
+  previousYearWeeklyResults?: { previousYearWeeklyResults?: RankingsFile['previousYearWeeklyResults']; previousSeason?: number }
 }
 
 type LineupSettings = {
@@ -404,6 +456,9 @@ function App() {
   const [query, setQuery] = useState('')
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
   const [activeTab, setActiveTab] = useState<AppTab>('players')
+  const [consistencyPosition, setConsistencyPosition] = useState<Position>('QB')
+  const [consistencyQuery, setConsistencyQuery] = useState('')
+  const [consistencyMinGames, setConsistencyMinGames] = useState(1)
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
   const [sleeperInput, setSleeperInput] = useState('')
   const [sleeperStatus, setSleeperStatus] = useState('')
@@ -537,6 +592,10 @@ function App() {
       ),
     [data.rookies],
   )
+  const consistencyRows = useMemo(
+    () => buildConsistencyRows(data.previousYearWeeklyResults, consistencyPosition, selectedLeague.scoring, consistencyMinGames, consistencyQuery),
+    [data.previousYearWeeklyResults, consistencyPosition, selectedLeague.scoring, consistencyMinGames, consistencyQuery],
+  )
   function updateDraft(nextDraft: DraftState) {
     setDraftsByLeague((current) => ({ ...current, [selectedLeague.id]: nextDraft }))
   }
@@ -590,6 +649,9 @@ function App() {
         <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>
           <LayoutGrid size={16} /> Board
         </button>
+        <button className={activeTab === 'consistency' ? 'active' : ''} onClick={() => setActiveTab('consistency')}>
+          <BarChart3 size={16} /> Consistency
+        </button>
         <button className={activeTab === 'depth' ? 'active' : ''} onClick={() => setActiveTab('depth')}>
           <ListTree size={16} /> Depth Charts
         </button>
@@ -629,6 +691,20 @@ function App() {
         />
       ) : null}
 
+      {activeTab === 'consistency' ? (
+        <ConsistencyPage
+          league={selectedLeague}
+          minGames={consistencyMinGames}
+          position={consistencyPosition}
+          query={consistencyQuery}
+          rows={consistencyRows}
+          season={(data.season || new Date().getFullYear()) - 1}
+          onMinGamesChange={setConsistencyMinGames}
+          onPositionChange={setConsistencyPosition}
+          onQueryChange={setConsistencyQuery}
+        />
+      ) : null}
+
       {activeTab === 'depth' ? (
         <DepthChartsPage
           rows={depthRows}
@@ -654,6 +730,108 @@ function App() {
         />
       ) : null}
     </main>
+  )
+}
+
+function ConsistencyPage({
+  league,
+  minGames,
+  position,
+  query,
+  rows,
+  season,
+  onMinGamesChange,
+  onPositionChange,
+  onQueryChange,
+}: {
+  league: LeagueProfile
+  minGames: number
+  position: Position
+  query: string
+  rows: ConsistencyPlayerRow[]
+  season: number
+  onMinGamesChange: (value: number) => void
+  onPositionChange: (position: Position) => void
+  onQueryChange: (query: string) => void
+}) {
+  const weeks = Array.from({ length: 18 }, (_, index) => index + 1)
+
+  return (
+    <section className="consistencyPage">
+      <div className="consistencyPositionTabs" aria-label="Consistency positions">
+        {POSITION_ORDER.map((item) => (
+          <button className={position === item ? 'active' : ''} key={item} onClick={() => onPositionChange(item)} type="button">
+            {item}
+          </button>
+        ))}
+      </div>
+      <div className="consistencyToolbar">
+        <label className="searchBox consistencySearch">
+          <Search size={18} />
+          <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players" />
+        </label>
+        <div className="consistencyMeta">
+          <span>Based on {league.scoring.passingTd} Pts per Pass TD Scoring</span>
+          <span className="legendTop6">Top 6</span>
+          <span className="legendTop12">Top 12</span>
+          <span className="legendTop24">Top 24</span>
+          <span className="legendMiss">25+</span>
+        </div>
+        <label className="minGamesControl">
+          Min. Games
+          <button type="button" onClick={() => onMinGamesChange(Math.max(1, minGames - 1))}>-</button>
+          <span>{minGames}</span>
+          <button type="button" onClick={() => onMinGamesChange(Math.min(18, minGames + 1))}>+</button>
+        </label>
+      </div>
+      <div className="consistencyTableWrap">
+        <div className="consistencyGrid">
+          <div className="consistencyHead consistencyPlayerHead">Player</div>
+          <div className="consistencyHead statHead">Rank</div>
+          <div className="consistencyHead statHead">PPG</div>
+          {weeks.map((week) => (
+            <div className="consistencyHead weekHead" key={week}>{week}</div>
+          ))}
+          {rows.map((row) => (
+            <React.Fragment key={row.id}>
+              <div className="consistencyPlayerCell">
+                <span className={`position position${row.position}`}>{row.position}</span>
+                <div>
+                  <strong>{row.name}</strong>
+                  <small>{row.team} ({row.top12} top-12, {row.top24} top-24)</small>
+                </div>
+              </div>
+              <div className="consistencyRankCell">
+                <strong>{row.rank}</strong>
+                <small>{row.totalPoints.toFixed(1)} PTS</small>
+              </div>
+              <div className="consistencyPpgCell">{row.ppg.toFixed(1)}</div>
+              {weeks.map((week) => {
+                const result = row.weeks[week]
+                return (
+                  <div className={`consistencyWeekCell ${getConsistencyCellClass(result?.rank)}`} key={`${row.id}-${week}`}>
+                    {result ? (
+                      <>
+                        <small>{result.points.toFixed(1)} PTS</small>
+                        <strong>{result.rank}</strong>
+                        <span>{result.opponent || ''}</span>
+                      </>
+                    ) : (
+                      <span className="byeLabel">BYE</span>
+                    )}
+                  </div>
+                )
+              })}
+            </React.Fragment>
+          ))}
+          {rows.length === 0 ? (
+            <div className="consistencyEmpty">
+              No weekly {position} results are available for {season}. Generate or publish `previous-year-weekly-results.json` to populate this page.
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -893,6 +1071,117 @@ function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTi
   )
 }
 
+function buildConsistencyRows(
+  weeklyResults: RankingsFile['previousYearWeeklyResults'],
+  position: Position,
+  scoring: ScoringRules,
+  minGames: number,
+  query: string,
+): ConsistencyPlayerRow[] {
+  const rows = weeklyResults?.[position] || []
+  if (!rows.length) return []
+
+  const weekRanks = new Map<string, ConsistencyWeek>()
+  Array.from({ length: 18 }, (_, index) => index + 1).forEach((week) => {
+    rows
+      .filter((row) => row.week === week)
+      .map((row) => ({
+        row,
+        points: calculatePreviousYearWeeklyPoints(row, scoring),
+      }))
+      .sort((a, b) => b.points - a.points)
+      .forEach((item, index) => {
+        weekRanks.set(`${playerKey(item.row.name, item.row.team)}-${week}`, {
+          week,
+          points: item.points,
+          rank: index + 1,
+          opponent: item.row.opponent,
+        })
+      })
+  })
+
+  const byPlayer = new Map<string, ConsistencyPlayerRow>()
+  rows.forEach((row) => {
+    const key = playerKey(row.name, row.team)
+    const result = weekRanks.get(`${key}-${row.week}`)
+    if (!result) return
+    const current =
+      byPlayer.get(key) ||
+      ({
+        id: key,
+        name: row.name,
+        team: row.team,
+        position,
+        rank: 0,
+        games: 0,
+        totalPoints: 0,
+        ppg: 0,
+        consistencyScore: 0,
+        top6: 0,
+        top12: 0,
+        top24: 0,
+        weeks: {},
+      } satisfies ConsistencyPlayerRow)
+    current.games += 1
+    current.totalPoints += result.points
+    current.top6 += result.rank <= 6 ? 1 : 0
+    current.top12 += result.rank <= 12 ? 1 : 0
+    current.top24 += result.rank <= 24 ? 1 : 0
+    current.consistencyScore += result.rank <= 6 ? 6 : result.rank <= 12 ? 4 : result.rank <= 24 ? 2 : 0
+    current.weeks[row.week] = result
+    byPlayer.set(key, current)
+  })
+
+  const lowerQuery = query.toLowerCase().trim()
+  return [...byPlayer.values()]
+    .filter((row) => row.games >= minGames)
+    .filter((row) => !lowerQuery || `${row.name} ${row.team} ${row.position}`.toLowerCase().includes(lowerQuery))
+    .map((row) => ({ ...row, ppg: row.games ? row.totalPoints / row.games : 0 }))
+    .sort(
+      (a, b) =>
+        b.consistencyScore - a.consistencyScore ||
+        b.top6 - a.top6 ||
+        b.top12 - a.top12 ||
+        b.top24 - a.top24 ||
+        b.ppg - a.ppg,
+    )
+    .map((row, index) => ({ ...row, rank: index + 1 }))
+}
+
+function calculatePreviousYearWeeklyPoints(row: PreviousYearWeeklyResult, scoring: ScoringRules) {
+  if (row.position === 'K') {
+    return value(row.fg) * scoring.fieldGoal + value(row.xpt) * scoring.extraPoint
+  }
+  if (row.position === 'DST') {
+    return (
+      value(row.sack) * scoring.dstSack +
+      value(row.int) * scoring.dstInterception +
+      value(row.fr) * scoring.dstFumbleRecovery +
+      (value(row.td) + value(row.special_teams_td)) * scoring.dstTouchdown +
+      value(row.safety) * scoring.dstSafety
+    )
+  }
+  return (
+    value(row.passing_yds) / scoring.passingYardsPerPoint +
+    value(row.passing_tds ?? row.passing_td) * scoring.passingTd +
+    value(row.passing_ints ?? row.passing_int) * scoring.interception +
+    value(row.rushing_yds) / scoring.rushingYardsPerPoint +
+    value(row.rushing_tds ?? row.rushing_td) * scoring.rushReceiveTd +
+    value(row.receiving_rec) * scoring.reception +
+    value(row.receiving_yds) / scoring.receivingYardsPerPoint +
+    value(row.receiving_tds ?? row.receiving_td) * scoring.rushReceiveTd +
+    value(row.fumbles_lost) * scoring.fumbleLost
+  )
+}
+
+function getConsistencyCellClass(rank: number | undefined) {
+  if (!rank) return 'consistencyBye'
+  if (rank <= 6) return 'consistencyTop6'
+  if (rank <= 12) return 'consistencyTop12'
+  if (rank <= 24) return 'consistencyTop24'
+  return 'consistencyMiss'
+}
+
 function buildDepthChartRows(depthCharts: RankingsFile['depthCharts'], teamWinTotals: RankingsFile['teamWinTotals']): DepthChartTeamRow[] {
   if (!depthCharts) return []
   const mergedCharts = Object.entries(depthCharts).reduce<Record<string, Partial<Record<Position, DepthChartEntry[]>>>>((merged, [team, positions]) => {
@@ -1106,16 +1395,19 @@ function normalizeSleeperTeam(team: string | undefined) {
 }
 
 async function fetchSplitData(): Promise<RankingsFile> {
-  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults] = await Promise.all([
+  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults] = await Promise.all([
     fetchJson<SplitDataFiles['rankings']>(`${DATA_BASE_URL}/rankings.json`),
     fetchJson<SplitDataFiles['projections']>(`${DATA_BASE_URL}/projections.json`),
     fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`),
     fetchJson<SplitDataFiles['injuries']>(`${DATA_BASE_URL}/injuries.json`),
     fetchJson<SplitDataFiles['rookies']>(`${DATA_BASE_URL}/rookies.json`),
     fetchJson<SplitDataFiles['previousYearResults']>(`${DATA_BASE_URL}/previous-year-results.json`),
+    fetchJson<NonNullable<SplitDataFiles['previousYearWeeklyResults']>>(`${DATA_BASE_URL}/previous-year-weekly-results.json`).catch(() => ({
+      previousYearWeeklyResults: {},
+    })),
   ])
 
-  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults })
+  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults })
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -1130,6 +1422,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
   const injuries = files.injuries.injuries || []
   const rookies = files.rookies.rookies || []
   const previousYearResults = files.previousYearResults.previousYearResults || {}
+  const previousYearWeeklyResults = files.previousYearWeeklyResults?.previousYearWeeklyResults || {}
   const enrichments = buildClientEnrichments(depthCharts, injuries, rookies, previousYearResults)
 
   return {
@@ -1156,6 +1449,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
     injuries,
     rookies,
     previousYearResults,
+    previousYearWeeklyResults,
   }
 }
 

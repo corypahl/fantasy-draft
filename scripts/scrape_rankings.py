@@ -23,6 +23,7 @@ DATASET_KEYS = {
     "injuries": "data/injuries.json",
     "rookies": "data/rookies.json",
     "previous-year-results": "data/previous-year-results.json",
+    "previous-year-weekly-results": "data/previous-year-weekly-results.json",
     "combined": "data/fantasy-data.json",
 }
 
@@ -49,6 +50,13 @@ STAT_URLS = {
     "RB": "https://www.fantasypros.com/nfl/stats/rb.php?year={year}",
     "WR": "https://www.fantasypros.com/nfl/stats/wr.php?year={year}",
     "TE": "https://www.fantasypros.com/nfl/stats/te.php?year={year}",
+    "K": "https://www.fantasypros.com/nfl/stats/k.php?year={year}",
+    "DST": "https://www.fantasypros.com/nfl/stats/dst.php?year={year}",
+}
+
+WEEKLY_STAT_URLS = {
+    position: f"{url_template}&range=week&week={{week}}"
+    for position, url_template in STAT_URLS.items()
 }
 
 STAT_KEYS = {
@@ -121,7 +129,44 @@ STAT_KEYS = {
         "receiving_ypr",
         "receiving_20_plus",
         "receiving_td",
+        "rushing_att",
+        "rushing_yds",
+        "rushing_td",
         "fumbles_lost",
+        "games",
+        "fpts",
+        "fpts_per_game",
+        "rostered",
+    ],
+    "K": [
+        "rank",
+        "player",
+        "fg",
+        "fga",
+        "fg_pct",
+        "fg_long",
+        "fg_1_19",
+        "fg_20_29",
+        "fg_30_39",
+        "fg_40_49",
+        "fg_50_plus",
+        "xpt",
+        "xpa",
+        "games",
+        "fpts",
+        "fpts_per_game",
+        "rostered",
+    ],
+    "DST": [
+        "rank",
+        "player",
+        "sack",
+        "int",
+        "fr",
+        "ff",
+        "td",
+        "safety",
+        "special_teams_td",
         "games",
         "fpts",
         "fpts_per_game",
@@ -315,6 +360,14 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
             "previousSeason": season - 1,
             "previousYearResults": fetch_previous_year_results(season - 1),
         }
+    if dataset == "previous-year-weekly-results":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "FantasyPros previous-year weekly results",
+            "previousSeason": season - 1,
+            "previousYearWeeklyResults": fetch_previous_year_weekly_results(season - 1),
+        }
     if dataset == "combined":
         return build_combined_payload(season)
     raise ValueError(f"Unsupported dataset: {dataset}")
@@ -327,6 +380,7 @@ def build_combined_payload(season: int) -> Dict:
     injuries = fetch_injuries()
     rookies = fetch_rookies(season)
     previous_year_results = fetch_previous_year_results(season - 1)
+    previous_year_weekly_results = fetch_previous_year_weekly_results(season - 1)
     enrichments = build_player_enrichments(depth_charts, injuries, rookies, previous_year_results, sleeper_players)
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
@@ -338,6 +392,7 @@ def build_combined_payload(season: int) -> Dict:
                 "rankings": "FantasyPros",
                 "projections": "FantasyPros with CBS Sports fallback",
                 "previousYearResults": "FantasyPros",
+                "previousYearWeeklyResults": "FantasyPros",
                 "depthCharts": "CBS Sports with Sleeper fallback",
                 "teamWinTotals": "FOX Sports / DraftKings",
                 "injuries": "CBS Sports",
@@ -353,6 +408,7 @@ def build_combined_payload(season: int) -> Dict:
         "injuries": injuries,
         "rookies": rookies,
         "previousYearResults": previous_year_results,
+        "previousYearWeeklyResults": previous_year_weekly_results,
     }
 
 
@@ -819,6 +875,33 @@ def fetch_previous_year_results(previous_year: int) -> Dict[str, List[Dict]]:
                 item = parse_stat_row(position, keys, cells)
                 if item:
                     rows.append(item)
+        results[position] = rows
+    return results
+
+
+def fetch_previous_year_weekly_results(previous_year: int) -> Dict[str, List[Dict]]:
+    results = {}
+    for position, url_template in WEEKLY_STAT_URLS.items():
+        rows = []
+        keys = STAT_KEYS[position]
+        for week in range(1, 19):
+            url = url_template.format(year=previous_year, week=week)
+            try:
+                soup = fetch_soup(url)
+            except requests.RequestException:
+                continue
+            table = soup.select_one("table")
+            if not table:
+                continue
+            for row in table.select("tbody tr"):
+                cells = [cell.get_text(" ", strip=True) for cell in row.select("td, th")]
+                if len(cells) < 3:
+                    continue
+                item = parse_stat_row(position, keys, cells)
+                if not item:
+                    continue
+                item["week"] = week
+                rows.append(item)
         results[position] = rows
     return results
 

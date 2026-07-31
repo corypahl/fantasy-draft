@@ -208,6 +208,289 @@ h3 {
   box-shadow: 0 4px 12px rgba(49, 130, 206, 0.3);
 }
 
+.consistencyPage {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+}
+
+.consistencyPositionTabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 3px solid var(--accent-green);
+  background: #ffffff;
+}
+
+.consistencyPositionTabs button {
+  min-width: 84px;
+  min-height: 58px;
+  border: 0;
+  background: transparent;
+  color: #4da754;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.consistencyPositionTabs button.active {
+  background: #5aa657;
+  color: #ffffff;
+}
+
+.consistencyToolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.consistencySearch {
+  max-width: 420px;
+  background: #efefef;
+}
+
+.consistencySearch input {
+  color: #1f2933;
+}
+
+.consistencyMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  color: #5c636b;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.consistencyMeta > span:first-child {
+  margin-right: 0.75rem;
+}
+
+.consistencyMeta span:not(:first-child) {
+  min-height: 32px;
+  padding: 0.35rem 0.7rem;
+  color: #5bd15e;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.consistencyMeta .legendTop6 {
+  background: #1f5a19;
+}
+
+.consistencyMeta .legendTop12 {
+  background: #2c7723;
+}
+
+.consistencyMeta .legendTop24 {
+  background: #9c8b22;
+  color: #f1d85e;
+}
+
+.consistencyMeta .legendMiss {
+  background: #63180f;
+  color: #ff513f;
+}
+
+.minGamesControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 46px;
+  border-bottom: 2px solid #5aa657;
+  border-radius: 4px 4px 0 0;
+  background: #efefef;
+  color: #4a4f56;
+  padding: 0 0.85rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.minGamesControl button {
+  border: 0;
+  background: transparent;
+  color: #111111;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.consistencyTableWrap {
+  overflow: auto;
+  background: #ffffff;
+}
+
+.consistencyGrid {
+  display: grid;
+  grid-template-columns: 300px 92px 82px repeat(18, 100px);
+  min-width: 2274px;
+}
+
+.consistencyHead {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  border-bottom: 1px solid #1a1a1a;
+  background: #000000;
+  color: #ffffff;
+  padding: 0 1rem;
+  font-weight: 900;
+}
+
+.consistencyPlayerHead {
+  left: 0;
+  z-index: 7;
+}
+
+.statHead:nth-child(2) {
+  left: 300px;
+  z-index: 6;
+}
+
+.statHead:nth-child(3) {
+  left: 392px;
+  z-index: 6;
+}
+
+.weekHead {
+  justify-content: center;
+}
+
+.consistencyPlayerCell,
+.consistencyRankCell,
+.consistencyPpgCell,
+.consistencyWeekCell {
+  min-height: 74px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.consistencyPlayerCell {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  background: #ffffff;
+  color: #1d2733;
+  padding: 0 1rem;
+}
+
+.consistencyPlayerCell:nth-of-type(odd) {
+  background: #f3f3f3;
+}
+
+.consistencyPlayerCell strong {
+  display: block;
+  overflow: hidden;
+  color: #2f73ff;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consistencyPlayerCell small,
+.consistencyRankCell small {
+  color: #8a8f96;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.consistencyRankCell,
+.consistencyPpgCell {
+  position: sticky;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #5e6369;
+  font-size: 1rem;
+}
+
+.consistencyRankCell {
+  left: 300px;
+  box-shadow: 8px 0 18px rgba(0, 0, 0, 0.12);
+}
+
+.consistencyRankCell strong {
+  color: #4f555c;
+  font-size: 1.25rem;
+}
+
+.consistencyPpgCell {
+  left: 392px;
+  font-size: 1rem;
+}
+
+.consistencyWeekCell {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.05rem;
+  color: #9ff19d;
+  padding: 0.3rem;
+  text-align: center;
+}
+
+.consistencyWeekCell small {
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.consistencyWeekCell strong {
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.consistencyWeekCell span {
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.consistencyTop6 {
+  background: #1f5a19;
+}
+
+.consistencyTop12 {
+  background: #32782b;
+}
+
+.consistencyTop24 {
+  background: #a79a2d;
+  color: #f7df68;
+}
+
+.consistencyMiss {
+  background: #671b10;
+  color: #ff5948;
+}
+
+.consistencyBye {
+  background: #ffffff;
+  color: #9b9b9b;
+}
+
+.byeLabel {
+  color: #8a8a8a;
+  font-size: 1rem !important;
+}
+
+.consistencyEmpty {
+  grid-column: 1 / -1;
+  padding: 2rem;
+  background: #ffffff;
+  color: #5c636b;
+  font-weight: 700;
+}
+
 .draftGrid {
   display: grid;
   grid-template-columns: 330px minmax(0, 1fr);
@@ -1268,6 +1551,19 @@ h3 {
   .filters {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .consistencyToolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .consistencySearch {
+    max-width: none;
+  }
+
+  .consistencyMeta {
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 
   .leagueSwitcher,
