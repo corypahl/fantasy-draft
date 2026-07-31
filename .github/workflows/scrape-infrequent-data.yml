@@ -21,6 +21,9 @@ jobs:
           - dataset: previous-year-results
             key: data/previous-year-results.json
             output: dist-data/previous-year-results.json
+          - dataset: previous-year-weekly-results
+            key: data/previous-year-weekly-results.json
+            output: dist-data/previous-year-weekly-results.json
     steps:
       - name: Checkout
         uses: actions/checkout@v5
