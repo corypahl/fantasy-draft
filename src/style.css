@@ -1117,6 +1117,27 @@ h3 {
   font-weight: 900;
 }
 
+.depthTeamCell {
+  display: grid;
+  gap: 0.12rem;
+  align-content: center;
+  justify-items: flex-start;
+}
+
+.depthTeamCell span {
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.depthTeamCell small {
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .depthHeadingQB {
   background: #8f1d16;
 }

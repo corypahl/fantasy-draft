@@ -17,7 +17,7 @@ type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
 type AppTab = 'players' | 'board' | 'depth' | 'injuries' | 'rookies' | 'leagues'
 type DepthChartColumn = 'QB' | 'RB' | 'WR' | 'TE' | 'K'
-type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string }
+type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string; projectedWinTotal?: number }
 
 type Player = {
   id: string
@@ -107,9 +107,17 @@ type RankingsFile = {
   source: string
   scoring: Partial<Record<ScoringPreset, Player[]>>
   depthCharts?: Record<string, Partial<Record<Position, DepthChartEntry[]>>>
+  teamWinTotals?: Record<string, TeamWinTotal>
   injuries?: InjuryDetail[]
   rookies?: RookieDetail[]
   previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
+}
+
+type TeamWinTotal = {
+  wins?: number
+  overOdds?: string
+  underOdds?: string
+  source?: string
 }
 
 type ProjectionDetail = {
@@ -120,7 +128,7 @@ type ProjectionDetail = {
 type SplitDataFiles = {
   rankings: Pick<RankingsFile, 'generatedAt' | 'season' | 'source' | 'scoring'>
   projections: { projections?: Record<string, ProjectionDetail> }
-  depthCharts: { depthCharts?: RankingsFile['depthCharts'] }
+  depthCharts: { depthCharts?: RankingsFile['depthCharts']; teamWinTotals?: RankingsFile['teamWinTotals'] }
   injuries: { injuries?: InjuryDetail[] }
   rookies: { rookies?: RookieDetail[] }
   previousYearResults: { previousYearResults?: RankingsFile['previousYearResults']; previousSeason?: number }
@@ -509,7 +517,7 @@ function App() {
     })
     return ranks
   }, [players])
-  const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts), [data.depthCharts])
+  const depthRows = useMemo(() => buildDepthChartRows(data.depthCharts, data.teamWinTotals), [data.depthCharts, data.teamWinTotals])
   const injuryRows = useMemo(
     () =>
       [...(data.injuries || [])].sort(
@@ -680,7 +688,10 @@ function DepthChartsPage({
         </div>
         {rows.map((row) => (
           <div className="depthMatrixRow" key={row.team}>
-            <strong>{row.team}</strong>
+            <strong className="depthTeamCell">
+              <span>{row.team}</span>
+              {row.projectedWinTotal != null ? <small>{row.projectedWinTotal.toFixed(1)} wins</small> : null}
+            </strong>
             {columns.map((column) => {
               const players = row[column]
               return (
@@ -882,7 +893,7 @@ function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTi
   )
 }
 
-function buildDepthChartRows(depthCharts: RankingsFile['depthCharts']): DepthChartTeamRow[] {
+function buildDepthChartRows(depthCharts: RankingsFile['depthCharts'], teamWinTotals: RankingsFile['teamWinTotals']): DepthChartTeamRow[] {
   if (!depthCharts) return []
   const mergedCharts = Object.entries(depthCharts).reduce<Record<string, Partial<Record<Position, DepthChartEntry[]>>>>((merged, [team, positions]) => {
     const normalizedTeam = normalizeDisplayTeam(team)
@@ -903,6 +914,7 @@ function buildDepthChartRows(depthCharts: RankingsFile['depthCharts']): DepthCha
     .map(([team, positions]) => {
       const row: DepthChartTeamRow = {
         team,
+        projectedWinTotal: teamWinTotals?.[team]?.wins,
         QB: getDepthEntries(positions?.QB, 2),
         RB: getDepthEntries(positions?.RB, 3),
         WR: getDepthEntries(positions?.WR, 3),
@@ -1114,6 +1126,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 function composeSplitData(files: SplitDataFiles): RankingsFile {
   const depthCharts = files.depthCharts.depthCharts
+  const teamWinTotals = files.depthCharts.teamWinTotals || {}
   const injuries = files.injuries.injuries || []
   const rookies = files.rookies.rookies || []
   const previousYearResults = files.previousYearResults.previousYearResults || {}
@@ -1139,6 +1152,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
       ]),
     ) as Partial<Record<ScoringPreset, Player[]>>,
     depthCharts,
+    teamWinTotals,
     injuries,
     rookies,
     previousYearResults,

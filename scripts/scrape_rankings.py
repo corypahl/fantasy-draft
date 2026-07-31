@@ -141,8 +141,44 @@ DEPTH_LIMITS = {"QB": 2, "RB": 3, "WR": 3, "TE": 2, "K": 1}
 
 SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl"
 CBS_INJURIES_URL = "https://www.cbssports.com/nfl/injuries/"
+FOX_WIN_TOTALS_URL = "https://www.foxsports.com/stories/nfl/2026-nfl-win-totals-over-unders-all-32-squads"
 PFR_DRAFT_URL = "https://www.pro-football-reference.com/years/{year}/draft.htm"
 WIKIPEDIA_DRAFT_URL = "https://en.wikipedia.org/wiki/{year}_NFL_draft"
+
+NFL_TEAM_NAMES = {
+    "ARI": "Arizona Cardinals",
+    "ATL": "Atlanta Falcons",
+    "BAL": "Baltimore Ravens",
+    "BUF": "Buffalo Bills",
+    "CAR": "Carolina Panthers",
+    "CHI": "Chicago Bears",
+    "CIN": "Cincinnati Bengals",
+    "CLE": "Cleveland Browns",
+    "DAL": "Dallas Cowboys",
+    "DEN": "Denver Broncos",
+    "DET": "Detroit Lions",
+    "GB": "Green Bay Packers",
+    "HOU": "Houston Texans",
+    "IND": "Indianapolis Colts",
+    "JAX": "Jacksonville Jaguars",
+    "KC": "Kansas City Chiefs",
+    "LV": "Las Vegas Raiders",
+    "LAC": "Los Angeles Chargers",
+    "LAR": "Los Angeles Rams",
+    "MIA": "Miami Dolphins",
+    "MIN": "Minnesota Vikings",
+    "NE": "New England Patriots",
+    "NO": "New Orleans Saints",
+    "NYG": "New York Giants",
+    "NYJ": "New York Jets",
+    "PHI": "Philadelphia Eagles",
+    "PIT": "Pittsburgh Steelers",
+    "SF": "San Francisco 49ers",
+    "SEA": "Seattle Seahawks",
+    "TB": "Tampa Bay Buccaneers",
+    "TEN": "Tennessee Titans",
+    "WAS": "Washington Commanders",
+}
 
 PROJECTION_KEYS = {
     "QB": [
@@ -253,8 +289,9 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
         return {
             "generatedAt": generated_at,
             "season": season,
-            "source": "CBS Sports depth charts with Sleeper fallback",
+            "source": "CBS Sports depth charts with Sleeper fallback, FOX Sports win totals",
             "depthCharts": fetch_depth_charts(fetch_sleeper_players()),
+            "teamWinTotals": fetch_projected_win_totals(),
         }
     if dataset == "injuries":
         return {
@@ -302,6 +339,7 @@ def build_combined_payload(season: int) -> Dict:
                 "projections": "FantasyPros with CBS Sports fallback",
                 "previousYearResults": "FantasyPros",
                 "depthCharts": "CBS Sports with Sleeper fallback",
+                "teamWinTotals": "FOX Sports / DraftKings",
                 "injuries": "CBS Sports",
                 "rookies": "Wikipedia",
             },
@@ -311,6 +349,7 @@ def build_combined_payload(season: int) -> Dict:
             for scoring, url in SCORING_URLS.items()
         },
         "depthCharts": depth_charts,
+        "teamWinTotals": fetch_projected_win_totals(),
         "injuries": injuries,
         "rookies": rookies,
         "previousYearResults": previous_year_results,
@@ -647,6 +686,29 @@ def fetch_injuries() -> List[Dict]:
     except requests.RequestException:
         pass
     return injuries
+
+
+def fetch_projected_win_totals() -> Dict[str, Dict]:
+    try:
+        soup = fetch_soup(FOX_WIN_TOTALS_URL)
+    except requests.RequestException:
+        return {}
+
+    text = soup.get_text("\n", strip=True)
+    totals = {}
+    for team, full_name in NFL_TEAM_NAMES.items():
+        over_match = re.search(rf"{re.escape(full_name)}\s+Over\s+(\d+(?:\.\d+)?):\s+([+-]\d+)", text)
+        section = text[over_match.start() : over_match.start() + 300] if over_match else ""
+        under_match = re.search(r"Under\s+(\d+(?:\.\d+)?):\s+([+-]\d+)", section)
+        if not over_match:
+            continue
+        totals[team] = {
+            "wins": parse_float(over_match.group(1)),
+            "overOdds": over_match.group(2),
+            "underOdds": under_match.group(2) if under_match else "",
+            "source": "FOX Sports / DraftKings",
+        }
+    return totals
 
 
 def fetch_rookies(season: int) -> List[Dict]:
