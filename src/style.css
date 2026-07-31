@@ -219,22 +219,25 @@ h3 {
 .consistencyPositionTabs {
   display: flex;
   overflow-x: auto;
-  border-bottom: 3px solid var(--accent-green);
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  padding: 0.5rem;
 }
 
 .consistencyPositionTabs button {
-  min-width: 84px;
-  min-height: 58px;
-  border: 0;
+  min-width: 58px;
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: transparent;
-  color: #4da754;
-  font-size: 1rem;
-  font-weight: 900;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .consistencyPositionTabs button.active {
-  background: #5aa657;
+  border-color: rgba(56, 161, 105, 0.45);
+  background: rgba(56, 161, 105, 0.18);
   color: #ffffff;
 }
 
@@ -243,17 +246,14 @@ h3 {
   grid-template-columns: minmax(260px, 1fr) auto auto;
   gap: 1rem;
   align-items: center;
-  background: #ffffff;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
   padding: 1rem;
 }
 
 .consistencySearch {
   max-width: 420px;
-  background: #efefef;
-}
-
-.consistencySearch input {
-  color: #1f2933;
+  background: var(--bg-secondary);
 }
 
 .consistencyMeta {
@@ -261,7 +261,8 @@ h3 {
   align-items: center;
   justify-content: flex-end;
   gap: 0;
-  color: #5c636b;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -273,7 +274,8 @@ h3 {
 .consistencyMeta span:not(:first-child) {
   min-height: 32px;
   padding: 0.35rem 0.7rem;
-  color: #5bd15e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #b7f7b8;
   font-size: 0.8rem;
   font-weight: 900;
 }
@@ -301,32 +303,38 @@ h3 {
   align-items: center;
   gap: 0.7rem;
   min-height: 46px;
-  border-bottom: 2px solid #5aa657;
-  border-radius: 4px 4px 0 0;
-  background: #efefef;
-  color: #4a4f56;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   padding: 0 0.85rem;
-  font-weight: 900;
+  font-size: 0.82rem;
+  font-weight: 800;
   white-space: nowrap;
 }
 
 .minGamesControl button {
-  border: 0;
-  background: transparent;
-  color: #111111;
-  font-size: 1.25rem;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 1rem;
   font-weight: 900;
 }
 
 .consistencyTableWrap {
   overflow: auto;
-  background: #ffffff;
+  background: var(--bg-secondary);
 }
 
 .consistencyGrid {
   display: grid;
-  grid-template-columns: 300px 92px 82px repeat(18, 100px);
-  min-width: 2274px;
+  grid-template-columns: 220px 64px 58px repeat(18, 64px);
+  min-width: max(100%, 1494px);
 }
 
 .consistencyHead {
@@ -335,11 +343,13 @@ h3 {
   z-index: 4;
   display: flex;
   align-items: center;
-  min-height: 54px;
-  border-bottom: 1px solid #1a1a1a;
-  background: #000000;
-  color: #ffffff;
-  padding: 0 1rem;
+  min-height: 44px;
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  background: #050608;
+  color: var(--text-primary);
+  padding: 0 0.75rem;
+  font-size: 0.78rem;
   font-weight: 900;
 }
 
@@ -349,12 +359,12 @@ h3 {
 }
 
 .statHead:nth-child(2) {
-  left: 300px;
+  left: 220px;
   z-index: 6;
 }
 
 .statHead:nth-child(3) {
-  left: 392px;
+  left: 284px;
   z-index: 6;
 }
 
@@ -366,8 +376,9 @@ h3 {
 .consistencyRankCell,
 .consistencyPpgCell,
 .consistencyWeekCell {
-  min-height: 74px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  min-height: 62px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .consistencyPlayerCell {
@@ -375,23 +386,24 @@ h3 {
   left: 0;
   z-index: 3;
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 0.55rem;
   align-items: center;
-  background: #ffffff;
-  color: #1d2733;
-  padding: 0 1rem;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0 0.75rem;
 }
 
 .consistencyPlayerCell:nth-of-type(odd) {
-  background: #f3f3f3;
+  background: var(--bg-card);
 }
 
 .consistencyPlayerCell strong {
   display: block;
   overflow: hidden;
-  color: #2f73ff;
-  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-size: 0.84rem;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -399,8 +411,8 @@ h3 {
 
 .consistencyPlayerCell small,
 .consistencyRankCell small {
-  color: #8a8f96;
-  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-size: 0.66rem;
   font-weight: 700;
 }
 
@@ -410,84 +422,86 @@ h3 {
   z-index: 2;
   display: grid;
   place-items: center;
-  background: #ffffff;
-  color: #5e6369;
-  font-size: 1rem;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
 }
 
 .consistencyRankCell {
-  left: 300px;
-  box-shadow: 8px 0 18px rgba(0, 0, 0, 0.12);
+  left: 220px;
+  box-shadow: 8px 0 18px rgba(0, 0, 0, 0.2);
 }
 
 .consistencyRankCell strong {
-  color: #4f555c;
-  font-size: 1.25rem;
+  color: var(--text-primary);
+  font-size: 1rem;
 }
 
 .consistencyPpgCell {
-  left: 392px;
-  font-size: 1rem;
+  left: 284px;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .consistencyWeekCell {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 0.05rem;
+  gap: 0.02rem;
   color: #9ff19d;
-  padding: 0.3rem;
+  padding: 0.22rem;
   text-align: center;
 }
 
 .consistencyWeekCell small {
-  font-size: 0.65rem;
+  font-size: 0.54rem;
   font-weight: 900;
 }
 
 .consistencyWeekCell strong {
-  font-size: 1.45rem;
+  font-size: 1.08rem;
   line-height: 1;
 }
 
 .consistencyWeekCell span {
-  font-size: 0.72rem;
+  font-size: 0.58rem;
   font-weight: 900;
 }
 
 .consistencyTop6 {
-  background: #1f5a19;
+  background: rgba(56, 161, 105, 0.45);
 }
 
 .consistencyTop12 {
-  background: #32782b;
+  background: rgba(56, 161, 105, 0.28);
 }
 
 .consistencyTop24 {
-  background: #a79a2d;
+  background: rgba(214, 158, 46, 0.34);
   color: #f7df68;
 }
 
 .consistencyMiss {
-  background: #671b10;
+  background: rgba(229, 62, 62, 0.22);
   color: #ff5948;
 }
 
 .consistencyBye {
-  background: #ffffff;
-  color: #9b9b9b;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
 }
 
 .byeLabel {
-  color: #8a8a8a;
-  font-size: 1rem !important;
+  color: var(--text-muted);
+  font-size: 0.72rem !important;
 }
 
 .consistencyEmpty {
   grid-column: 1 / -1;
   padding: 2rem;
-  background: #ffffff;
-  color: #5c636b;
+  background: var(--bg-card);
+  color: var(--text-secondary);
   font-weight: 700;
 }
 
