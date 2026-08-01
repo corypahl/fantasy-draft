@@ -16,7 +16,6 @@ import {
   Settings,
   Star,
   Trash2,
-  Undo2,
   X,
 } from 'lucide-react'
 import './style.css'
@@ -25,6 +24,7 @@ type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
 type AppTab = 'players' | 'board' | 'consistency' | 'depth' | 'injuries' | 'rookies' | 'leagues'
+type RecommendationStrategy = 'balanced' | 'upside' | 'safeFloor' | 'zeroRb'
 type DepthChartColumn = 'QB' | 'RB' | 'WR' | 'TE' | 'K'
 type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string; projectedWinTotal?: number }
 
@@ -49,7 +49,6 @@ type Player = {
 
 type RankedPlayer = Player & {
   projectedPoints: number
-  draftScore: number
 }
 
 type Recommendation = {
@@ -57,6 +56,19 @@ type Recommendation = {
   reason: string
   outlook: string
   score: number
+  strategy: RecommendationStrategy
+  metrics: {
+    replacementValue: number
+    replacementPoints: number
+    tierDrop: number
+    availabilityAtNextPick?: number
+    nextUserPick?: number
+    rosterFit: number
+    floor: number
+    upside: number
+    injuryRisk: number
+    byeConflicts: number
+  }
 }
 
 type DepthChartEntry = {
@@ -157,6 +169,32 @@ type SleeperDetail = {
 
 const POSITION_ORDER: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
 const NFL_REGULAR_SEASON_GAMES = 17
+const RECOMMENDATION_STRATEGIES: Record<RecommendationStrategy, {
+  label: string
+  description: string
+  weights: { vor: number; tier: number; urgency: number; roster: number; floor: number; upside: number; value: number; injury: number; bye: number }
+}> = {
+  balanced: {
+    label: 'Balanced',
+    description: 'Blends value, roster fit, tier cliffs and next-pick urgency.',
+    weights: { vor: 0.32, tier: 0.08, urgency: 0.15, roster: 0.24, floor: 0.07, upside: 0.04, value: 0.10, injury: 0.14, bye: 0.05 },
+  },
+  upside: {
+    label: 'Upside',
+    description: 'Prioritizes ceiling, breakouts and players before a tier drop.',
+    weights: { vor: 0.25, tier: 0.15, urgency: 0.10, roster: 0.12, floor: 0.03, upside: 0.27, value: 0.08, injury: 0.08, bye: 0.02 },
+  },
+  safeFloor: {
+    label: 'Safe Floor',
+    description: 'Favors durable, proven production and minimizes draft-day risk.',
+    weights: { vor: 0.28, tier: 0.06, urgency: 0.10, roster: 0.19, floor: 0.28, upside: 0, value: 0.09, injury: 0.24, bye: 0.08 },
+  },
+  zeroRb: {
+    label: 'Zero-RB',
+    description: 'Builds WR/TE strength early, then attacks RB value in later rounds.',
+    weights: { vor: 0.30, tier: 0.10, urgency: 0.14, roster: 0.15, floor: 0.05, upside: 0.11, value: 0.15, injury: 0.12, bye: 0.05 },
+  },
+}
 const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
   QB: true,
   RB: true,
@@ -475,6 +513,10 @@ function App() {
   const [consistencyPosition, setConsistencyPosition] = useState<Position>('QB')
   const [consistencyQuery, setConsistencyQuery] = useState('')
   const [consistencyMinGames, setConsistencyMinGames] = useState(6)
+  const [recommendationStrategy, setRecommendationStrategy] = useState<RecommendationStrategy>(() => {
+    const stored = loadLocal<RecommendationStrategy>('recommendation-strategy', 'balanced')
+    return stored in RECOMMENDATION_STRATEGIES ? stored : 'balanced'
+  })
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
   const [draftInput, setDraftInput] = useState('')
   const [syncStatus, setSyncStatus] = useState('')
@@ -508,6 +550,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('draft-wizard:watchlist-ids', JSON.stringify(watchlistIds))
   }, [watchlistIds])
+
+  useEffect(() => {
+    localStorage.setItem('draft-wizard:recommendation-strategy', JSON.stringify(recommendationStrategy))
+  }, [recommendationStrategy])
 
   useEffect(() => {
     fetchSplitData()
@@ -564,28 +610,30 @@ function App() {
       return {
         ...player,
         projectedPoints,
-        draftScore: calculateDraftScore(player, selectedLeague, projectedPoints),
       }
     })
   }, [data, selectedLeague])
 
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
   const draftedPlayerKeys = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerName).filter(Boolean).map((name) => playerKey(name!))), [draft.drafted])
+  const undraftedPlayers = useMemo<RankedPlayer[]>(() => (
+    players
+      .filter((player) => !draftedIds.has(player.id) && !draftedPlayerKeys.has(playerKey(player.name)))
+      .sort((a, b) => a.rank - b.rank)
+  ), [draftedIds, draftedPlayerKeys, players])
   const availablePlayers = useMemo<RankedPlayer[]>(() => {
     const lowerQuery = query.toLowerCase().trim()
-    return players
-      .filter((player) => !draftedIds.has(player.id) && !draftedPlayerKeys.has(playerKey(player.name)))
+    return undraftedPlayers
       .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
-      .sort((a, b) => b.draftScore - a.draftScore)
-  }, [draftedIds, draftedPlayerKeys, players, query])
+  }, [query, undraftedPlayers])
 
   const recommendations = useMemo(
-    () => buildRecommendations(availablePlayers, draft, selectedLeague),
-    [availablePlayers, draft, selectedLeague],
+    () => buildRecommendations(undraftedPlayers, players, draft, selectedLeague, recommendationStrategy),
+    [draft, players, recommendationStrategy, selectedLeague, undraftedPlayers],
   )
   const watchlistPlayers = useMemo(
-    () => watchlistIds.map((id) => availablePlayers.find((player) => player.id === id)).filter((player): player is RankedPlayer => Boolean(player)),
-    [availablePlayers, watchlistIds],
+    () => watchlistIds.map((id) => undraftedPlayers.find((player) => player.id === id)).filter((player): player is RankedPlayer => Boolean(player)),
+    [undraftedPlayers, watchlistIds],
   )
   const playerByKey = useMemo(() => {
     const index = new Map<string, RankedPlayer>()
@@ -718,42 +766,6 @@ function App() {
     setWatchlistIds((current) => current.includes(playerId) ? current.filter((id) => id !== playerId) : [...current, playerId])
   }
 
-  function draftPlayer(player: RankedPlayer) {
-    const totalTeams = draft.teamNames.length || selectedLeague.lineup.teams
-    const totalPicks = totalTeams * (draft.totalRounds || selectedLeague.lineup.rosterSpots)
-    if (draft.currentPick > totalPicks) {
-      setSyncStatus('This draft is already complete.')
-      return
-    }
-    const location = getSlotRoundForPick(draft.currentPick, totalTeams)
-    const pick: DraftPick = {
-      pick: draft.currentPick,
-      round: location.round,
-      slot: location.slot,
-      teamName: draft.teamNames[location.slot - 1] || `Team ${location.slot}`,
-      playerId: player.id,
-      playerName: player.name,
-      position: player.position,
-      team: player.team,
-    }
-    updateDraft({
-      ...draft,
-      currentPick: draft.currentPick + 1,
-      drafted: [...draft.drafted.filter((item) => item.pick !== pick.pick && item.playerId !== player.id), pick].sort((a, b) => a.pick - b.pick),
-      source: 'manual',
-      lastSyncedAt: new Date().toISOString(),
-    })
-    setWatchlistIds((current) => current.filter((id) => id !== player.id))
-    setSyncStatus(`${player.name} recorded at pick ${pick.pick}.`)
-  }
-
-  function undoLastPick() {
-    const lastPick = [...draft.drafted].sort((a, b) => b.pick - a.pick)[0]
-    if (!lastPick) return
-    updateDraft({ ...draft, currentPick: lastPick.pick, drafted: draft.drafted.filter((pick) => pick !== lastPick), source: 'manual' })
-    setSyncStatus(`Removed ${lastPick.playerName || 'the last pick'}.`)
-  }
-
   function addLeague() {
     const id = `league-${Date.now()}`
     const profile: LeagueProfile = {
@@ -852,13 +864,14 @@ function App() {
           playersByPosition={playersByPosition}
           query={query}
           recommendations={recommendations}
+          strategy={recommendationStrategy}
           watchlistIds={watchlistIds}
           watchlistPlayers={watchlistPlayers}
           togglePosition={togglePosition}
           visiblePositions={visiblePositions}
-          onDraftPlayer={draftPlayer}
           onPlayerSelect={setSelectedPlayer}
           onQueryChange={setQuery}
+          onStrategyChange={setRecommendationStrategy}
           onToggleWatchlist={toggleWatchlist}
         />
       ) : null}
@@ -868,15 +881,15 @@ function App() {
           draft={draft}
           league={selectedLeague}
           recommendations={recommendations}
+          strategy={recommendationStrategy}
           draftInput={draftInput}
           syncStatus={syncStatus}
           autoSync={autoSync}
           isSyncing={isSyncing}
           onAutoSyncChange={setAutoSync}
           onDraftInputChange={setDraftInput}
-          onDraftPlayer={draftPlayer}
+          onStrategyChange={setRecommendationStrategy}
           onSyncDraft={() => void syncDraftState(false)}
-          onUndoLastPick={undoLastPick}
         />
       ) : null}
 
@@ -935,7 +948,6 @@ function App() {
           player={selectedPlayer}
           recommendation={recommendations.find((item) => item.player.id === selectedPlayer.id)}
           onClose={() => setSelectedPlayer(null)}
-          onDraft={() => { draftPlayer(selectedPlayer); setSelectedPlayer(null) }}
           onToggleWatchlist={() => toggleWatchlist(selectedPlayer.id)}
         />
       ) : null}
@@ -986,19 +998,44 @@ function ResearchFilters({
   )
 }
 
+function StrategySelector({ value, onChange }: { value: RecommendationStrategy; onChange: (strategy: RecommendationStrategy) => void }) {
+  return (
+    <label className="strategySelector">
+      <span className="srOnly">Recommendation strategy</span>
+      <select aria-label="Recommendation strategy" onChange={(event) => onChange(event.target.value as RecommendationStrategy)} value={value}>
+        {(Object.entries(RECOMMENDATION_STRATEGIES) as [RecommendationStrategy, (typeof RECOMMENDATION_STRATEGIES)[RecommendationStrategy]][]).map(([key, strategy]) => (
+          <option key={key} value={key}>{strategy.label}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function RecommendationSignals({ recommendation, compact = false }: { recommendation: Recommendation; compact?: boolean }) {
+  const { metrics } = recommendation
+  const signals = [
+    metrics.replacementValue > 0 ? `VOR +${Math.round(metrics.replacementValue)}` : 'At replacement',
+    metrics.nextUserPick && metrics.availabilityAtNextPick !== undefined
+      ? `${Math.round(metrics.availabilityAtNextPick * 100)}% to pick ${metrics.nextUserPick}`
+      : 'Final turn',
+    metrics.tierDrop >= NFL_REGULAR_SEASON_GAMES * 0.5 ? `${(metrics.tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG cliff` : null,
+    !compact && metrics.injuryRisk >= 40 ? `${Math.round(metrics.injuryRisk)}% injury risk` : null,
+  ].filter((signal): signal is string => Boolean(signal))
+
+  return <div className={compact ? 'recommendationSignals compact' : 'recommendationSignals'}>{signals.slice(0, compact ? 2 : 4).map((signal) => <span key={signal}>{signal}</span>)}</div>
+}
+
 function PlayerDrawer({
   player,
   recommendation,
   isWatched,
   onClose,
-  onDraft,
   onToggleWatchlist,
 }: {
   player: RankedPlayer
   recommendation?: Recommendation
   isWatched: boolean
   onClose: () => void
-  onDraft: () => void
   onToggleWatchlist: () => void
 }) {
   return (
@@ -1008,7 +1045,7 @@ function PlayerDrawer({
           <div><span className={`position position${player.position}`}>{player.position}</span><h2>{player.name}</h2><p>{player.team} · {player.posRank || 'Unranked'} · Tier {player.tier || '-'}</p></div>
           <button aria-label="Close player details" className="drawerClose" onClick={onClose} type="button"><X size={20} /></button>
         </div>
-        {recommendation ? <div className="drawerRecommendation"><strong>Why now</strong><span>{recommendation.reason}. {recommendation.outlook}</span></div> : null}
+        {recommendation ? <div className="drawerRecommendation"><strong>Why now · {RECOMMENDATION_STRATEGIES[recommendation.strategy].label}</strong><span>{recommendation.reason}. {recommendation.outlook}</span><RecommendationSignals recommendation={recommendation} /></div> : null}
         <div className="playerMetricGrid">
           <div><span>Overall rank</span><strong>#{player.rank}</strong></div>
           <div><span>ADP</span><strong>{player.adp?.toFixed(1) || '-'}</strong></div>
@@ -1018,10 +1055,7 @@ function PlayerDrawer({
         {player.injury ? <div className="detailNotice injuryNotice"><AlertTriangle size={16} /><div><strong>{player.injury.status}</strong><span>{player.injury.injury || 'Injury reported'} · {player.injury.updated || 'Update pending'}</span></div></div> : null}
         {player.rookie ? <div className="detailNotice"><Baby size={16} /><div><strong>Rookie · Pick #{player.rookie.draftPick || '-'}</strong><span>{player.rookie.college || 'College unavailable'} · {player.rookie.source}</span></div></div> : null}
         {player.depthChart ? <div className="detailNotice"><ListTree size={16} /><div><strong>{player.position}{player.depthChart.order} on the depth chart</strong><span>{player.depthChart.source}</span></div></div> : null}
-        <div className="drawerActions">
-          <button className={isWatched ? 'iconTextButton watched' : 'iconTextButton'} onClick={onToggleWatchlist} type="button"><Star size={16} /> {isWatched ? 'Watching' : 'Watch'}</button>
-          <button className="primaryAction" onClick={onDraft} type="button">Draft {player.name}</button>
-        </div>
+        <button className={isWatched ? 'iconTextButton drawerWatchButton watched' : 'iconTextButton drawerWatchButton'} onClick={onToggleWatchlist} type="button"><Star size={16} /> {isWatched ? 'Watching' : 'Add to watchlist'}</button>
       </aside>
     </div>
   )
@@ -1235,28 +1269,28 @@ function DraftBoardPage({
   draft,
   league,
   recommendations,
+  strategy,
   draftInput,
   syncStatus,
   autoSync,
   isSyncing,
   onAutoSyncChange,
   onDraftInputChange,
-  onDraftPlayer,
+  onStrategyChange,
   onSyncDraft,
-  onUndoLastPick,
 }: {
   draft: DraftState
   league: LeagueProfile
   recommendations: Recommendation[]
+  strategy: RecommendationStrategy
   draftInput: string
   syncStatus: string
   autoSync: boolean
   isSyncing: boolean
   onAutoSyncChange: (value: boolean) => void
   onDraftInputChange: (value: string) => void
-  onDraftPlayer: (player: RankedPlayer) => void
+  onStrategyChange: (strategy: RecommendationStrategy) => void
   onSyncDraft: () => void
-  onUndoLastPick: () => void
 }) {
   const totalTeams = draft.teamNames.length || league.lineup.teams
   const totalRounds = draft.totalRounds || league.lineup.rosterSpots
@@ -1305,19 +1339,24 @@ function DraftBoardPage({
             <input checked={autoSync} onChange={(event) => onAutoSyncChange(event.target.checked)} type="checkbox" />
             Auto-sync
           </label>
-          <button className="iconTextButton" disabled={!draft.drafted.length} onClick={onUndoLastPick} type="button"><Undo2 size={15} /> Undo</button>
         </div>
       </div>
       {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
       <div className="draftCommandGrid">
         <section className="commandCard">
-          <div className="commandCardHeader"><h3>Draft now</h3><span>{recommendations.length} options</span></div>
+          <div className="commandCardHeader recommendationCommandHeader">
+            <div><h3>Top recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small></div>
+            <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><span>{recommendations.length} options</span></div>
+          </div>
           <div className="recommendationStrip">
             {recommendations.slice(0, 4).map((item, index) => (
               <article className="recommendationCard" key={item.player.id}>
                 <span className="recommendationNumber">{index + 1}</span>
-                <div><strong>{item.player.name}</strong><small>{item.player.position} · {item.player.team} · {item.reason}</small></div>
-                <button aria-label={`Draft ${item.player.name}`} onClick={() => onDraftPlayer(item.player)} type="button">Draft</button>
+                <div className="recommendationCardBody">
+                  <strong>{item.player.name}</strong>
+                  <small>{item.player.position} · {item.player.team} · {item.reason}</small>
+                  <RecommendationSignals recommendation={item} compact />
+                </div>
               </article>
             ))}
           </div>
@@ -1688,42 +1727,236 @@ function formatRelativeTime(date: Date) {
   return hours < 48 ? `${hours}h ago` : date.toLocaleDateString()
 }
 
-function buildRecommendations(players: RankedPlayer[], draft: DraftState, league: LeagueProfile): Recommendation[] {
+function buildRecommendations(
+  players: RankedPlayer[],
+  allPlayers: RankedPlayer[],
+  draft: DraftState,
+  league: LeagueProfile,
+  strategy: RecommendationStrategy,
+): Recommendation[] {
   const totalTeams = draft.teamNames.length || league.lineup.teams
   const userSlot = clampLeagueDraftSlot(league, totalTeams)
   const roster = draft.drafted.filter((pick) => pick.slot === userSlot)
   const rosterCounts = new Map<Position, number>()
   roster.forEach((pick) => pick.position && rosterCounts.set(pick.position, (rosterCounts.get(pick.position) || 0) + 1))
+  const draftedPositionCounts = new Map<Position, number>()
+  draft.drafted.forEach((pick) => pick.position && draftedPositionCounts.set(pick.position, (draftedPositionCounts.get(pick.position) || 0) + 1))
+  const playerLookup = new Map<string, RankedPlayer>()
+  allPlayers.forEach((player) => {
+    playerLookup.set(player.id, player)
+    playerLookup.set(playerKey(player.name), player)
+    playerLookup.set(playerKey(player.name, player.team), player)
+  })
+  const byeCounts = new Map<number, number>()
+  roster.forEach((pick) => {
+    const ranked = playerLookup.get(pick.playerId) || (pick.playerName ? playerLookup.get(playerKey(pick.playerName, pick.team)) || playerLookup.get(playerKey(pick.playerName)) : undefined)
+    if (ranked?.bye) byeCounts.set(ranked.bye, (byeCounts.get(ranked.bye) || 0) + 1)
+  })
+  const positionPools = Object.fromEntries(POSITION_ORDER.map((position) => [
+    position,
+    players.filter((player) => player.position === position).sort((a, b) => a.rank - b.rank),
+  ])) as Record<Position, RankedPlayer[]>
+  const replacementByPosition = new Map<Position, RankedPlayer | undefined>()
+  POSITION_ORDER.forEach((position) => {
+    const leagueDemand = Math.max(1, Math.round(totalTeams * getLeagueStarterShare(position, league.lineup)))
+    const remainingDemand = Math.max(1, leagueDemand - (draftedPositionCounts.get(position) || 0))
+    replacementByPosition.set(position, positionPools[position][Math.min(positionPools[position].length - 1, remainingDemand - 1)])
+  })
   const nextUserPick = findNextPickForSlot(draft.currentPick + 1, userSlot, totalTeams, draft.totalRounds || league.lineup.rosterSpots)
+  const currentRound = getSlotRoundForPick(draft.currentPick, totalTeams).round
+  const totalRounds = draft.totalRounds || league.lineup.rosterSpots
+  const weights = RECOMMENDATION_STRATEGIES[strategy].weights
 
-  return players.slice(0, 120).map((player) => {
-    const target = getPositionTarget(player.position, league.lineup)
-    const rostered = rosterCounts.get(player.position) || 0
-    const need = Math.max(0, target - rostered)
-    const adpValue = player.adp ? draft.currentPick - player.adp : 0
-    const injuryPenalty = player.injury ? 10 : 0
-    const score = player.draftScore + need * 14 + Math.max(0, adpValue) * 1.6 - injuryPenalty
-    const reason = need > 0
-      ? `Fills ${need === 1 ? 'an open' : `${need} open`} ${player.position} starter spot${need === 1 ? '' : 's'}`
-      : adpValue >= 6
-        ? `${Math.round(adpValue)} picks of value versus ADP`
-        : `Top tier-${player.tier || '-'} ${player.position} available`
-    const outlook = nextUserPick && player.adp && player.adp < nextUserPick
-      ? `Unlikely to last to your next pick at ${nextUserPick}`
-      : nextUserPick
-        ? `May remain available at your next pick (${nextUserPick})`
-        : 'Best available for the current pick'
-    return { player, reason, outlook, score }
+  return players.map((player) => {
+    const pool = positionPools[player.position]
+    const poolIndex = pool.findIndex((candidate) => candidate.id === player.id)
+    const replacement = replacementByPosition.get(player.position)
+    const replacementPoints = replacement?.projectedPoints || 0
+    const replacementValue = Math.max(0, player.projectedPoints - replacementPoints)
+    const replacementRankGap = replacement ? Math.max(0, replacement.rank - player.rank) : 0
+    const vorScore = player.projectedPoints > 0
+      ? clampRecommendationScore((replacementValue / Math.max(1, replacementPoints || player.projectedPoints * 0.55)) * 250)
+      : clampRecommendationScore(replacementRankGap * 3)
+    const nextTierPlayer = pool.slice(poolIndex + 1).find((candidate) => (
+      player.tier && candidate.tier ? candidate.tier > player.tier : candidate.rank >= player.rank + 4
+    ))
+    const tierDrop = nextTierPlayer ? Math.max(0, player.projectedPoints - nextTierPlayer.projectedPoints) : 0
+    const tierRankGap = nextTierPlayer ? Math.max(0, nextTierPlayer.rank - player.rank) : 0
+    const tierScore = clampRecommendationScore(
+      (tierDrop / Math.max(1, player.projectedPoints)) * 500 + tierRankGap * 3,
+    )
+    const availabilityAtNextPick = nextUserPick ? estimateAvailabilityAtPick(player, nextUserPick, totalTeams) : undefined
+    const urgencyScore = availabilityAtNextPick === undefined ? 100 : (1 - availabilityAtNextPick) * 100
+    const rosterFit = getRosterFitScore(player.position, rosterCounts, league.lineup, roster.length, currentRound, totalRounds)
+    const floor = getPlayerFloorScore(player)
+    const upside = getPlayerUpsideScore(player, poolIndex, pool.length)
+    const injuryRisk = getPlayerInjuryRisk(player)
+    const byeConflicts = player.bye ? byeCounts.get(player.bye) || 0 : 0
+    const byeRisk = clampRecommendationScore(byeConflicts * (currentRound <= 5 ? 18 : 32))
+    const referenceRank = player.adp || player.rank
+    const valueScore = clampRecommendationScore(50 + (draft.currentPick - referenceRank) * 4)
+    let strategyAdjustment = 0
+
+    if ((player.position === 'K' || player.position === 'DST') && currentRound < Math.max(8, totalRounds - 3)) strategyAdjustment -= 45
+    if (strategy === 'zeroRb') {
+      if (player.position === 'RB' && currentRound <= 5) strategyAdjustment -= player.tier && player.tier <= 1 ? 28 : 46
+      if ((player.position === 'WR' || player.position === 'TE') && currentRound <= 5) strategyAdjustment += 12
+      if (player.position === 'RB' && currentRound >= 6) strategyAdjustment += 18
+    }
+
+    const score =
+      vorScore * weights.vor +
+      tierScore * weights.tier +
+      urgencyScore * weights.urgency +
+      rosterFit * weights.roster +
+      floor * weights.floor +
+      upside * weights.upside +
+      valueScore * weights.value -
+      injuryRisk * weights.injury -
+      byeRisk * weights.bye +
+      strategyAdjustment
+
+    const factors: { score: number; text: string }[] = [
+      { score: vorScore, text: replacementValue > 0 ? `${Math.round(replacementValue)} projected points over ${player.position} replacement` : `Strong ${player.position} replacement value` },
+      { score: tierScore, text: tierDrop >= NFL_REGULAR_SEASON_GAMES * 0.5 ? `${(tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG tier cliff behind him` : `Last strong option in his ${player.position} tier` },
+      { score: rosterFit, text: getRosterFitReason(player.position, rosterCounts, league.lineup) },
+      { score: strategy === 'safeFloor' ? floor + 24 : strategy === 'upside' ? upside + 24 : Math.max(floor, upside) * 0.6, text: strategy === 'safeFloor' ? getFloorReason(player) : getUpsideReason(player) },
+      { score: valueScore, text: draft.currentPick > referenceRank ? `${Math.round(draft.currentPick - referenceRank)} picks of value versus market` : `Market-aligned value at pick ${draft.currentPick}` },
+    ]
+    if (strategy === 'zeroRb' && currentRound <= 5 && (player.position === 'WR' || player.position === 'TE')) {
+      factors.push({ score: 110, text: `Builds early ${player.position} strength for Zero-RB` })
+    }
+    if (strategy === 'zeroRb' && currentRound >= 6 && player.position === 'RB') {
+      factors.push({ score: 110, text: 'Targets the post–Round 5 RB value window' })
+    }
+    const reason = factors.sort((a, b) => b.score - a.score).slice(0, 2).map((factor) => factor.text).join(' · ')
+    const outlookParts = [
+      nextUserPick && availabilityAtNextPick !== undefined ? `Estimated ${Math.round(availabilityAtNextPick * 100)}% chance to reach pick ${nextUserPick}` : 'No later user pick remains',
+      injuryRisk >= 25 ? `${player.injury?.status || 'Reported injury'} (${Math.round(injuryRisk)}% risk)` : null,
+      byeConflicts > 0 && player.bye ? `would add a ${ordinal(byeConflicts + 1)} Week ${player.bye} bye` : null,
+      byeConflicts === 0 && player.bye && roster.length > 0 ? `no current Week ${player.bye} bye conflict` : null,
+    ].filter((part): part is string => Boolean(part))
+    const outlook = outlookParts.join('; ')
+    return {
+      player,
+      reason,
+      outlook,
+      score,
+      strategy,
+      metrics: {
+        replacementValue,
+        replacementPoints,
+        tierDrop,
+        availabilityAtNextPick,
+        nextUserPick,
+        rosterFit,
+        floor,
+        upside,
+        injuryRisk,
+        byeConflicts,
+      },
+    }
   }).sort((a, b) => b.score - a.score).slice(0, 8)
 }
 
-function getPositionTarget(position: Position, lineup: LineupSettings) {
+function getLeagueStarterShare(position: Position, lineup: LineupSettings) {
   if (position === 'QB') return lineup.qb + lineup.superflex
-  if (position === 'RB') return lineup.rb + Math.ceil(lineup.flex / 2)
-  if (position === 'WR') return lineup.wr + Math.floor(lineup.flex / 2)
+  if (position === 'RB') return lineup.rb + lineup.flex * 0.45
+  if (position === 'WR') return lineup.wr + lineup.flex * 0.45
+  if (position === 'TE') return lineup.te + lineup.flex * 0.1
+  if (position === 'K') return lineup.k
+  return lineup.dst
+}
+
+function getCoreStarterTarget(position: Position, lineup: LineupSettings) {
+  if (position === 'QB') return lineup.qb + lineup.superflex
+  if (position === 'RB') return lineup.rb
+  if (position === 'WR') return lineup.wr
   if (position === 'TE') return lineup.te
   if (position === 'K') return lineup.k
   return lineup.dst
+}
+
+function getRosterFitScore(position: Position, counts: Map<Position, number>, lineup: LineupSettings, rosterSize: number, round: number, totalRounds: number) {
+  const rostered = counts.get(position) || 0
+  const coreTarget = getCoreStarterTarget(position, lineup)
+  if (rostered < coreTarget) return clampRecommendationScore(96 - (rostered / Math.max(1, coreTarget)) * 20)
+  const flexEligible = position === 'RB' || position === 'WR' || position === 'TE'
+  const flexUsed = (['RB', 'WR', 'TE'] as Position[]).reduce((total, item) => total + Math.max(0, (counts.get(item) || 0) - getCoreStarterTarget(item, lineup)), 0)
+  if (flexEligible && flexUsed < lineup.flex) return 72
+  if ((position === 'K' || position === 'DST') && round < Math.max(8, totalRounds - 3)) return 4
+  if (rosterSize < lineup.rosterSpots) return clampRecommendationScore(42 - Math.max(0, rostered - coreTarget) * 10)
+  return 0
+}
+
+function getRosterFitReason(position: Position, counts: Map<Position, number>, lineup: LineupSettings) {
+  const rostered = counts.get(position) || 0
+  const target = getCoreStarterTarget(position, lineup)
+  if (rostered < target) return `Strengthens an unfilled ${position} starter slot`
+  if (position === 'RB' || position === 'WR' || position === 'TE') return `Adds flexible ${position} depth without overloading the roster`
+  return `Adds ${position} depth at the right roster stage`
+}
+
+function estimateAvailabilityAtPick(player: RankedPlayer, pick: number, teams: number) {
+  const marketPick = player.adp || player.rank
+  const spread = Math.max(4, teams * 0.42)
+  return Math.min(0.98, Math.max(0.02, 1 / (1 + Math.exp((pick - marketPick) / spread))))
+}
+
+function getPlayerInjuryRisk(player: RankedPlayer) {
+  if (!player.injury) return 0
+  const report = `${player.injury.status} ${player.injury.injury || ''}`.toLowerCase()
+  if (/acl|achilles|injured reserve|\bir\b|pup|out for (the )?season/.test(report)) return 95
+  if (/\bout\b|doubtful|surgery/.test(report)) return 80
+  if (/questionable|week-to-week/.test(report)) return 45
+  if (/limited|day-to-day|probable/.test(report)) return 22
+  return 35
+}
+
+function getPlayerFloorScore(player: RankedPlayer) {
+  const previous = player.previousYear
+  const games = previous?.games || 0
+  const previousPpg = previous?.fpts_per_game || (previous?.fpts && games ? previous.fpts / games : 0)
+  const projectedPpg = player.projectedPoints / NFL_REGULAR_SEASON_GAMES
+  const availability = Math.min(1, games / NFL_REGULAR_SEASON_GAMES)
+  const productionRetention = previousPpg && projectedPpg ? Math.min(1, previousPpg / projectedPpg) : 0.45
+  const depthSecurity = player.depthChart?.order === 1 ? 15 : player.depthChart?.order === 2 ? 7 : 0
+  const experience = (player.sleeper?.yearsExp || 0) >= 3 ? 10 : 0
+  return clampRecommendationScore(availability * 48 + productionRetention * 32 + depthSecurity + experience - getPlayerInjuryRisk(player) * 0.45)
+}
+
+function getPlayerUpsideScore(player: RankedPlayer, positionIndex: number, positionPoolSize: number) {
+  const positionPercentile = positionPoolSize > 1 ? (1 - positionIndex / (positionPoolSize - 1)) * 48 : 48
+  const previous = player.previousYear
+  const previousPpg = previous?.fpts_per_game || (previous?.fpts && previous.games ? previous.fpts / previous.games : 0)
+  const projectedPpg = player.projectedPoints / NFL_REGULAR_SEASON_GAMES
+  const growth = previousPpg > 0 ? clampRecommendationScore(((projectedPpg - previousPpg) / previousPpg) * 100) * 0.22 : 10
+  const youth = player.rookie ? 24 : (player.sleeper?.yearsExp || 99) <= 2 ? 15 : (player.sleeper?.age || 99) <= 25 ? 9 : 0
+  const role = player.depthChart?.order === 1 ? 10 : 0
+  const eliteTier = player.tier ? Math.max(0, 12 - player.tier) * 1.5 : 0
+  return clampRecommendationScore(positionPercentile + growth + youth + role + eliteTier)
+}
+
+function getFloorReason(player: RankedPlayer) {
+  const games = player.previousYear?.games || 0
+  if (games >= 14) return `Proven production across ${games} games last season`
+  if (player.depthChart?.order === 1) return `Secure ${player.position}1 depth-chart role`
+  return 'Projection and role support a stable weekly floor'
+}
+
+function getUpsideReason(player: RankedPlayer) {
+  if (player.rookie) return `Rookie draft capital creates breakout upside`
+  if ((player.sleeper?.yearsExp || 99) <= 2) return `Early-career profile offers a higher ceiling`
+  return `Top-end ${player.position} projection supports ceiling potential`
+}
+
+function clampRecommendationScore(value: number) {
+  return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0))
+}
+
+function ordinal(value: number) {
+  const suffix = value % 10 === 1 && value % 100 !== 11 ? 'st' : value % 10 === 2 && value % 100 !== 12 ? 'nd' : value % 10 === 3 && value % 100 !== 13 ? 'rd' : 'th'
+  return `${value}${suffix}`
 }
 
 function findNextPickForSlot(startPick: number, slot: number, totalTeams: number, totalRounds: number) {
@@ -1832,11 +2065,11 @@ function playerKey(name: string, team?: string) {
 }
 
 async function fetchManagedDraftState(currentDraft: DraftState, league: LeagueProfile): Promise<DraftState> {
-  if (!API_URL) throw new Error('ESPN live sync requires the managed draft service. Manual drafting is available now.')
+  if (!API_URL) throw new Error('ESPN live sync requires the managed draft service.')
   const response = await fetch(`${API_URL}/drafts/${currentDraft.id}`, { cache: 'no-store' })
-  if (!response.ok) throw new Error(`ESPN draft sync failed (${response.status}). Manual drafting is still available.`)
+  if (!response.ok) throw new Error(`ESPN draft sync failed (${response.status}). Keep drafting in ESPN and retry sync here.`)
   const payload: { draft?: DraftState } = await response.json()
-  if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Use manual Draft buttons until the feed starts.')
+  if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Recommendations will update when the managed feed starts.')
   return { ...payload.draft, leagueId: league.id, source: 'espn', lastSyncedAt: new Date().toISOString() }
 }
 
@@ -2032,13 +2265,14 @@ function PlayersBoard({
   playersByPosition,
   query,
   recommendations,
+  strategy,
   watchlistIds,
   watchlistPlayers,
   togglePosition,
   visiblePositions,
-  onDraftPlayer,
   onPlayerSelect,
   onQueryChange,
+  onStrategyChange,
   onToggleWatchlist,
 }: {
   availableCount: number
@@ -2047,13 +2281,14 @@ function PlayersBoard({
   playersByPosition: Record<Position, RankedPlayer[]>
   query: string
   recommendations: Recommendation[]
+  strategy: RecommendationStrategy
   watchlistIds: string[]
   watchlistPlayers: RankedPlayer[]
   togglePosition: (position: Position) => void
   visiblePositions: Record<Position, boolean>
-  onDraftPlayer: (player: RankedPlayer) => void
   onPlayerSelect: (player: RankedPlayer) => void
   onQueryChange: (query: string) => void
+  onStrategyChange: (strategy: RecommendationStrategy) => void
   onToggleWatchlist: (playerId: string) => void
 }) {
   const activePositions = POSITION_ORDER.filter((position) => visiblePositions[position])
@@ -2063,7 +2298,7 @@ function PlayersBoard({
       <section className="playerListPanel">
         <div className="playerListHeader">
           <h2>Available Players - {leagueName}</h2>
-          <div className="playerCount">{availableCount} players available</div>
+          <div className="playerCount">{availableCount} player{availableCount === 1 ? '' : 's'} available</div>
         </div>
 
         <div className="playerControls">
@@ -2106,7 +2341,6 @@ function PlayersBoard({
                         leagueTeams={leagueTeams}
                         player={player}
                         variant="column"
-                        onDraft={() => onDraftPlayer(player)}
                         onSelect={() => onPlayerSelect(player)}
                         onToggleWatchlist={() => onToggleWatchlist(player.id)}
                       />
@@ -2122,8 +2356,8 @@ function PlayersBoard({
 
       <aside className="shortlistRail">
         <div className="shortlistHeader">
-          <div><h3>Draft now</h3><small>Roster-aware recommendations</small></div>
-          <div className="shortlistCount">{recommendations.length} ranked</div>
+          <div><h3>Recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small></div>
+          <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><div className="shortlistCount">{recommendations.length} ranked</div></div>
         </div>
         <div className="shortlistContainer">
           {watchlistPlayers.length ? <div className="railSectionLabel"><Star size={13} /> Watchlist</div> : null}
@@ -2134,7 +2368,6 @@ function PlayersBoard({
               leagueTeams={leagueTeams}
               player={player}
               variant="shortlist"
-              onDraft={() => onDraftPlayer(player)}
               onSelect={() => onPlayerSelect(player)}
               onToggleWatchlist={() => onToggleWatchlist(player.id)}
             />
@@ -2147,11 +2380,11 @@ function PlayersBoard({
                 leagueTeams={leagueTeams}
                 player={item.player}
                 variant="shortlist"
-                onDraft={() => onDraftPlayer(item.player)}
                 onSelect={() => onPlayerSelect(item.player)}
                 onToggleWatchlist={() => onToggleWatchlist(item.player.id)}
               />
               <p>{item.reason}. {item.outlook}</p>
+              <RecommendationSignals recommendation={item} />
             </div>
           ))}
           {recommendations.length === 0 ? <p className="muted">No matching players.</p> : null}
@@ -2166,7 +2399,6 @@ function PlayerSummary({
   leagueTeams,
   variant,
   isWatched,
-  onDraft,
   onSelect,
   onToggleWatchlist,
 }: {
@@ -2174,7 +2406,6 @@ function PlayerSummary({
   leagueTeams: number
   variant: 'shortlist' | 'column'
   isWatched: boolean
-  onDraft: () => void
   onSelect: () => void
   onToggleWatchlist: () => void
 }) {
@@ -2193,7 +2424,6 @@ function PlayerSummary({
         </span>
         <span className="playerQuickActions">
           <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={13} /></button>
-          <button aria-label={`Draft ${player.name}`} className="draftQuickButton" onClick={onDraft} type="button">Draft</button>
         </span>
       </div>
     )
@@ -2221,7 +2451,6 @@ function PlayerSummary({
       </div>
       <span className="playerQuickActions compactActions">
         <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={12} /></button>
-        <button aria-label={`Draft ${player.name}`} className="draftQuickButton" onClick={onDraft} type="button">+</button>
       </span>
     </div>
   )
@@ -2450,23 +2679,6 @@ function calculateProjectedPoints(player: Player, scoring: ScoringRules) {
     value(stats.receiving_tds) * scoring.rushReceiveTd +
     value(stats.fumbles_lost) * scoring.fumbleLost
   )
-}
-
-function calculateDraftScore(player: Player, league: LeagueProfile, projectedPoints: number) {
-  const scarcity = { QB: 0.88, RB: 1.12, WR: 1.08, TE: 1.02, K: 0.45, DST: 0.48 }[player.position]
-  const superflexBoost = player.position === 'QB' && league.lineup.superflex > 0 ? 32 : 0
-  const starterDemand = getStarterDemand(player.position, league.lineup)
-  const tierBoost = player.tier ? Math.max(0, 12 - player.tier) * 1.5 : 0
-  return projectedPoints * scarcity + starterDemand + superflexBoost + tierBoost - (player.adp || player.rank) * 0.15
-}
-
-function getStarterDemand(position: Position, lineup: LineupSettings) {
-  if (position === 'QB') return lineup.qb * 5 + lineup.superflex * 7
-  if (position === 'RB') return lineup.rb * 5 + lineup.flex * 2
-  if (position === 'WR') return lineup.wr * 5 + lineup.flex * 2
-  if (position === 'TE') return lineup.te * 4 + lineup.flex
-  if (position === 'K') return lineup.k
-  return lineup.dst
 }
 
 function value(input: number | undefined) {

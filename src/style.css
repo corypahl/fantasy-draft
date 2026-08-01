@@ -1698,8 +1698,7 @@ h3 {
   gap: 0.25rem;
 }
 
-.playerQuickActions button,
-.recommendationCard button {
+.playerQuickActions button {
   display: inline-grid;
   place-items: center;
   min-width: 28px;
@@ -1715,13 +1714,37 @@ h3 {
 
 .playerQuickActions button:hover,
 .playerQuickActions button.watched { border-color: var(--accent-yellow); color: #f6c453; }
-.playerQuickActions .draftQuickButton,
-.recommendationCard button { border-color: rgba(49, 130, 206, 0.55); color: #90cdf4; }
 .compactActions { margin-left: 0.35rem; }
 .playerItem .playerName { overflow: visible; }
 .shortlistItem { grid-template-columns: 42px minmax(0, 1fr) auto; }
 .shortlistMeta { grid-column: 2; }
 .shortlistHeader small { display: block; margin-top: 0.15rem; color: var(--text-muted); font-size: 0.68rem; }
+
+.recommendationHeaderControls {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.shortlistHeader > div:first-child { flex: 1 1 140px; min-width: 0; }
+.shortlistHeader .recommendationHeaderControls { align-items: flex-end; flex-direction: column; gap: 0.2rem; }
+
+.strategySelector select {
+  min-height: 32px;
+  border: 1px solid rgba(49, 130, 206, 0.5);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: #bee3f8;
+  padding: 0 1.75rem 0 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.strategySelector select:hover,
+.strategySelector select:focus-visible { border-color: #63b3ed; }
 
 .railSectionLabel {
   display: flex;
@@ -1735,8 +1758,12 @@ h3 {
   text-transform: uppercase;
 }
 
-.recommendationRailItem { border-bottom: 1px solid var(--border-color); padding-bottom: 0.35rem; }
+.recommendationRailItem { border-bottom: 1px solid var(--border-color); padding-bottom: 0.45rem; }
 .recommendationRailItem p { margin: 0 0.5rem 0.25rem 3.1rem; color: var(--text-muted); font-size: 0.65rem; line-height: 1.35; }
+.recommendationSignals { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0.5rem 0.2rem 3.1rem; }
+.recommendationSignals span { border: 1px solid rgba(49, 130, 206, 0.35); border-radius: 999px; background: rgba(49, 130, 206, 0.08); color: #90cdf4; padding: 0.13rem 0.35rem; font-size: 0.57rem; font-weight: 900; white-space: nowrap; }
+.recommendationSignals.compact { margin: 0.32rem 0 0; }
+.recommendationSignals.compact span { padding: 0.1rem 0.28rem; font-size: 0.54rem; }
 
 .draftSync {
   display: grid;
@@ -1780,8 +1807,10 @@ h3 {
 .commandCardHeader { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.55rem; }
 .commandCardHeader h3 { margin: 0; color: var(--text-primary); font-size: 0.86rem; }
 .commandCardHeader span { color: var(--text-muted); font-size: 0.68rem; font-weight: 800; }
+.recommendationCommandHeader > div:first-child { min-width: 0; }
+.recommendationCommandHeader small { display: block; margin-top: 0.12rem; color: var(--text-muted); font-size: 0.62rem; }
 .recommendationStrip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
-.recommendationCard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.45rem; min-width: 0; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-card); padding: 0.5rem; }
+.recommendationCard { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.45rem; min-width: 0; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-card); padding: 0.5rem; }
 .recommendationNumber { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(49, 130, 206, 0.18); color: #90cdf4; font-size: 0.68rem; font-weight: 900; }
 .recommendationCard div { min-width: 0; }
 .recommendationCard strong,
@@ -1821,6 +1850,8 @@ h3 {
 .drawerRecommendation { display: grid; gap: 0.25rem; border: 1px solid rgba(49, 130, 206, 0.4); border-radius: 8px; background: rgba(49, 130, 206, 0.1); padding: 0.85rem; }
 .drawerRecommendation strong { color: #90cdf4; font-size: 0.72rem; text-transform: uppercase; }
 .drawerRecommendation span { color: var(--text-primary); font-size: 0.82rem; line-height: 1.45; }
+.drawerRecommendation .recommendationSignals { margin: 0.3rem 0 0; }
+.drawerRecommendation .recommendationSignals span { color: #90cdf4; font-size: 0.62rem; line-height: 1; }
 .playerMetricGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
 .playerMetricGrid div { display: grid; gap: 0.2rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
 .playerMetricGrid span { color: var(--text-muted); font-size: 0.66rem; font-weight: 800; text-transform: uppercase; }
@@ -1830,8 +1861,7 @@ h3 {
 .detailNotice strong { color: var(--text-primary); font-size: 0.78rem; }
 .detailNotice span { color: var(--text-muted); font-size: 0.72rem; }
 .injuryNotice { border-color: rgba(229, 62, 62, 0.4); }
-.drawerActions { display: grid; grid-template-columns: auto 1fr; gap: 0.65rem; margin-top: auto; }
-.primaryAction { min-height: 44px; border: 0; border-radius: 8px; background: var(--accent-blue); color: #fff; padding: 0 1rem; font-weight: 900; }
+.drawerWatchButton { width: 100%; margin-top: auto; }
 
 @media (max-width: 1180px) {
   .recommendationStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1876,6 +1906,10 @@ h3 {
   .playersBoard { display: flex; flex-direction: column; overflow: visible; }
   .shortlistRail { order: -1; position: sticky; top: 0; z-index: 20; max-height: 42vh; border-right: 0; border-bottom: 1px solid var(--border-color); border-left: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32); }
   .shortlistHeader { align-items: center; flex-direction: row; padding: 0.7rem; }
+  .shortlistHeader > div:first-child { min-width: 0; }
+  .shortlistHeader small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shortlistHeader .recommendationHeaderControls { align-items: flex-end; flex-direction: column; gap: 0.2rem; }
+  .strategySelector select { max-width: 108px; min-height: 30px; padding-left: 0.4rem; font-size: 0.62rem; }
   .shortlistContainer { min-height: 120px; }
   .positionPlayers { max-height: 380px; }
   .playerQuickActions.compactActions { display: inline-flex; }
@@ -1889,6 +1923,8 @@ h3 {
   .onClockBanner { align-items: flex-start; flex-direction: column; }
   .draftActions { width: 100%; justify-content: space-between; }
   .recommendationStrip { grid-template-columns: 1fr; }
+  .recommendationCommandHeader { align-items: flex-start; flex-direction: column; }
+  .recommendationCommandHeader .recommendationHeaderControls { width: 100%; justify-content: space-between; }
   .draftBoardScroller { width: 100%; max-width: 100%; }
 
   .consistencyTitle { align-items: flex-start; flex-direction: column; padding: 0.75rem; }
@@ -1923,5 +1959,5 @@ h3 {
   .researchFilters .positionToggles { flex-wrap: nowrap; overflow-x: auto; }
 
   .playerDrawer { padding-bottom: 5rem; }
-  .drawerActions { position: sticky; bottom: 0; border-top: 1px solid var(--border-color); background: var(--bg-card); padding-top: 0.75rem; }
+  .drawerWatchButton { position: sticky; bottom: 0; border-top-color: var(--border-color); background: var(--bg-secondary); }
 }
