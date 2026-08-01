@@ -1,15 +1,23 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   Activity,
+  AlertTriangle,
   Baby,
   BarChart3,
+  Check,
   ClipboardList,
+  Copy,
   LayoutGrid,
   ListTree,
+  Plus,
   RefreshCw,
   Search,
   Settings,
+  Star,
+  Trash2,
+  Undo2,
+  X,
 } from 'lucide-react'
 import './style.css'
 
@@ -42,6 +50,13 @@ type Player = {
 type RankedPlayer = Player & {
   projectedPoints: number
   draftScore: number
+}
+
+type Recommendation = {
+  player: RankedPlayer
+  reason: string
+  outlook: string
+  score: number
 }
 
 type DepthChartEntry = {
@@ -224,6 +239,7 @@ type LeagueProfile = {
   platform: Platform
   externalLeagueId: string
   externalTeamId?: string
+  draftSlot?: number
   scoringPreset: ScoringPreset
   rankingPreset: Exclude<ScoringPreset, 'custom'>
   lineup: LineupSettings
@@ -248,7 +264,7 @@ type DraftState = {
   drafted: DraftPick[]
   teamNames: string[]
   sleeperDraftId?: string
-  source?: 'manual' | 'sleeper'
+  source?: 'manual' | 'sleeper' | 'espn'
   status?: string
   totalRounds?: number
   leagueName?: string
@@ -445,7 +461,7 @@ function createDraftState(profile: LeagueProfile): DraftState {
 
 function App() {
   const [data, setData] = useState<RankingsFile>(seedData)
-  const [profiles, setProfiles] = useState<LeagueProfile[]>(API_URL ? leagueProfiles : loadLocal('league-profiles', leagueProfiles))
+  const [profiles, setProfiles] = useState<LeagueProfile[]>(loadLocal('league-profiles', leagueProfiles))
   const [selectedLeagueId, setSelectedLeagueId] = useState(loadLocal('selected-league-id', leagueProfiles[0].id))
   const [draftsByLeague, setDraftsByLeague] = useState<Record<string, DraftState>>(
     loadLocal(
@@ -455,21 +471,43 @@ function App() {
   )
   const [query, setQuery] = useState('')
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
-  const [activeTab, setActiveTab] = useState<AppTab>('players')
+  const [activeTab, setActiveTab] = useState<AppTab>(() => getTabFromHash())
   const [consistencyPosition, setConsistencyPosition] = useState<Position>('QB')
   const [consistencyQuery, setConsistencyQuery] = useState('')
-  const [consistencyMinGames, setConsistencyMinGames] = useState(1)
+  const [consistencyMinGames, setConsistencyMinGames] = useState(6)
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
-  const [sleeperInput, setSleeperInput] = useState('')
-  const [sleeperStatus, setSleeperStatus] = useState('')
+  const [draftInput, setDraftInput] = useState('')
+  const [syncStatus, setSyncStatus] = useState('')
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [autoSync, setAutoSync] = useState(false)
+  const [watchlistIds, setWatchlistIds] = useState<string[]>(loadLocal('watchlist-ids', []))
+  const [selectedPlayer, setSelectedPlayer] = useState<RankedPlayer | null>(null)
+  const [persistenceStatus, setPersistenceStatus] = useState<'Saving' | 'Saved locally' | 'Synced'>('Saving')
+  const [leagueImportStatus, setLeagueImportStatus] = useState('')
+  const [isImportingLeague, setIsImportingLeague] = useState(false)
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
 
   useEffect(() => {
-    setSleeperInput(draft.sleeperDraftId || selectedLeague.externalLeagueId || '')
-    setSleeperStatus('')
+    setDraftInput(draft.sleeperDraftId || selectedLeague.externalLeagueId || '')
+    setSyncStatus('')
   }, [draft.sleeperDraftId, selectedLeague.externalLeagueId, selectedLeague.id])
+
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(getTabFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    window.addEventListener('popstate', onHashChange)
+    if (!window.location.hash) window.history.replaceState(null, '', '#players')
+    return () => {
+      window.removeEventListener('hashchange', onHashChange)
+      window.removeEventListener('popstate', onHashChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('draft-wizard:watchlist-ids', JSON.stringify(watchlistIds))
+  }, [watchlistIds])
 
   useEffect(() => {
     fetchSplitData()
@@ -504,7 +542,10 @@ function App() {
     ])
       .then(([leaguePayload, draftPayload]: [{ leagues?: LeagueProfile[] } | null, { profiles?: LeagueProfile[]; draft?: DraftState } | null]) => {
         const remoteProfiles = leaguePayload?.leagues?.length ? leaguePayload.leagues : draftPayload?.profiles
-        if (remoteProfiles?.length) setProfiles(remoteProfiles)
+        if (remoteProfiles?.length) {
+          const localProfiles = loadLocal<LeagueProfile[]>('league-profiles', [])
+          setProfiles(mergeLeagueProfiles(remoteProfiles, localProfiles))
+        }
         if (draftPayload?.draft) setDraftsByLeague((current) => ({ ...current, [draftPayload.draft!.leagueId]: draftPayload.draft! }))
       })
       .finally(() => setRemoteLoaded(true))
@@ -512,7 +553,8 @@ function App() {
 
   useEffect(() => {
     if (!remoteLoaded) return
-    persistState(profiles, draftsByLeague, draft).then(() => undefined)
+    setPersistenceStatus('Saving')
+    persistState(profiles, draftsByLeague, draft).then((status) => setPersistenceStatus(status === 'Synced' ? 'Synced' : 'Saved locally'))
   }, [profiles, draftsByLeague, draft, remoteLoaded])
 
   const players = useMemo(() => {
@@ -537,7 +579,22 @@ function App() {
       .sort((a, b) => b.draftScore - a.draftScore)
   }, [draftedIds, draftedPlayerKeys, players, query])
 
-  const shortlistPlayers = useMemo(() => availablePlayers.slice(0, 12), [availablePlayers])
+  const recommendations = useMemo(
+    () => buildRecommendations(availablePlayers, draft, selectedLeague),
+    [availablePlayers, draft, selectedLeague],
+  )
+  const watchlistPlayers = useMemo(
+    () => watchlistIds.map((id) => availablePlayers.find((player) => player.id === id)).filter((player): player is RankedPlayer => Boolean(player)),
+    [availablePlayers, watchlistIds],
+  )
+  const playerByKey = useMemo(() => {
+    const index = new Map<string, RankedPlayer>()
+    players.forEach((player) => {
+      index.set(playerKey(player.name), player)
+      index.set(playerKey(player.name, player.team), player)
+    })
+    return index
+  }, [players])
   const playersByPosition = useMemo(() => {
     const grouped: Record<Position, RankedPlayer[]> = {
       QB: [],
@@ -623,48 +680,169 @@ function App() {
     setVisiblePositions((current) => ({ ...current, [nextPosition]: !current[nextPosition] }))
   }
 
-  async function syncSleeperDraft() {
-    const sourceId = sleeperInput.trim() || selectedLeague.externalLeagueId
+  const syncDraftState = useCallback(async (quiet = false) => {
+    const sourceId = draftInput.trim() || selectedLeague.externalLeagueId
     if (!sourceId) {
-      setSleeperStatus('Enter a Sleeper draft or league ID.')
+      setSyncStatus(`Enter a ${selectedLeague.platform === 'sleeper' ? 'Sleeper draft or league' : 'league'} ID.`)
       return
     }
-    setSleeperStatus('Loading Sleeper draft...')
+    if (!quiet) setSyncStatus(`Loading ${selectedLeague.platform === 'sleeper' ? 'Sleeper' : 'ESPN'} draft...`)
+    setIsSyncing(true)
     try {
-      const nextDraft = await fetchSleeperDraftState(sourceId, selectedLeague, draft)
+      const nextDraft = selectedLeague.platform === 'sleeper'
+        ? await fetchSleeperDraftState(sourceId, selectedLeague, draft)
+        : await fetchManagedDraftState(draft, selectedLeague)
       updateDraft(nextDraft)
-      setSleeperInput(nextDraft.sleeperDraftId || sourceId)
-      setSleeperStatus(`Synced ${nextDraft.drafted.length} picks.`)
+      setDraftInput(nextDraft.sleeperDraftId || sourceId)
+      setSyncStatus(`Synced ${nextDraft.drafted.length} picks at ${new Date().toLocaleTimeString()}.`)
     } catch (error) {
-      setSleeperStatus(error instanceof Error ? error.message : 'Unable to load Sleeper draft.')
+      setSyncStatus(error instanceof Error ? error.message : `Unable to load ${selectedLeague.platform.toUpperCase()} draft.`)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [draft, draftInput, selectedLeague])
+
+  useEffect(() => {
+    if (!autoSync || activeTab !== 'board') return
+    const timer = window.setInterval(() => void syncDraftState(true), 15000)
+    return () => window.clearInterval(timer)
+  }, [activeTab, autoSync, syncDraftState])
+
+  function navigateTab(tab: AppTab) {
+    if (tab === activeTab) return
+    window.history.pushState(null, '', `#${tab}`)
+    setActiveTab(tab)
+  }
+
+  function toggleWatchlist(playerId: string) {
+    setWatchlistIds((current) => current.includes(playerId) ? current.filter((id) => id !== playerId) : [...current, playerId])
+  }
+
+  function draftPlayer(player: RankedPlayer) {
+    const totalTeams = draft.teamNames.length || selectedLeague.lineup.teams
+    const totalPicks = totalTeams * (draft.totalRounds || selectedLeague.lineup.rosterSpots)
+    if (draft.currentPick > totalPicks) {
+      setSyncStatus('This draft is already complete.')
+      return
+    }
+    const location = getSlotRoundForPick(draft.currentPick, totalTeams)
+    const pick: DraftPick = {
+      pick: draft.currentPick,
+      round: location.round,
+      slot: location.slot,
+      teamName: draft.teamNames[location.slot - 1] || `Team ${location.slot}`,
+      playerId: player.id,
+      playerName: player.name,
+      position: player.position,
+      team: player.team,
+    }
+    updateDraft({
+      ...draft,
+      currentPick: draft.currentPick + 1,
+      drafted: [...draft.drafted.filter((item) => item.pick !== pick.pick && item.playerId !== player.id), pick].sort((a, b) => a.pick - b.pick),
+      source: 'manual',
+      lastSyncedAt: new Date().toISOString(),
+    })
+    setWatchlistIds((current) => current.filter((id) => id !== player.id))
+    setSyncStatus(`${player.name} recorded at pick ${pick.pick}.`)
+  }
+
+  function undoLastPick() {
+    const lastPick = [...draft.drafted].sort((a, b) => b.pick - a.pick)[0]
+    if (!lastPick) return
+    updateDraft({ ...draft, currentPick: lastPick.pick, drafted: draft.drafted.filter((pick) => pick !== lastPick), source: 'manual' })
+    setSyncStatus(`Removed ${lastPick.playerName || 'the last pick'}.`)
+  }
+
+  function addLeague() {
+    const id = `league-${Date.now()}`
+    const profile: LeagueProfile = {
+      ...selectedLeague,
+      id,
+      name: 'New League',
+      externalLeagueId: '',
+      externalTeamId: '',
+      draftSlot: 1,
+      lineup: { ...selectedLeague.lineup },
+      scoring: { ...selectedLeague.scoring },
+    }
+    setProfiles((current) => [...current, profile])
+    setDraftsByLeague((current) => ({ ...current, [id]: createDraftState(profile) }))
+    setSelectedLeagueId(id)
+  }
+
+  function duplicateLeague() {
+    const id = `${slugify(selectedLeague.name)}-${Date.now()}`
+    const profile = { ...selectedLeague, id, name: `${selectedLeague.name} Copy`, lineup: { ...selectedLeague.lineup }, scoring: { ...selectedLeague.scoring } }
+    setProfiles((current) => [...current, profile])
+    setDraftsByLeague((current) => ({ ...current, [id]: createDraftState(profile) }))
+    setSelectedLeagueId(id)
+  }
+
+  function removeLeague() {
+    if (profiles.length <= 1 || !window.confirm(`Delete ${selectedLeague.name}? This removes its local draft state.`)) return
+    const remaining = profiles.filter((profile) => profile.id !== selectedLeague.id)
+    setProfiles(remaining)
+    setDraftsByLeague((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== selectedLeague.id)))
+    setSelectedLeagueId(remaining[0].id)
+  }
+
+  async function importLeagueSettings() {
+    const leagueId = selectedLeague.externalLeagueId.trim()
+    if (!leagueId) {
+      setLeagueImportStatus('Enter a league ID first.')
+      return
+    }
+    setIsImportingLeague(true)
+    setLeagueImportStatus(`Importing ${selectedLeague.platform.toUpperCase()} settings...`)
+    try {
+      if (selectedLeague.platform === 'sleeper') {
+        const payload = await fetchSleeperJson<any>(`/league/${leagueId}`)
+        updateLeague(buildSleeperLeaguePatch(payload, selectedLeague))
+      } else {
+        if (!API_URL) throw new Error('ESPN import requires the managed league service.')
+        const response = await fetch(`${API_URL}/leagues`, { cache: 'no-store' })
+        if (!response.ok) throw new Error(`ESPN league import failed (${response.status}).`)
+        const payload: { leagues?: LeagueProfile[] } = await response.json()
+        const matched = payload.leagues?.find((profile) => profile.externalLeagueId === leagueId)
+        if (!matched) throw new Error('No managed ESPN league matched that ID.')
+        updateLeague({ ...matched, id: selectedLeague.id })
+      }
+      setLeagueImportStatus('League name, scoring and lineup imported. Review warnings before drafting.')
+    } catch (error) {
+      setLeagueImportStatus(error instanceof Error ? error.message : 'Unable to import league settings.')
+    } finally {
+      setIsImportingLeague(false)
     }
   }
 
   return (
     <main className="shell">
       <nav className="tabs" aria-label="Draft views">
-        <button className={activeTab === 'players' ? 'active' : ''} onClick={() => setActiveTab('players')}>
-          <ClipboardList size={16} /> Players
+        <button aria-current={activeTab === 'players' ? 'page' : undefined} className={activeTab === 'players' ? 'active' : ''} onClick={() => navigateTab('players')}>
+          <ClipboardList size={16} /> <span>Players</span>
         </button>
-        <button className={activeTab === 'board' ? 'active' : ''} onClick={() => setActiveTab('board')}>
-          <LayoutGrid size={16} /> Board
+        <button aria-current={activeTab === 'board' ? 'page' : undefined} className={activeTab === 'board' ? 'active' : ''} onClick={() => navigateTab('board')}>
+          <LayoutGrid size={16} /> <span>Board</span>
         </button>
-        <button className={activeTab === 'consistency' ? 'active' : ''} onClick={() => setActiveTab('consistency')}>
-          <BarChart3 size={16} /> Consistency
+        <button aria-current={activeTab === 'consistency' ? 'page' : undefined} className={activeTab === 'consistency' ? 'active' : ''} onClick={() => navigateTab('consistency')}>
+          <BarChart3 size={16} /> <span>Consistency</span>
         </button>
-        <button className={activeTab === 'depth' ? 'active' : ''} onClick={() => setActiveTab('depth')}>
-          <ListTree size={16} /> Depth Charts
+        <button aria-current={activeTab === 'depth' ? 'page' : undefined} className={activeTab === 'depth' ? 'active' : ''} onClick={() => navigateTab('depth')}>
+          <ListTree size={16} /> <span>Depth</span>
         </button>
-        <button className={activeTab === 'injuries' ? 'active' : ''} onClick={() => setActiveTab('injuries')}>
-          <Activity size={16} /> Injuries
+        <button aria-current={activeTab === 'injuries' ? 'page' : undefined} className={activeTab === 'injuries' ? 'active' : ''} onClick={() => navigateTab('injuries')}>
+          <Activity size={16} /> <span>Injuries</span>
         </button>
-        <button className={activeTab === 'rookies' ? 'active' : ''} onClick={() => setActiveTab('rookies')}>
-          <Baby size={16} /> Rookies
+        <button aria-current={activeTab === 'rookies' ? 'page' : undefined} className={activeTab === 'rookies' ? 'active' : ''} onClick={() => navigateTab('rookies')}>
+          <Baby size={16} /> <span>Rookies</span>
         </button>
-        <button className={activeTab === 'leagues' ? 'active' : ''} onClick={() => setActiveTab('leagues')}>
-          <Settings size={16} /> Leagues
+        <button aria-current={activeTab === 'leagues' ? 'page' : undefined} className={activeTab === 'leagues' ? 'active' : ''} onClick={() => navigateTab('leagues')}>
+          <Settings size={16} /> <span>Leagues</span>
         </button>
       </nav>
+
+      <DataHealth data={data} league={selectedLeague} persistenceStatus={persistenceStatus} />
 
       {activeTab === 'players' ? (
         <PlayersBoard
@@ -673,10 +851,15 @@ function App() {
           leagueTeams={selectedLeague.lineup.teams}
           playersByPosition={playersByPosition}
           query={query}
-          shortlistPlayers={shortlistPlayers}
+          recommendations={recommendations}
+          watchlistIds={watchlistIds}
+          watchlistPlayers={watchlistPlayers}
           togglePosition={togglePosition}
           visiblePositions={visiblePositions}
+          onDraftPlayer={draftPlayer}
+          onPlayerSelect={setSelectedPlayer}
           onQueryChange={setQuery}
+          onToggleWatchlist={toggleWatchlist}
         />
       ) : null}
 
@@ -684,10 +867,16 @@ function App() {
         <DraftBoardPage
           draft={draft}
           league={selectedLeague}
-          sleeperInput={sleeperInput}
-          sleeperStatus={sleeperStatus}
-          onSleeperInputChange={setSleeperInput}
-          onSyncSleeperDraft={syncSleeperDraft}
+          recommendations={recommendations}
+          draftInput={draftInput}
+          syncStatus={syncStatus}
+          autoSync={autoSync}
+          isSyncing={isSyncing}
+          onAutoSyncChange={setAutoSync}
+          onDraftInputChange={setDraftInput}
+          onDraftPlayer={draftPlayer}
+          onSyncDraft={() => void syncDraftState(false)}
+          onUndoLastPick={undoLastPick}
         />
       ) : null}
 
@@ -699,7 +888,9 @@ function App() {
           query={consistencyQuery}
           rows={consistencyRows}
           season={(data.season || new Date().getFullYear()) - 1}
+          playerByKey={playerByKey}
           onMinGamesChange={setConsistencyMinGames}
+          onPlayerSelect={setSelectedPlayer}
           onPositionChange={setConsistencyPosition}
           onQueryChange={setConsistencyQuery}
         />
@@ -712,10 +903,12 @@ function App() {
           rookieNames={rookieNameSet}
           playerPosRankByKey={playerPosRankByKey}
           playerTierByKey={playerTierByKey}
+          playerByKey={playerByKey}
+          onPlayerSelect={setSelectedPlayer}
         />
       ) : null}
-      {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} playerTierByKey={playerTierByKey} /> : null}
-      {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} playerTierByKey={playerTierByKey} /> : null}
+      {activeTab === 'injuries' ? <InjuriesPage rows={injuryRows} playerByKey={playerByKey} playerTierByKey={playerTierByKey} onPlayerSelect={setSelectedPlayer} /> : null}
+      {activeTab === 'rookies' ? <RookiesPage rows={rookieRows} playerByKey={playerByKey} playerTierByKey={playerTierByKey} onPlayerSelect={setSelectedPlayer} /> : null}
       {activeTab === 'leagues' ? (
         <SettingsPanel
           draft={draft}
@@ -727,9 +920,110 @@ function App() {
           updateLeague={updateLeague}
           updateLineup={updateLineup}
           updateScoring={updateScoring}
+          persistenceStatus={persistenceStatus}
+          importStatus={leagueImportStatus}
+          isImporting={isImportingLeague}
+          onAddLeague={addLeague}
+          onDuplicateLeague={duplicateLeague}
+          onImportLeague={() => void importLeagueSettings()}
+          onRemoveLeague={removeLeague}
+        />
+      ) : null}
+      {selectedPlayer ? (
+        <PlayerDrawer
+          isWatched={watchlistIds.includes(selectedPlayer.id)}
+          player={selectedPlayer}
+          recommendation={recommendations.find((item) => item.player.id === selectedPlayer.id)}
+          onClose={() => setSelectedPlayer(null)}
+          onDraft={() => { draftPlayer(selectedPlayer); setSelectedPlayer(null) }}
+          onToggleWatchlist={() => toggleWatchlist(selectedPlayer.id)}
         />
       ) : null}
     </main>
+  )
+}
+
+function DataHealth({ data, league, persistenceStatus }: { data: RankingsFile; league: LeagueProfile; persistenceStatus: string }) {
+  const generated = new Date(data.generatedAt)
+  const ageHours = Number.isFinite(generated.getTime()) ? (Date.now() - generated.getTime()) / 36e5 : Number.POSITIVE_INFINITY
+  const warnings = getScoringWarnings(league)
+  return (
+    <section className={`dataHealth ${ageHours > 48 || warnings.length ? 'dataHealthWarning' : ''}`} aria-label="Draft data status">
+      <div className="dataHealthPrimary">
+        {ageHours <= 48 && !warnings.length ? <Check size={16} /> : <AlertTriangle size={16} />}
+        <strong>{data.season} data</strong>
+        <span>{ageHours <= 48 ? `Updated ${formatRelativeTime(generated)}` : 'Data may be stale'}</span>
+        <span>{data.source}</span>
+      </div>
+      <div className="dataHealthSecondary">
+        {warnings.length ? <span className="healthWarning">{warnings.length} scoring warning{warnings.length === 1 ? '' : 's'}</span> : <span>Scoring verified</span>}
+        <span>{persistenceStatus}</span>
+      </div>
+    </section>
+  )
+}
+
+function ResearchFilters({
+  position,
+  query,
+  queryLabel,
+  onPositionChange,
+  onQueryChange,
+}: {
+  position: 'ALL' | Position
+  query: string
+  queryLabel: string
+  onPositionChange: (position: 'ALL' | Position) => void
+  onQueryChange: (query: string) => void
+}) {
+  return (
+    <div className="researchFilters">
+      <label className="searchBox researchSearch"><Search size={15} /><span className="srOnly">{queryLabel}</span><input onChange={(event) => onQueryChange(event.target.value)} placeholder={queryLabel} value={query} /></label>
+      <div className="positionToggles" aria-label="Filter by position">
+        {(['ALL', ...POSITION_ORDER] as const).map((item) => <button aria-pressed={position === item} className={position === item ? 'active neutralToggle' : ''} key={item} onClick={() => onPositionChange(item)} type="button">{item}</button>)}
+      </div>
+    </div>
+  )
+}
+
+function PlayerDrawer({
+  player,
+  recommendation,
+  isWatched,
+  onClose,
+  onDraft,
+  onToggleWatchlist,
+}: {
+  player: RankedPlayer
+  recommendation?: Recommendation
+  isWatched: boolean
+  onClose: () => void
+  onDraft: () => void
+  onToggleWatchlist: () => void
+}) {
+  return (
+    <div className="drawerBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }} role="presentation">
+      <aside aria-label={`${player.name} details`} aria-modal="true" className="playerDrawer" role="dialog">
+        <div className="drawerHeader">
+          <div><span className={`position position${player.position}`}>{player.position}</span><h2>{player.name}</h2><p>{player.team} · {player.posRank || 'Unranked'} · Tier {player.tier || '-'}</p></div>
+          <button aria-label="Close player details" className="drawerClose" onClick={onClose} type="button"><X size={20} /></button>
+        </div>
+        {recommendation ? <div className="drawerRecommendation"><strong>Why now</strong><span>{recommendation.reason}. {recommendation.outlook}</span></div> : null}
+        <div className="playerMetricGrid">
+          <div><span>Overall rank</span><strong>#{player.rank}</strong></div>
+          <div><span>ADP</span><strong>{player.adp?.toFixed(1) || '-'}</strong></div>
+          <div><span>Projected PPG</span><strong>{formatProjectedPointsPerGame(player.projectedPoints)}</strong></div>
+          <div><span>Bye</span><strong>{player.bye || '-'}</strong></div>
+        </div>
+        {player.injury ? <div className="detailNotice injuryNotice"><AlertTriangle size={16} /><div><strong>{player.injury.status}</strong><span>{player.injury.injury || 'Injury reported'} · {player.injury.updated || 'Update pending'}</span></div></div> : null}
+        {player.rookie ? <div className="detailNotice"><Baby size={16} /><div><strong>Rookie · Pick #{player.rookie.draftPick || '-'}</strong><span>{player.rookie.college || 'College unavailable'} · {player.rookie.source}</span></div></div> : null}
+        {player.depthChart ? <div className="detailNotice"><ListTree size={16} /><div><strong>{player.position}{player.depthChart.order} on the depth chart</strong><span>{player.depthChart.source}</span></div></div> : null}
+        <div className="drawerActions">
+          <button className={isWatched ? 'iconTextButton watched' : 'iconTextButton'} onClick={onToggleWatchlist} type="button"><Star size={16} /> {isWatched ? 'Watching' : 'Watch'}</button>
+          <button className="primaryAction" onClick={onDraft} type="button">Draft {player.name}</button>
+        </div>
+      </aside>
+    </div>
   )
 }
 
@@ -740,7 +1034,9 @@ function ConsistencyPage({
   query,
   rows,
   season,
+  playerByKey,
   onMinGamesChange,
+  onPlayerSelect,
   onPositionChange,
   onQueryChange,
 }: {
@@ -750,7 +1046,9 @@ function ConsistencyPage({
   query: string
   rows: ConsistencyPlayerRow[]
   season: number
+  playerByKey: Map<string, RankedPlayer>
   onMinGamesChange: (value: number) => void
+  onPlayerSelect: (player: RankedPlayer) => void
   onPositionChange: (position: Position) => void
   onQueryChange: (query: string) => void
 }) {
@@ -758,9 +1056,13 @@ function ConsistencyPage({
 
   return (
     <section className="consistencyPage">
+      <div className="consistencyTitle">
+        <div><h2>{season} Weekly Consistency</h2><p>Prior-season scoring recalculated with {league.name}'s current rules. Minimum six games is recommended.</p></div>
+        <span className="countPill">{rows.length} players</span>
+      </div>
       <div className="consistencyPositionTabs" aria-label="Consistency positions">
         {POSITION_ORDER.map((item) => (
-          <button className={position === item ? 'active' : ''} key={item} onClick={() => onPositionChange(item)} type="button">
+          <button aria-pressed={position === item} className={position === item ? 'active' : ''} key={item} onClick={() => onPositionChange(item)} type="button">
             {item}
           </button>
         ))}
@@ -768,6 +1070,7 @@ function ConsistencyPage({
       <div className="consistencyToolbar">
         <label className="searchBox consistencySearch">
           <Search size={18} />
+          <span className="srOnly">Search consistency results</span>
           <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players" />
         </label>
         <div className="consistencyMeta">
@@ -779,12 +1082,13 @@ function ConsistencyPage({
         </div>
         <label className="minGamesControl">
           Min. Games
-          <button type="button" onClick={() => onMinGamesChange(Math.max(1, minGames - 1))}>-</button>
+          <button aria-label="Decrease minimum games" type="button" onClick={() => onMinGamesChange(Math.max(1, minGames - 1))}>-</button>
           <span>{minGames}</span>
-          <button type="button" onClick={() => onMinGamesChange(Math.min(18, minGames + 1))}>+</button>
+          <button aria-label="Increase minimum games" type="button" onClick={() => onMinGamesChange(Math.min(18, minGames + 1))}>+</button>
         </label>
       </div>
       <div className="consistencyTableWrap">
+        <p className="mobileTableNote">Weekly splits are available on wider screens; mobile shows the decision summary.</p>
         <div className="consistencyGrid">
           <div className="consistencyHead consistencyPlayerHead">Player</div>
           <div className="consistencyHead statHead">Rank</div>
@@ -797,7 +1101,10 @@ function ConsistencyPage({
               <div className="consistencyPlayerCell">
                 <span className={`position position${row.position}`}>{row.position}</span>
                 <div>
-                  <strong>{row.name}</strong>
+                  <strong><button className="tablePlayerButton" disabled={!playerByKey.get(playerKey(row.name, row.team)) && !playerByKey.get(playerKey(row.name))} onClick={() => {
+                    const ranked = playerByKey.get(playerKey(row.name, row.team)) || playerByKey.get(playerKey(row.name))
+                    if (ranked) onPlayerSelect(ranked)
+                  }} type="button">{row.name}</button></strong>
                   <small>{row.team} ({row.top12} top-12, {row.top24} top-24)</small>
                 </div>
               </div>
@@ -841,20 +1148,27 @@ function DepthChartsPage({
   rookieNames,
   playerPosRankByKey,
   playerTierByKey,
+  playerByKey,
+  onPlayerSelect,
 }: {
   rows: DepthChartTeamRow[]
   injuredNames: Set<string>
   rookieNames: Set<string>
   playerPosRankByKey: Map<string, string>
   playerTierByKey: Map<string, number>
+  playerByKey: Map<string, RankedPlayer>
+  onPlayerSelect: (player: RankedPlayer) => void
 }) {
   const columns: DepthChartColumn[] = ['QB', 'RB', 'WR', 'TE', 'K']
+  const [query, setQuery] = useState('')
+  const filteredRows = rows.filter((row) => !query.trim() || `${row.team} ${columns.flatMap((column) => row[column].map((player) => player.name)).join(' ')}`.toLowerCase().includes(query.toLowerCase().trim()))
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
-        <h2>Depth Charts</h2>
-        <span className="countPill">{rows.length} teams</span>
+        <div><h2>Depth Charts</h2><p className="panelDescription">Search a team or player, then open a player for draft context.</p></div>
+        <span className="countPill">{filteredRows.length} teams</span>
       </div>
+      <label className="searchBox researchSearch"><Search size={15} /><span className="srOnly">Search depth charts</span><input onChange={(event) => setQuery(event.target.value)} placeholder="Search team or player" value={query} /></label>
       <div className="depthMatrix">
         <div className="depthMatrixHead">
           <span>Team</span>
@@ -864,7 +1178,7 @@ function DepthChartsPage({
             </span>
           ))}
         </div>
-        {rows.map((row) => (
+        {filteredRows.map((row) => (
           <div className="depthMatrixRow" key={row.team}>
             <strong className="depthTeamCell">
               <span>{row.team}</span>
@@ -875,6 +1189,7 @@ function DepthChartsPage({
               return (
                 <div
                   className="depthCell"
+                  data-position={column}
                   key={`${row.team}-${column}`}
                 >
                   {players.length ? (
@@ -883,18 +1198,23 @@ function DepthChartsPage({
                       const isRookie = rookieNames.has(playerKey(player.name))
                       const posRank = getDepthPlayerPosRank(player, playerPosRankByKey)
                       return (
-                        <span
+                        <button
                           className={depthPlayerClass(player)}
                           key={`${row.team}-${column}-${player.order}-${player.name}`}
                           style={{ color: getTierColor(getDepthPlayerTier(player, playerTierByKey)) }}
                           title={`${player.source} ${player.position}${player.order}`}
+                          type="button"
+                          onClick={() => {
+                            const ranked = playerByKey.get(playerKey(player.name, player.team)) || playerByKey.get(playerKey(player.name))
+                            if (ranked) onPlayerSelect(ranked)
+                          }}
                         >
                           <span className="depthPlayerName">
                             {player.name}{posRank ? ` (${formatPositionRank(posRank)})` : ''}
                           </span>
                           {isInjured ? <span className="depthMarker depthMarkerInjury" title="Injured">I</span> : null}
                           {isRookie ? <span className="depthMarker depthMarkerRookie" title="Rookie">R</span> : null}
-                        </span>
+                        </button>
                       )
                     })
                   ) : (
@@ -905,7 +1225,7 @@ function DepthChartsPage({
             })}
           </div>
         ))}
-        {rows.length === 0 ? <p className="emptyState">No depth chart data has been published yet.</p> : null}
+        {filteredRows.length === 0 ? <p className="emptyState">No matching depth chart entries.</p> : null}
       </div>
     </section>
   )
@@ -914,17 +1234,29 @@ function DepthChartsPage({
 function DraftBoardPage({
   draft,
   league,
-  sleeperInput,
-  sleeperStatus,
-  onSleeperInputChange,
-  onSyncSleeperDraft,
+  recommendations,
+  draftInput,
+  syncStatus,
+  autoSync,
+  isSyncing,
+  onAutoSyncChange,
+  onDraftInputChange,
+  onDraftPlayer,
+  onSyncDraft,
+  onUndoLastPick,
 }: {
   draft: DraftState
   league: LeagueProfile
-  sleeperInput: string
-  sleeperStatus: string
-  onSleeperInputChange: (value: string) => void
-  onSyncSleeperDraft: () => void
+  recommendations: Recommendation[]
+  draftInput: string
+  syncStatus: string
+  autoSync: boolean
+  isSyncing: boolean
+  onAutoSyncChange: (value: boolean) => void
+  onDraftInputChange: (value: string) => void
+  onDraftPlayer: (player: RankedPlayer) => void
+  onSyncDraft: () => void
+  onUndoLastPick: () => void
 }) {
   const totalTeams = draft.teamNames.length || league.lineup.teams
   const totalRounds = draft.totalRounds || league.lineup.rosterSpots
@@ -933,6 +1265,11 @@ function DraftBoardPage({
     draft.drafted.forEach((pick) => picks.set(`${pick.slot}-${pick.round}`, pick))
     return picks
   }, [draft.drafted])
+  const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
+  const currentTeam = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
+  const userSlot = clampLeagueDraftSlot(league, totalTeams)
+  const userRoster = draft.drafted.filter((pick) => pick.slot === userSlot)
+  const isUserPick = currentLocation.slot === userSlot
 
   return (
     <section className="panel pagePanel draftBoardPanel">
@@ -946,19 +1283,50 @@ function DraftBoardPage({
             {draft.lastSyncedAt ? <span>Synced {new Date(draft.lastSyncedAt).toLocaleTimeString()}</span> : null}
           </div>
         </div>
-        <div className="sleeperSync">
+        <div className="draftSync">
           <input
-            aria-label="Sleeper draft or league ID"
-            placeholder="Sleeper draft or league ID"
-            value={sleeperInput}
-            onChange={(event) => onSleeperInputChange(event.target.value)}
+            aria-label={`${league.platform === 'sleeper' ? 'Sleeper draft or league' : 'ESPN league'} ID`}
+            placeholder={`${league.platform === 'sleeper' ? 'Sleeper draft or league' : 'ESPN league'} ID`}
+            value={draftInput}
+            onChange={(event) => onDraftInputChange(event.target.value)}
           />
-          <button className="iconTextButton" onClick={onSyncSleeperDraft} type="button">
-            <RefreshCw size={15} /> Sync
+          <button className="iconTextButton" disabled={isSyncing} onClick={onSyncDraft} type="button">
+            <RefreshCw className={isSyncing ? 'spin' : ''} size={15} /> {isSyncing ? 'Syncing' : `Sync ${league.platform.toUpperCase()}`}
           </button>
         </div>
       </div>
-      {sleeperStatus ? <div className="syncStatus">{sleeperStatus}</div> : null}
+      <div className={`onClockBanner ${isUserPick ? 'userPick' : ''}`}>
+        <div>
+          <span className="eyebrow">Pick {draft.currentPick} · Round {currentLocation.round}</span>
+          <strong>{isUserPick ? 'You are on the clock' : `${currentTeam} is on the clock`}</strong>
+        </div>
+        <div className="draftActions">
+          <label className="autoSyncToggle">
+            <input checked={autoSync} onChange={(event) => onAutoSyncChange(event.target.checked)} type="checkbox" />
+            Auto-sync
+          </label>
+          <button className="iconTextButton" disabled={!draft.drafted.length} onClick={onUndoLastPick} type="button"><Undo2 size={15} /> Undo</button>
+        </div>
+      </div>
+      {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
+      <div className="draftCommandGrid">
+        <section className="commandCard">
+          <div className="commandCardHeader"><h3>Draft now</h3><span>{recommendations.length} options</span></div>
+          <div className="recommendationStrip">
+            {recommendations.slice(0, 4).map((item, index) => (
+              <article className="recommendationCard" key={item.player.id}>
+                <span className="recommendationNumber">{index + 1}</span>
+                <div><strong>{item.player.name}</strong><small>{item.player.position} · {item.player.team} · {item.reason}</small></div>
+                <button aria-label={`Draft ${item.player.name}`} onClick={() => onDraftPlayer(item.player)} type="button">Draft</button>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="commandCard rosterCard">
+          <div className="commandCardHeader"><h3>Your roster</h3><span>Slot {userSlot}</span></div>
+          {userRoster.length ? userRoster.map((pick) => <span className={`rosterChip positionText${pick.position || ''}`} key={pick.pick}>{pick.position} {formatShortPlayerName(pick.playerName || pick.playerId)}</span>) : <p>No selections yet.</p>}
+        </section>
+      </div>
       <div className="draftBoardScroller">
         <div className="draftBoardGrid" style={{ gridTemplateColumns: `56px repeat(${totalTeams}, minmax(118px, 1fr))` }}>
           <div className="draftBoardCorner">Rd</div>
@@ -999,13 +1367,27 @@ function DraftBoardPage({
   )
 }
 
-function InjuriesPage({ rows, playerTierByKey }: { rows: InjuryDetail[]; playerTierByKey: Map<string, number> }) {
+function InjuriesPage({
+  rows,
+  playerByKey,
+  playerTierByKey,
+  onPlayerSelect,
+}: {
+  rows: InjuryDetail[]
+  playerByKey: Map<string, RankedPlayer>
+  playerTierByKey: Map<string, number>
+  onPlayerSelect: (player: RankedPlayer) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [position, setPosition] = useState<'ALL' | Position>('ALL')
+  const filteredRows = rows.filter((row) => (position === 'ALL' || row.position === position) && (!query.trim() || `${row.name} ${row.team} ${row.injury} ${row.status}`.toLowerCase().includes(query.toLowerCase().trim())))
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
-        <h2>Injuries</h2>
-        <span className="countPill">{rows.length} reports</span>
+        <div><h2>Injuries</h2><p className="panelDescription">Prioritized by fantasy tier and report recency.</p></div>
+        <span className="countPill">{filteredRows.length} reports</span>
       </div>
+      <ResearchFilters position={position} query={query} queryLabel="Search player, injury or status" onPositionChange={setPosition} onQueryChange={setQuery} />
       <div className="infoTable injuriesTable">
         <div className="infoHead">
           <span>Player</span>
@@ -1016,33 +1398,48 @@ function InjuriesPage({ rows, playerTierByKey }: { rows: InjuryDetail[]; playerT
           <span>Updated</span>
           <span>Source</span>
         </div>
-        {rows.map((row) => {
+        {filteredRows.map((row) => {
           const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
+          const ranked = playerByKey.get(playerKey(row.name, row.team)) || playerByKey.get(playerKey(row.name))
           return (
             <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}`} style={{ borderLeftColor: tierColor }}>
-              <strong style={{ color: tierColor }}>{row.name}</strong>
-              <span>{row.team || '-'}</span>
-              <span className={`position position${row.position}`}>{row.position}</span>
-              <span className="warningText">{row.status}</span>
-              <span>{row.injury || '-'}</span>
-              <small>{row.updated || '-'}</small>
-              <small>{row.source}</small>
+              <strong data-label="Player" style={{ color: tierColor }}><button className="tablePlayerButton" disabled={!ranked} onClick={() => ranked && onPlayerSelect(ranked)} type="button">{row.name}</button></strong>
+              <span data-label="Team">{row.team || '-'}</span>
+              <span data-label="Position" className={`position position${row.position}`}>{row.position}</span>
+              <span data-label="Status" className="warningText">{row.status}</span>
+              <span data-label="Injury">{row.injury || '-'}</span>
+              <small data-label="Updated">{row.updated || '-'}</small>
+              <small data-label="Source">{row.source}</small>
             </div>
           )
         })}
-        {rows.length === 0 ? <p className="emptyState">No injury reports have been published yet.</p> : null}
+        {filteredRows.length === 0 ? <p className="emptyState">No matching injury reports.</p> : null}
       </div>
     </section>
   )
 }
 
-function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTierByKey: Map<string, number> }) {
+function RookiesPage({
+  rows,
+  playerByKey,
+  playerTierByKey,
+  onPlayerSelect,
+}: {
+  rows: RookieDetail[]
+  playerByKey: Map<string, RankedPlayer>
+  playerTierByKey: Map<string, number>
+  onPlayerSelect: (player: RankedPlayer) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [position, setPosition] = useState<'ALL' | Position>('ALL')
+  const filteredRows = rows.filter((row) => (position === 'ALL' || row.position === position) && (!query.trim() || `${row.name} ${row.team} ${row.college}`.toLowerCase().includes(query.toLowerCase().trim())))
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
-        <h2>Rookies</h2>
-        <span className="countPill">{rows.length} players</span>
+        <div><h2>Rookies</h2><p className="panelDescription">NFL draft capital connected to rankings, projections and depth-chart opportunity.</p></div>
+        <span className="countPill">{filteredRows.length} players</span>
       </div>
+      <ResearchFilters position={position} query={query} queryLabel="Search rookie, team or college" onPositionChange={setPosition} onQueryChange={setQuery} />
       <div className="infoTable rookiesTable">
         <div className="infoHead">
           <span>Round</span>
@@ -1052,20 +1449,21 @@ function RookiesPage({ rows, playerTierByKey }: { rows: RookieDetail[]; playerTi
           <span>Pos</span>
           <span>College</span>
         </div>
-        {rows.map((row) => {
+        {filteredRows.map((row) => {
           const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
+          const ranked = playerByKey.get(playerKey(row.name, row.team)) || playerByKey.get(playerKey(row.name))
           return (
             <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.draftPick || row.rookieYear || 'rookie'}`} style={{ borderLeftColor: tierColor }}>
-              <span>{row.draftRound || '-'}</span>
-              <span>{row.draftPick ? `#${row.draftPick}` : '-'}</span>
-              <strong style={{ color: tierColor }}>{row.name}</strong>
-              <span>{row.team || '-'}</span>
-              <span className={`position position${row.position}`}>{row.position}</span>
-              <span>{row.college || '-'}</span>
+              <span data-label="Round">{row.draftRound || '-'}</span>
+              <span data-label="Pick">{row.draftPick ? `#${row.draftPick}` : '-'}</span>
+              <strong data-label="Player" style={{ color: tierColor }}><button className="tablePlayerButton" disabled={!ranked} onClick={() => ranked && onPlayerSelect(ranked)} type="button">{row.name}</button></strong>
+              <span data-label="Team">{row.team || '-'}</span>
+              <span data-label="Position" className={`position position${row.position}`}>{row.position}</span>
+              <span data-label="College">{row.college || '-'}</span>
             </div>
           )
         })}
-        {rows.length === 0 ? <p className="emptyState">No rookie data has been published yet.</p> : null}
+        {filteredRows.length === 0 ? <p className="emptyState">No matching rookies.</p> : null}
       </div>
     </section>
   )
@@ -1250,6 +1648,143 @@ function getPickNumberForSlotRound(slot: number, round: number, totalTeams: numb
   return (round - 1) * totalTeams + roundSlot
 }
 
+function getSlotRoundForPick(pick: number, totalTeams: number) {
+  const safePick = Math.max(1, pick)
+  const round = Math.ceil(safePick / totalTeams)
+  const withinRound = (safePick - 1) % totalTeams
+  const slot = round % 2 === 1 ? withinRound + 1 : totalTeams - withinRound
+  return { round, slot }
+}
+
+function clampLeagueDraftSlot(league: LeagueProfile, totalTeams: number) {
+  return Math.min(totalTeams, Math.max(1, league.draftSlot || Number(league.externalTeamId) || 1))
+}
+
+function getTabFromHash(): AppTab {
+  const value = window.location.hash.replace('#', '') as AppTab
+  return ['players', 'board', 'consistency', 'depth', 'injuries', 'rookies', 'leagues'].includes(value) ? value : 'players'
+}
+
+function mergeLeagueProfiles(remote: LeagueProfile[], local: LeagueProfile[]) {
+  const merged = new Map(remote.map((profile) => [profile.id, profile]))
+  local.forEach((profile) => merged.set(profile.id, { ...(merged.get(profile.id) || {}), ...profile }))
+  return [...merged.values()]
+}
+
+function getScoringWarnings(league: LeagueProfile) {
+  const warnings: string[] = []
+  if (league.scoring.interception > 0) warnings.push(`Interceptions thrown add ${league.scoring.interception} points; most leagues use a negative penalty.`)
+  if (league.scoring.fumbleLost > 0) warnings.push(`Fumbles lost add ${league.scoring.fumbleLost} points; most leagues use a negative penalty.`)
+  if (league.scoring.passingYardsPerPoint <= 0 || league.scoring.rushingYardsPerPoint <= 0 || league.scoring.receivingYardsPerPoint <= 0) warnings.push('Yards-per-point values must be greater than zero.')
+  if (league.lineup.teams < 2) warnings.push('League size must include at least two teams.')
+  return warnings
+}
+
+function formatRelativeTime(date: Date) {
+  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000))
+  if (minutes < 2) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  return hours < 48 ? `${hours}h ago` : date.toLocaleDateString()
+}
+
+function buildRecommendations(players: RankedPlayer[], draft: DraftState, league: LeagueProfile): Recommendation[] {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const userSlot = clampLeagueDraftSlot(league, totalTeams)
+  const roster = draft.drafted.filter((pick) => pick.slot === userSlot)
+  const rosterCounts = new Map<Position, number>()
+  roster.forEach((pick) => pick.position && rosterCounts.set(pick.position, (rosterCounts.get(pick.position) || 0) + 1))
+  const nextUserPick = findNextPickForSlot(draft.currentPick + 1, userSlot, totalTeams, draft.totalRounds || league.lineup.rosterSpots)
+
+  return players.slice(0, 120).map((player) => {
+    const target = getPositionTarget(player.position, league.lineup)
+    const rostered = rosterCounts.get(player.position) || 0
+    const need = Math.max(0, target - rostered)
+    const adpValue = player.adp ? draft.currentPick - player.adp : 0
+    const injuryPenalty = player.injury ? 10 : 0
+    const score = player.draftScore + need * 14 + Math.max(0, adpValue) * 1.6 - injuryPenalty
+    const reason = need > 0
+      ? `Fills ${need === 1 ? 'an open' : `${need} open`} ${player.position} starter spot${need === 1 ? '' : 's'}`
+      : adpValue >= 6
+        ? `${Math.round(adpValue)} picks of value versus ADP`
+        : `Top tier-${player.tier || '-'} ${player.position} available`
+    const outlook = nextUserPick && player.adp && player.adp < nextUserPick
+      ? `Unlikely to last to your next pick at ${nextUserPick}`
+      : nextUserPick
+        ? `May remain available at your next pick (${nextUserPick})`
+        : 'Best available for the current pick'
+    return { player, reason, outlook, score }
+  }).sort((a, b) => b.score - a.score).slice(0, 8)
+}
+
+function getPositionTarget(position: Position, lineup: LineupSettings) {
+  if (position === 'QB') return lineup.qb + lineup.superflex
+  if (position === 'RB') return lineup.rb + Math.ceil(lineup.flex / 2)
+  if (position === 'WR') return lineup.wr + Math.floor(lineup.flex / 2)
+  if (position === 'TE') return lineup.te
+  if (position === 'K') return lineup.k
+  return lineup.dst
+}
+
+function findNextPickForSlot(startPick: number, slot: number, totalTeams: number, totalRounds: number) {
+  const finalPick = totalTeams * totalRounds
+  for (let pick = startPick; pick <= finalPick; pick += 1) {
+    if (getSlotRoundForPick(pick, totalTeams).slot === slot) return pick
+  }
+  return undefined
+}
+
+function buildSleeperLeaguePatch(payload: any, current: LeagueProfile): Partial<LeagueProfile> {
+  const positions = Array.isArray(payload.roster_positions) ? payload.roster_positions.map((value: unknown) => String(value).toUpperCase()) : []
+  const settings = payload.scoring_settings || {}
+  const count = (...values: string[]) => positions.filter((position: string) => values.includes(position)).length
+  const yardsPerPoint = (raw: unknown, fallback: number) => {
+    const numeric = Number(raw)
+    if (!Number.isFinite(numeric) || numeric <= 0) return fallback
+    return numeric < 1 ? Math.round((1 / numeric) * 100) / 100 : numeric
+  }
+  const reception = Number(settings.rec ?? current.scoring.reception)
+  const rankingPreset: Exclude<ScoringPreset, 'custom'> = reception >= 0.75 ? 'ppr' : reception >= 0.25 ? 'halfPpr' : 'standard'
+  return {
+    name: payload.name || current.name,
+    externalLeagueId: String(payload.league_id || current.externalLeagueId),
+    scoringPreset: rankingPreset,
+    rankingPreset,
+    lineup: {
+      ...current.lineup,
+      teams: Number(payload.total_rosters) || current.lineup.teams,
+      rosterSpots: positions.length || current.lineup.rosterSpots,
+      qb: count('QB'),
+      rb: count('RB'),
+      wr: count('WR'),
+      te: count('TE'),
+      flex: count('FLEX', 'W/R/T', 'WRRB_FLEX'),
+      superflex: count('SUPER_FLEX', 'Q/W/R/T'),
+      k: count('K'),
+      dst: count('DEF', 'DST'),
+      bench: count('BN'),
+    },
+    scoring: {
+      ...current.scoring,
+      passingYardsPerPoint: yardsPerPoint(settings.pass_yd, current.scoring.passingYardsPerPoint),
+      passingTd: Number(settings.pass_td ?? current.scoring.passingTd),
+      interception: Number(settings.pass_int ?? current.scoring.interception),
+      rushingYardsPerPoint: yardsPerPoint(settings.rush_yd, current.scoring.rushingYardsPerPoint),
+      receivingYardsPerPoint: yardsPerPoint(settings.rec_yd, current.scoring.receivingYardsPerPoint),
+      rushReceiveTd: Number(settings.rush_td ?? settings.rec_td ?? current.scoring.rushReceiveTd),
+      reception,
+      fumbleLost: Number(settings.fum_lost ?? current.scoring.fumbleLost),
+      fieldGoal: Number(settings.fgm ?? current.scoring.fieldGoal),
+      extraPoint: Number(settings.xpm ?? current.scoring.extraPoint),
+      dstSack: Number(settings.sack ?? current.scoring.dstSack),
+      dstInterception: Number(settings.int ?? current.scoring.dstInterception),
+      dstFumbleRecovery: Number(settings.fum_rec ?? current.scoring.dstFumbleRecovery),
+      dstTouchdown: Number(settings.def_td ?? current.scoring.dstTouchdown),
+      dstSafety: Number(settings.safe ?? current.scoring.dstSafety),
+    },
+  }
+}
+
 function getPositionColor(position: Position | undefined) {
   if (position === 'QB') return '#e53e3e'
   if (position === 'RB') return '#38a169'
@@ -1294,6 +1829,15 @@ function normalizePlayerName(value: string) {
 
 function playerKey(name: string, team?: string) {
   return slugify(team ? `${normalizePlayerName(name)}-${team}` : normalizePlayerName(name))
+}
+
+async function fetchManagedDraftState(currentDraft: DraftState, league: LeagueProfile): Promise<DraftState> {
+  if (!API_URL) throw new Error('ESPN live sync requires the managed draft service. Manual drafting is available now.')
+  const response = await fetch(`${API_URL}/drafts/${currentDraft.id}`, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`ESPN draft sync failed (${response.status}). Manual drafting is still available.`)
+  const payload: { draft?: DraftState } = await response.json()
+  if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Use manual Draft buttons until the feed starts.')
+  return { ...payload.draft, leagueId: league.id, source: 'espn', lastSyncedAt: new Date().toISOString() }
 }
 
 async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, currentDraft: DraftState): Promise<DraftState> {
@@ -1487,20 +2031,30 @@ function PlayersBoard({
   leagueTeams,
   playersByPosition,
   query,
-  shortlistPlayers,
+  recommendations,
+  watchlistIds,
+  watchlistPlayers,
   togglePosition,
   visiblePositions,
+  onDraftPlayer,
+  onPlayerSelect,
   onQueryChange,
+  onToggleWatchlist,
 }: {
   availableCount: number
   leagueName: string
   leagueTeams: number
   playersByPosition: Record<Position, RankedPlayer[]>
   query: string
-  shortlistPlayers: RankedPlayer[]
+  recommendations: Recommendation[]
+  watchlistIds: string[]
+  watchlistPlayers: RankedPlayer[]
   togglePosition: (position: Position) => void
   visiblePositions: Record<Position, boolean>
+  onDraftPlayer: (player: RankedPlayer) => void
+  onPlayerSelect: (player: RankedPlayer) => void
   onQueryChange: (query: string) => void
+  onToggleWatchlist: (playerId: string) => void
 }) {
   const activePositions = POSITION_ORDER.filter((position) => visiblePositions[position])
 
@@ -1515,6 +2069,7 @@ function PlayersBoard({
         <div className="playerControls">
           <label className="searchBox playerSearch">
             <Search size={14} />
+            <span className="srOnly">Search available players</span>
             <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
           </label>
           <div className="positionToggles" aria-label="Visible position columns">
@@ -1523,6 +2078,7 @@ function PlayersBoard({
                 className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
                 key={position}
                 onClick={() => togglePosition(position)}
+                aria-pressed={visiblePositions[position]}
                 type="button"
               >
                 {position}
@@ -1544,7 +2100,16 @@ function PlayersBoard({
                   </div>
                   <div className="positionPlayers">
                     {playersByPosition[position].map((player) => (
-                      <PlayerSummary key={player.id} leagueTeams={leagueTeams} player={player} variant="column" />
+                      <PlayerSummary
+                        isWatched={watchlistIds.includes(player.id)}
+                        key={player.id}
+                        leagueTeams={leagueTeams}
+                        player={player}
+                        variant="column"
+                        onDraft={() => onDraftPlayer(player)}
+                        onSelect={() => onPlayerSelect(player)}
+                        onToggleWatchlist={() => onToggleWatchlist(player.id)}
+                      />
                     ))}
                     {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
                   </div>
@@ -1557,21 +2122,62 @@ function PlayersBoard({
 
       <aside className="shortlistRail">
         <div className="shortlistHeader">
-          <h3>Shortlist</h3>
-          <div className="shortlistCount">{shortlistPlayers.length} shown</div>
+          <div><h3>Draft now</h3><small>Roster-aware recommendations</small></div>
+          <div className="shortlistCount">{recommendations.length} ranked</div>
         </div>
         <div className="shortlistContainer">
-          {shortlistPlayers.map((player) => (
-            <PlayerSummary key={player.id} leagueTeams={leagueTeams} player={player} variant="shortlist" />
+          {watchlistPlayers.length ? <div className="railSectionLabel"><Star size={13} /> Watchlist</div> : null}
+          {watchlistPlayers.map((player) => (
+            <PlayerSummary
+              isWatched
+              key={`watch-${player.id}`}
+              leagueTeams={leagueTeams}
+              player={player}
+              variant="shortlist"
+              onDraft={() => onDraftPlayer(player)}
+              onSelect={() => onPlayerSelect(player)}
+              onToggleWatchlist={() => onToggleWatchlist(player.id)}
+            />
           ))}
-          {shortlistPlayers.length === 0 ? <p className="muted">No matching players.</p> : null}
+          <div className="railSectionLabel">Best available</div>
+          {recommendations.map((item) => (
+            <div className="recommendationRailItem" key={item.player.id}>
+              <PlayerSummary
+                isWatched={watchlistIds.includes(item.player.id)}
+                leagueTeams={leagueTeams}
+                player={item.player}
+                variant="shortlist"
+                onDraft={() => onDraftPlayer(item.player)}
+                onSelect={() => onPlayerSelect(item.player)}
+                onToggleWatchlist={() => onToggleWatchlist(item.player.id)}
+              />
+              <p>{item.reason}. {item.outlook}</p>
+            </div>
+          ))}
+          {recommendations.length === 0 ? <p className="muted">No matching players.</p> : null}
         </div>
       </aside>
     </div>
   )
 }
 
-function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer; leagueTeams: number; variant: 'shortlist' | 'column' }) {
+function PlayerSummary({
+  player,
+  leagueTeams,
+  variant,
+  isWatched,
+  onDraft,
+  onSelect,
+  onToggleWatchlist,
+}: {
+  player: RankedPlayer
+  leagueTeams: number
+  variant: 'shortlist' | 'column'
+  isWatched: boolean
+  onDraft: () => void
+  onSelect: () => void
+  onToggleWatchlist: () => void
+}) {
   const tierColor = getTierColor(player.tier)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
@@ -1581,11 +2187,13 @@ function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer;
         <span className="shortlistRank" style={{ color: tierColor }}>
           #{player.rank}
         </span>
-        <span className="shortlistName" style={{ color: tierColor }}>
-          {player.name}
-        </span>
+        <button className="playerNameButton shortlistName" onClick={onSelect} style={{ color: tierColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
           {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
+        </span>
+        <span className="playerQuickActions">
+          <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={13} /></button>
+          <button aria-label={`Draft ${player.name}`} className="draftQuickButton" onClick={onDraft} type="button">Draft</button>
         </span>
       </div>
     )
@@ -1597,7 +2205,7 @@ function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer;
         #{player.rank}
       </div>
       <div className="playerName" style={{ color: tierColor }}>
-        <span>{player.name}</span>
+        <button className="playerNameButton" onClick={onSelect} type="button">{player.name}</button>
         <span className="playerInlineMeta">
           {adpLabel !== '-' ? (
             <span className="adpValue" title={player.adp ? `Overall average rank ${player.adp.toFixed(1)}` : ''}>
@@ -1611,6 +2219,10 @@ function PlayerSummary({ player, leagueTeams, variant }: { player: RankedPlayer;
           {player.rookie ? <span className="rookieDot">R</span> : null}
         </span>
       </div>
+      <span className="playerQuickActions compactActions">
+        <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={12} /></button>
+        <button aria-label={`Draft ${player.name}`} className="draftQuickButton" onClick={onDraft} type="button">+</button>
+      </span>
     </div>
   )
 }
@@ -1648,6 +2260,13 @@ function SettingsPanel({
   updateLineup,
   draft,
   updateDraft,
+  persistenceStatus,
+  importStatus,
+  isImporting,
+  onAddLeague,
+  onDuplicateLeague,
+  onImportLeague,
+  onRemoveLeague,
 }: {
   league: LeagueProfile
   profiles: LeagueProfile[]
@@ -1658,17 +2277,35 @@ function SettingsPanel({
   updateLineup: (key: keyof LineupSettings, value: number) => void
   draft: DraftState
   updateDraft: (draft: DraftState) => void
+  persistenceStatus: 'Saving' | 'Saved locally' | 'Synced'
+  importStatus: string
+  isImporting: boolean
+  onAddLeague: () => void
+  onDuplicateLeague: () => void
+  onImportLeague: () => void
+  onRemoveLeague: () => void
 }) {
+  const warnings = getScoringWarnings(league)
   return (
     <section className="settingsGrid">
       <div className="panel wide">
-        <h2>Active League</h2>
+        <div className="settingsHeader">
+          <div><h2>Active League</h2><p>Create a league or import its platform ID, then verify scoring before draft day.</p></div>
+          <div className="settingsActions">
+            <span className="saveStatus"><Check size={13} /> {persistenceStatus}</span>
+            <button className="iconTextButton" onClick={onAddLeague} type="button"><Plus size={14} /> New</button>
+            <button className="iconTextButton" onClick={onDuplicateLeague} type="button"><Copy size={14} /> Duplicate</button>
+            <button className="iconTextButton" disabled={isImporting} onClick={onImportLeague} type="button"><RefreshCw className={isImporting ? 'spin' : ''} size={14} /> {isImporting ? 'Importing' : 'Import settings'}</button>
+            <button aria-label={`Delete ${league.name}`} className="iconTextButton dangerButton" onClick={onRemoveLeague} type="button"><Trash2 size={14} /></button>
+          </div>
+        </div>
         <div className="leagueSwitcher" aria-label="League selector">
           {profiles.map((profile) => (
             <button
               className={profile.id === selectedLeagueId ? 'selected' : ''}
               key={profile.id}
               onClick={() => setSelectedLeagueId(profile.id)}
+              aria-pressed={profile.id === selectedLeagueId}
             >
               <span>{profile.platform.toUpperCase()}</span>
               <strong>{profile.name}</strong>
@@ -1676,6 +2313,7 @@ function SettingsPanel({
             </button>
           ))}
         </div>
+        {importStatus ? <div className="syncStatus" role="status">{importStatus}</div> : null}
       </div>
 
       <div className="panel wide">
@@ -1700,6 +2338,7 @@ function SettingsPanel({
             Team ID
             <input value={league.externalTeamId || ''} onChange={(event) => updateLeague({ externalTeamId: event.target.value })} />
           </label>
+          <NumberField label="Your Draft Slot" min={1} value={clampLeagueDraftSlot(league, league.lineup.teams)} onChange={(value) => updateLeague({ draftSlot: Math.min(league.lineup.teams, Math.max(1, value)) })} />
           <label>
             Ranking Set
             <select value={league.rankingPreset} onChange={(event) => updateLeague({ rankingPreset: event.target.value as Exclude<ScoringPreset, 'custom'> })}>
@@ -1712,16 +2351,19 @@ function SettingsPanel({
       </div>
 
       <div className="panel wide">
-        <h2>Scoring</h2>
+        <div className="settingsHeader"><div><h2>Scoring</h2><p>Penalty fields must be negative. Recommendations recalculate immediately.</p></div></div>
+        {warnings.length ? (
+          <div className="validationAlert" role="alert"><AlertTriangle size={18} /><div><strong>Review scoring before drafting</strong>{warnings.map((warning) => <span key={warning}>{warning}</span>)}</div></div>
+        ) : null}
         <div className="formGrid compact">
           <NumberField label="Pass TD" value={league.scoring.passingTd} onChange={(value) => updateScoring({ passingTd: value })} />
           <NumberField label="Pass Yds/Pt" value={league.scoring.passingYardsPerPoint} onChange={(value) => updateScoring({ passingYardsPerPoint: value })} />
-          <NumberField label="INT" value={league.scoring.interception} onChange={(value) => updateScoring({ interception: value })} />
+          <NumberField label="Interception Thrown" value={league.scoring.interception} onChange={(value) => updateScoring({ interception: value })} />
           <NumberField label="Rec" value={league.scoring.reception} step={0.5} onChange={(value) => updateScoring({ reception: value })} />
           <NumberField label="Rush/Rec TD" value={league.scoring.rushReceiveTd} onChange={(value) => updateScoring({ rushReceiveTd: value })} />
           <NumberField label="Rush Yds/Pt" value={league.scoring.rushingYardsPerPoint} onChange={(value) => updateScoring({ rushingYardsPerPoint: value })} />
           <NumberField label="Rec Yds/Pt" value={league.scoring.receivingYardsPerPoint} onChange={(value) => updateScoring({ receivingYardsPerPoint: value })} />
-          <NumberField label="Fumble" value={league.scoring.fumbleLost} onChange={(value) => updateScoring({ fumbleLost: value })} />
+          <NumberField label="Fumble Lost" value={league.scoring.fumbleLost} onChange={(value) => updateScoring({ fumbleLost: value })} />
           <NumberField label="FG" value={league.scoring.fieldGoal} onChange={(value) => updateScoring({ fieldGoal: value })} />
           <NumberField label="XP" value={league.scoring.extraPoint} onChange={(value) => updateScoring({ extraPoint: value })} />
         </div>

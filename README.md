@@ -2,6 +2,14 @@
 
 A React draft assistant for live fantasy football drafts. The app reads public rankings/projections from S3, tracks league-specific draft state locally, and can sync that state through an AWS HTTP API backed by DynamoDB.
 
+## Draft workflow
+
+- Create, duplicate, edit, or import Sleeper/managed ESPN league profiles.
+- Validate scoring anomalies before they affect projections or recommendations.
+- Sync platform draft state, enable 15-second auto-sync, or record and undo picks manually.
+- Use roster-aware recommendations, a persistent watchlist, and player detail drawers across every research view.
+- Draft from a mobile-first command center with compact research cards and deep-linked tabs.
+
 ## Architecture
 
 - React + Vite app hosted by GitHub Pages.
@@ -123,6 +131,5 @@ Player rows are enriched when matching data is available:
 
 ## Next integration points
 
-- Add Sleeper draft import using the service shape already proven in `draft-ui`.
-- Add ESPN draft import using the stored ESPN cookies in a backend-only job.
+- Publish ESPN draft picks through the existing managed draft endpoint during live drafts.
 - Move scraper source adapters toward the `fantasy-core` package layout as more sources are added.
