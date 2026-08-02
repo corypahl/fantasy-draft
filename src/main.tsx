@@ -627,13 +627,18 @@ function App() {
       .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
   }, [query, undraftedPlayers])
 
-  const recommendations = useMemo(
+  const rankedRecommendations = useMemo(
     () => buildRecommendations(undraftedPlayers, players, draft, selectedLeague, recommendationStrategy),
     [draft, players, recommendationStrategy, selectedLeague, undraftedPlayers],
   )
+  const recommendations = useMemo(() => rankedRecommendations.slice(0, 8), [rankedRecommendations])
   const watchlistPlayers = useMemo(
     () => watchlistIds.map((id) => undraftedPlayers.find((player) => player.id === id)).filter((player): player is RankedPlayer => Boolean(player)),
     [undraftedPlayers, watchlistIds],
+  )
+  const watchlistRecommendations = useMemo(
+    () => watchlistPlayers.map((player) => rankedRecommendations.find((recommendation) => recommendation.player.id === player.id)).filter((recommendation): recommendation is Recommendation => Boolean(recommendation)),
+    [rankedRecommendations, watchlistPlayers],
   )
   const playerByKey = useMemo(() => {
     const index = new Map<string, RankedPlayer>()
@@ -867,12 +872,14 @@ function App() {
           strategy={recommendationStrategy}
           watchlistIds={watchlistIds}
           watchlistPlayers={watchlistPlayers}
+          watchlistRecommendations={watchlistRecommendations}
           togglePosition={togglePosition}
           visiblePositions={visiblePositions}
           onPlayerSelect={setSelectedPlayer}
           onQueryChange={setQuery}
           onStrategyChange={setRecommendationStrategy}
           onToggleWatchlist={toggleWatchlist}
+          onClearWatchlist={() => setWatchlistIds([])}
         />
       ) : null}
 
@@ -1023,6 +1030,324 @@ function RecommendationSignals({ recommendation, compact = false }: { recommenda
   ].filter((signal): signal is string => Boolean(signal))
 
   return <div className={compact ? 'recommendationSignals compact' : 'recommendationSignals'}>{signals.slice(0, compact ? 2 : 4).map((signal) => <span key={signal}>{signal}</span>)}</div>
+}
+
+type ComparisonRow = {
+  key: string
+  label: string
+  help?: string
+  quick?: boolean
+  value: (player: RankedPlayer) => string
+  numeric?: (player: RankedPlayer) => number | undefined
+  best?: 'high' | 'low'
+  samePositionOnly?: boolean
+}
+
+const PROJECTION_COMPARISON_FIELDS: { key: string; label: string; best?: 'high' | 'low' }[] = [
+  { key: 'passing_att', label: 'Pass attempts', best: 'high' },
+  { key: 'passing_cmp', label: 'Completions', best: 'high' },
+  { key: 'passing_yds', label: 'Pass yards', best: 'high' },
+  { key: 'passing_tds', label: 'Pass TD', best: 'high' },
+  { key: 'passing_ints', label: 'Interceptions', best: 'low' },
+  { key: 'rushing_att', label: 'Rush attempts', best: 'high' },
+  { key: 'rushing_yds', label: 'Rush yards', best: 'high' },
+  { key: 'rushing_tds', label: 'Rush TD', best: 'high' },
+  { key: 'receiving_rec', label: 'Receptions', best: 'high' },
+  { key: 'receiving_yds', label: 'Receiving yards', best: 'high' },
+  { key: 'receiving_tds', label: 'Receiving TD', best: 'high' },
+  { key: 'fumbles_lost', label: 'Fumbles lost', best: 'low' },
+  { key: 'fg', label: 'Field goals', best: 'high' },
+  { key: 'fga', label: 'Field-goal attempts', best: 'high' },
+  { key: 'xpt', label: 'Extra points', best: 'high' },
+  { key: 'sack', label: 'Sacks', best: 'high' },
+  { key: 'int', label: 'Defensive INT', best: 'high' },
+  { key: 'ff', label: 'Forced fumbles', best: 'high' },
+  { key: 'fr', label: 'Fumble recoveries', best: 'high' },
+  { key: 'td', label: 'Defensive TD', best: 'high' },
+  { key: 'safety', label: 'Safeties', best: 'high' },
+  { key: 'pa', label: 'Points allowed', best: 'low' },
+  { key: 'yds_agn', label: 'Yards allowed', best: 'low' },
+]
+
+function WatchlistComparison({
+  players,
+  recommendations,
+  leagueTeams,
+  onPlayerSelect,
+  onToggleWatchlist,
+  onClearWatchlist,
+}: {
+  players: RankedPlayer[]
+  recommendations: Recommendation[]
+  leagueTeams: number
+  onPlayerSelect: (player: RankedPlayer) => void
+  onToggleWatchlist: (playerId: string) => void
+  onClearWatchlist: () => void
+}) {
+  const [showAllDetails, setShowAllDetails] = useState(false)
+  useEffect(() => { if (!players.length) setShowAllDetails(false) }, [players.length])
+  const samePosition = players.length > 0 && players.every((player) => player.position === players[0].position)
+  const recommendationById = new Map(recommendations.map((recommendation) => [recommendation.player.id, recommendation]))
+  const recommendationFor = (player: RankedPlayer) => recommendationById.get(player.id)
+  const projectionRows = PROJECTION_COMPARISON_FIELDS
+    .filter((field) => players.some((player) => Number.isFinite(player.projections?.[field.key])))
+    .map<ComparisonRow>((field) => ({
+      key: `projection-${field.key}`,
+      label: field.label,
+      value: (player) => formatComparisonStat(player.projections?.[field.key]),
+      numeric: (player) => getFiniteComparisonValue(player.projections?.[field.key]),
+      best: field.best,
+    }))
+
+  if (!players.length) return null
+
+  const comparisonSections: { label: string; rows: ComparisonRow[] }[] = [
+    {
+      label: 'Draft decision',
+      rows: [
+        { key: 'model-score', label: 'Model score', help: 'Relative recommendation score using the selected strategy', quick: true, value: (player) => recommendationFor(player) ? Math.round(recommendationFor(player)!.score).toString() : '—', numeric: (player) => recommendationFor(player)?.score, best: 'high' },
+        { key: 'vor', label: 'Value over replacement', help: 'Projected season points above the current replacement player at this position', quick: true, value: (player) => recommendationFor(player) ? `+${formatComparisonStat(recommendationFor(player)!.metrics.replacementValue)} pts` : '—', numeric: (player) => recommendationFor(player)?.metrics.replacementValue, best: 'high' },
+        { key: 'replacement', label: 'Replacement level', value: (player) => recommendationFor(player) ? `${formatProjectedPointsPerGame(recommendationFor(player)!.metrics.replacementPoints)} PPG` : '—' },
+        { key: 'tier-drop', label: 'Tier cliff', help: 'Projected PPG lost by waiting for the next tier at this position', value: (player) => recommendationFor(player) ? `${(recommendationFor(player)!.metrics.tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG` : '—', numeric: (player) => recommendationFor(player)?.metrics.tierDrop, best: 'high' },
+        { key: 'availability', label: 'Chance at next pick', quick: true, value: (player) => formatNextPickAvailability(recommendationFor(player)) },
+        { key: 'roster-fit', label: 'Roster fit', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.rosterFit)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.rosterFit, best: 'high' },
+        { key: 'floor', label: 'Floor score', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.floor)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.floor, best: 'high' },
+        { key: 'upside', label: 'Upside score', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.upside)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.upside, best: 'high' },
+        { key: 'why-now', label: 'Why now', quick: true, value: (player) => recommendationFor(player)?.reason || '—' },
+        { key: 'outlook', label: 'Pick outlook', value: (player) => recommendationFor(player)?.outlook || '—' },
+      ],
+    },
+    {
+      label: 'Draft value',
+      rows: [
+        { key: 'rank', label: 'Overall rank', quick: true, value: (player) => `#${player.rank}`, numeric: (player) => player.rank, best: 'low' },
+        { key: 'position-rank', label: 'Position rank', value: (player) => player.posRank || '—', numeric: getPositionRankNumber, best: 'low', samePositionOnly: true },
+        { key: 'tier', label: 'Tier', value: (player) => player.tier ? `Tier ${player.tier}` : '—', numeric: (player) => getFiniteComparisonValue(player.tier), best: 'low' },
+        { key: 'adp', label: 'ADP', help: 'Round.pick with overall ADP in parentheses', quick: true, value: (player) => player.adp ? `${formatAdpRoundPick(player.adp, leagueTeams)} (#${player.adp.toFixed(1)})` : '—' },
+        { key: 'adp-value', label: 'Value vs ADP', help: 'Positive means the player is ranked ahead of market cost', quick: true, value: formatAdpValue, numeric: getAdpValue, best: 'high' },
+      ],
+    },
+    {
+      label: 'Projected output',
+      rows: [
+        { key: 'projected-points', label: 'Season points', value: (player) => formatComparisonStat(player.projectedPoints), numeric: (player) => getFiniteComparisonValue(player.projectedPoints), best: 'high' },
+        { key: 'projected-ppg', label: 'Projected PPG', quick: true, value: (player) => formatProjectedPointsPerGame(player.projectedPoints), numeric: (player) => player.projectedPoints > 0 ? player.projectedPoints / NFL_REGULAR_SEASON_GAMES : undefined, best: 'high' },
+        { key: 'projection-trend', label: 'Year-over-year', help: 'Projected PPG compared with last season', value: formatProjectionTrend, numeric: getProjectionTrend, best: 'high' },
+      ],
+    },
+    {
+      label: 'Last season',
+      rows: [
+        { key: 'previous-ppg', label: 'Fantasy PPG', quick: true, value: (player) => formatPreviousYearPointsPerGame(player.previousYear), numeric: (player) => getPreviousYearPointsPerGame(player.previousYear), best: 'high' },
+        { key: 'previous-points', label: 'Fantasy points', value: (player) => formatComparisonStat(player.previousYear?.fpts), numeric: (player) => getFiniteComparisonValue(player.previousYear?.fpts), best: 'high' },
+        { key: 'previous-games', label: 'Games played', quick: true, value: (player) => player.previousYear?.games ? String(player.previousYear.games) : '—', numeric: (player) => getFiniteComparisonValue(player.previousYear?.games), best: 'high' },
+        { key: 'previous-finish', label: 'Position finish', value: (player) => player.previousYear?.rank ? `${player.position}${player.previousYear.rank}` : '—', numeric: (player) => getFiniteComparisonValue(player.previousYear?.rank), best: 'low', samePositionOnly: true },
+      ],
+    },
+    {
+      label: 'Availability & risk',
+      rows: [
+        { key: 'health', label: 'Health', quick: true, value: formatHealth, numeric: (player) => getPlayerInjuryRisk(player), best: 'low' },
+        { key: 'bye', label: 'Bye week', quick: true, value: (player) => player.bye ? `Week ${player.bye}` : '—' },
+        { key: 'depth', label: 'Depth-chart role', quick: true, value: (player) => player.depthChart ? `${player.position}${player.depthChart.order}` : '—', numeric: (player) => getFiniteComparisonValue(player.depthChart?.order), best: 'low', samePositionOnly: true },
+        { key: 'experience', label: 'Age / experience', value: formatExperience },
+        { key: 'rookie', label: 'Rookie profile', value: formatRookieProfile },
+        { key: 'status', label: 'Roster status', value: (player) => player.sleeper?.status ? titleCase(player.sleeper.status) : '—' },
+      ],
+    },
+  ]
+  const populatedSections = comparisonSections.map((section) => ({ ...section, rows: section.rows.filter((row) => players.some((player) => row.value(player) !== '—')) }))
+  const sections = populatedSections.map((section) => ({ ...section, rows: section.rows.filter((row) => showAllDetails || row.quick) }))
+  const allDetailCount = populatedSections.reduce((total, section) => total + section.rows.length, 0) + projectionRows.length
+  const quickDetailCount = populatedSections.reduce((total, section) => total + section.rows.filter((row) => row.quick).length, 0)
+
+  const insights = getComparisonInsights(players, recommendationById)
+
+  return (
+    <section className="watchComparePanel" aria-label="Watched player comparison" id="watchlist-comparison">
+      <div className="watchCompareHeader">
+        <div>
+          <h3>Watchlist Compare</h3>
+          <small aria-live="polite">
+            {players.length === 1 ? 'Star another player to compare side by side.' : `${players.length} players compared · aligned rows show the differences.`}
+          </small>
+        </div>
+        <div className="watchCompareActions">
+          {allDetailCount > quickDetailCount ? (
+            <button aria-expanded={showAllDetails} className="watchCompareToggle" onClick={() => setShowAllDetails((current) => !current)} type="button">
+              {showAllDetails ? `Quick view (${quickDetailCount})` : `Show all details (${allDetailCount})`}
+            </button>
+          ) : null}
+          <button aria-label="Clear all watched players" className="watchCompareClear" onClick={onClearWatchlist} type="button">Clear all</button>
+        </div>
+      </div>
+
+      {insights.length > 1 ? (
+        <div className="watchCompareInsights" aria-label="Comparison highlights">
+          {insights.map((insight) => <div key={insight.label}><span>{insight.label}</span><strong>{insight.value}</strong></div>)}
+        </div>
+      ) : null}
+
+      <div className="watchCompareScroller" tabIndex={0}>
+        <table className="watchCompareTable">
+          <caption className="srOnly">Side-by-side details for starred players</caption>
+          <thead>
+            <tr>
+              <th className="watchCompareMetricHead" scope="col">Metric</th>
+              {players.map((player) => {
+                const tierColor = getTierColor(player.tier)
+                return (
+                  <th className="watchComparePlayerHead" key={player.id} scope="col" style={{ borderTopColor: tierColor }}>
+                    <div className="watchComparePlayerTitle">
+                      <span className={`position position${player.position}`}>{player.position}</span>
+                      <button aria-label={`Remove ${player.name} from watchlist`} aria-pressed="true" className="watchCompareRemove watched" onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={14} /></button>
+                    </div>
+                    <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
+                    <small>{player.team || 'FA'} · {player.posRank || 'Unranked'} · Tier {player.tier || '—'}</small>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sections.map((section) => section.rows.length ? (
+              <React.Fragment key={section.label}>
+                <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">{section.label}</th></tr>
+                {section.rows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
+              </React.Fragment>
+            ) : null)}
+            {showAllDetails && projectionRows.length ? (
+              <React.Fragment>
+                <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">Full projection breakdown</th></tr>
+                {projectionRows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
+              </React.Fragment>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+      {players.length > 3 ? <p className="watchCompareScrollHint">Scroll sideways to compare every starred player.</p> : null}
+    </section>
+  )
+}
+
+function ComparisonTableRow({ players, row, samePosition }: { players: RankedPlayer[]; row: ComparisonRow; samePosition: boolean }) {
+  const bestValue = getBestComparisonValue(row, players, samePosition)
+  return (
+    <tr>
+      <th className="watchCompareMetric" scope="row"><span title={row.help}>{row.label}</span></th>
+      {players.map((player) => {
+        const numericValue = row.numeric?.(player)
+        const isBest = bestValue !== undefined && numericValue !== undefined && Math.abs(numericValue - bestValue) < 0.001
+        return (
+          <td className={isBest ? 'watchCompareValue best' : 'watchCompareValue'} key={player.id}>
+            <strong>{row.value(player)}</strong>
+            {isBest ? <span className="watchCompareBest"><Check size={10} /> Best</span> : null}
+          </td>
+        )
+      })}
+    </tr>
+  )
+}
+
+function getBestComparisonValue(row: ComparisonRow, players: RankedPlayer[], samePosition: boolean) {
+  if (!row.numeric || !row.best || (row.samePositionOnly && !samePosition)) return undefined
+  const values = players.map((player) => row.numeric?.(player)).filter((value): value is number => value !== undefined && Number.isFinite(value))
+  if (values.length < 2 || new Set(values.map((value) => value.toFixed(3))).size < 2) return undefined
+  return row.best === 'high' ? Math.max(...values) : Math.min(...values)
+}
+
+function getComparisonInsights(players: RankedPlayer[], recommendationById: Map<string, Recommendation>) {
+  const insights: { label: string; value: string }[] = []
+  const vorLeader = [...players]
+    .filter((player) => recommendationById.get(player.id))
+    .sort((a, b) => (recommendationById.get(b.id)?.metrics.replacementValue || 0) - (recommendationById.get(a.id)?.metrics.replacementValue || 0))[0]
+  if (vorLeader) insights.push({ label: 'VOR leader', value: `${vorLeader.name} · +${formatComparisonStat(recommendationById.get(vorLeader.id)!.metrics.replacementValue)} pts` })
+
+  const projectionLeader = [...players].filter((player) => player.projectedPoints > 0).sort((a, b) => b.projectedPoints - a.projectedPoints)[0]
+  if (projectionLeader) insights.push({ label: 'Projection leader', value: `${projectionLeader.name} · ${formatProjectedPointsPerGame(projectionLeader.projectedPoints)} PPG` })
+
+  const valueLeader = [...players].filter((player) => getAdpValue(player) !== undefined).sort((a, b) => (getAdpValue(b) || 0) - (getAdpValue(a) || 0))[0]
+  const value = valueLeader ? getAdpValue(valueLeader) : undefined
+  if (valueLeader && value !== undefined) insights.push({ label: 'Best ADP value', value: `${valueLeader.name} · ${value >= 0 ? '+' : ''}${value.toFixed(1)} picks` })
+
+  if (players.some((player) => player.injury || player.previousYear?.games)) {
+    const safest = [...players].sort((a, b) => getPlayerInjuryRisk(a) - getPlayerInjuryRisk(b) || (b.previousYear?.games || 0) - (a.previousYear?.games || 0))[0]
+    insights.push({ label: 'Safest profile', value: `${safest.name} · ${getPlayerInjuryRisk(safest) ? `${Math.round(getPlayerInjuryRisk(safest))}% risk` : 'no injury flag'}` })
+  }
+
+  const byeCounts = new Map<number, number>()
+  players.forEach((player) => { if (player.bye) byeCounts.set(player.bye, (byeCounts.get(player.bye) || 0) + 1) })
+  const overlaps = [...byeCounts.entries()].filter(([, count]) => count > 1).map(([week, count]) => `W${week} (${count})`)
+  if (overlaps.length) insights.push({ label: 'Bye overlap', value: overlaps.join(', ') })
+  return insights
+}
+
+function formatNextPickAvailability(recommendation: Recommendation | undefined) {
+  if (!recommendation) return '—'
+  const { availabilityAtNextPick, nextUserPick } = recommendation.metrics
+  if (availabilityAtNextPick === undefined || !nextUserPick) return 'Final turn'
+  return `${Math.round(availabilityAtNextPick * 100)}% to pick ${nextUserPick}`
+}
+
+function getFiniteComparisonValue(input: number | undefined) {
+  return Number.isFinite(input) ? Number(input) : undefined
+}
+
+function getPositionRankNumber(player: RankedPlayer) {
+  const rank = Number(player.posRank?.replace(/\D/g, ''))
+  return Number.isFinite(rank) && rank > 0 ? rank : undefined
+}
+
+function getAdpValue(player: RankedPlayer) {
+  return player.adp ? player.adp - player.rank : undefined
+}
+
+function formatAdpValue(player: RankedPlayer) {
+  const value = getAdpValue(player)
+  if (value === undefined) return '—'
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)} picks`
+}
+
+function getProjectionTrend(player: RankedPlayer) {
+  const previousPpg = getPreviousYearPointsPerGame(player.previousYear)
+  const projectedPpg = player.projectedPoints > 0 ? player.projectedPoints / NFL_REGULAR_SEASON_GAMES : 0
+  if (!previousPpg || !projectedPpg) return undefined
+  return ((projectedPpg - previousPpg) / previousPpg) * 100
+}
+
+function formatProjectionTrend(player: RankedPlayer) {
+  const trend = getProjectionTrend(player)
+  if (trend === undefined) return '—'
+  return `${trend >= 0 ? '+' : ''}${trend.toFixed(1)}%`
+}
+
+function formatComparisonStat(input: number | undefined) {
+  if (!Number.isFinite(input)) return '—'
+  const number = Number(input)
+  return number.toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: Math.abs(number - Math.round(number)) > 0.04 ? 1 : 0 })
+}
+
+function formatHealth(player: RankedPlayer) {
+  if (!player.injury) return 'No injury flag'
+  return `${player.injury.status}${player.injury.injury ? ` · ${player.injury.injury}` : ''}`
+}
+
+function formatExperience(player: RankedPlayer) {
+  const details = [
+    player.sleeper?.age ? `Age ${player.sleeper.age}` : null,
+    player.sleeper?.yearsExp !== undefined ? `${player.sleeper.yearsExp} yr exp` : null,
+  ].filter(Boolean)
+  return details.length ? details.join(' · ') : '—'
+}
+
+function formatRookieProfile(player: RankedPlayer) {
+  if (!player.rookie) return '—'
+  const draft = player.rookie.draftRound ? `Round ${player.rookie.draftRound}${player.rookie.draftPick ? ` · Pick ${player.rookie.draftPick}` : ''}` : 'Undrafted'
+  return `${draft}${player.rookie.college ? ` · ${player.rookie.college}` : ''}`
+}
+
+function titleCase(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function PlayerDrawer({
@@ -1856,7 +2181,7 @@ function buildRecommendations(
         byeConflicts,
       },
     }
-  }).sort((a, b) => b.score - a.score).slice(0, 8)
+  }).sort((a, b) => b.score - a.score)
 }
 
 function getLeagueStarterShare(position: Position, lineup: LineupSettings) {
@@ -2268,12 +2593,14 @@ function PlayersBoard({
   strategy,
   watchlistIds,
   watchlistPlayers,
+  watchlistRecommendations,
   togglePosition,
   visiblePositions,
   onPlayerSelect,
   onQueryChange,
   onStrategyChange,
   onToggleWatchlist,
+  onClearWatchlist,
 }: {
   availableCount: number
   leagueName: string
@@ -2284,12 +2611,14 @@ function PlayersBoard({
   strategy: RecommendationStrategy
   watchlistIds: string[]
   watchlistPlayers: RankedPlayer[]
+  watchlistRecommendations: Recommendation[]
   togglePosition: (position: Position) => void
   visiblePositions: Record<Position, boolean>
   onPlayerSelect: (player: RankedPlayer) => void
   onQueryChange: (query: string) => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
   onToggleWatchlist: (playerId: string) => void
+  onClearWatchlist: () => void
 }) {
   const activePositions = POSITION_ORDER.filter((position) => visiblePositions[position])
 
@@ -2300,6 +2629,15 @@ function PlayersBoard({
           <h2>Available Players - {leagueName}</h2>
           <div className="playerCount">{availableCount} player{availableCount === 1 ? '' : 's'} available</div>
         </div>
+
+        <WatchlistComparison
+          leagueTeams={leagueTeams}
+          players={watchlistPlayers}
+          recommendations={watchlistRecommendations}
+          onPlayerSelect={onPlayerSelect}
+          onToggleWatchlist={onToggleWatchlist}
+          onClearWatchlist={onClearWatchlist}
+        />
 
         <div className="playerControls">
           <label className="searchBox playerSearch">
@@ -2414,7 +2752,7 @@ function PlayerSummary({
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
   if (variant === 'shortlist') {
     return (
-      <div className="shortlistItem" style={{ borderLeftColor: tierColor }}>
+      <div className={isWatched ? 'shortlistItem watchedPlayerItem' : 'shortlistItem'} style={{ borderLeftColor: tierColor }}>
         <span className="shortlistRank" style={{ color: tierColor }}>
           #{player.rank}
         </span>
@@ -2423,14 +2761,14 @@ function PlayerSummary({
           {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
         </span>
         <span className="playerQuickActions">
-          <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={13} /></button>
+          <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={13} /></button>
         </span>
       </div>
     )
   }
 
   return (
-    <div className="playerItem" style={{ borderLeftColor: tierColor }}>
+    <div className={isWatched ? 'playerItem watchedPlayerItem' : 'playerItem'} style={{ borderLeftColor: tierColor }}>
       <div className="playerRank" style={{ color: tierColor }}>
         #{player.rank}
       </div>
@@ -2450,7 +2788,7 @@ function PlayerSummary({
         </span>
       </div>
       <span className="playerQuickActions compactActions">
-        <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={12} /></button>
+        <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={12} /></button>
       </span>
     </div>
   )
@@ -2467,6 +2805,18 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
 function formatProjectedPointsPerGame(projectedPoints: number) {
   if (!Number.isFinite(projectedPoints) || projectedPoints <= 0) return '-'
   return (projectedPoints / NFL_REGULAR_SEASON_GAMES).toFixed(1)
+}
+
+function formatPreviousYearPointsPerGame(previousYear?: PreviousYearResult) {
+  const pointsPerGame = getPreviousYearPointsPerGame(previousYear)
+  return pointsPerGame ? pointsPerGame.toFixed(1) : '—'
+}
+
+function getPreviousYearPointsPerGame(previousYear?: PreviousYearResult) {
+  if (!previousYear) return undefined
+  const pointsPerGame = previousYear.fpts_per_game || (previousYear.fpts && previousYear.games ? previousYear.fpts / previousYear.games : 0)
+  if (!Number.isFinite(pointsPerGame) || pointsPerGame <= 0) return undefined
+  return pointsPerGame
 }
 
 function getTierColor(tier: number | undefined) {
