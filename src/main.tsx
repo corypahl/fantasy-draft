@@ -632,13 +632,16 @@ function App() {
     [draft, players, recommendationStrategy, selectedLeague, undraftedPlayers],
   )
   const recommendations = useMemo(() => rankedRecommendations.slice(0, 8), [rankedRecommendations])
+  const watchlistIdSet = useMemo(() => new Set(watchlistIds), [watchlistIds])
+  const undraftedPlayerById = useMemo(() => new Map(undraftedPlayers.map((player) => [player.id, player])), [undraftedPlayers])
+  const recommendationByPlayerId = useMemo(() => new Map(rankedRecommendations.map((recommendation) => [recommendation.player.id, recommendation])), [rankedRecommendations])
   const watchlistPlayers = useMemo(
-    () => watchlistIds.map((id) => undraftedPlayers.find((player) => player.id === id)).filter((player): player is RankedPlayer => Boolean(player)),
-    [undraftedPlayers, watchlistIds],
+    () => watchlistIds.map((id) => undraftedPlayerById.get(id)).filter((player): player is RankedPlayer => Boolean(player)),
+    [undraftedPlayerById, watchlistIds],
   )
   const watchlistRecommendations = useMemo(
-    () => watchlistPlayers.map((player) => rankedRecommendations.find((recommendation) => recommendation.player.id === player.id)).filter((recommendation): recommendation is Recommendation => Boolean(recommendation)),
-    [rankedRecommendations, watchlistPlayers],
+    () => watchlistIds.map((id) => recommendationByPlayerId.get(id)).filter((recommendation): recommendation is Recommendation => Boolean(recommendation)),
+    [recommendationByPlayerId, watchlistIds],
   )
   const playerByKey = useMemo(() => {
     const index = new Map<string, RankedPlayer>()
@@ -767,9 +770,11 @@ function App() {
     setActiveTab(tab)
   }
 
-  function toggleWatchlist(playerId: string) {
+  const toggleWatchlist = useCallback((playerId: string) => {
     setWatchlistIds((current) => current.includes(playerId) ? current.filter((id) => id !== playerId) : [...current, playerId])
-  }
+  }, [])
+
+  const clearWatchlist = useCallback(() => setWatchlistIds([]), [])
 
   function addLeague() {
     const id = `league-${Date.now()}`
@@ -870,7 +875,7 @@ function App() {
           query={query}
           recommendations={recommendations}
           strategy={recommendationStrategy}
-          watchlistIds={watchlistIds}
+          watchlistIdSet={watchlistIdSet}
           watchlistPlayers={watchlistPlayers}
           watchlistRecommendations={watchlistRecommendations}
           togglePosition={togglePosition}
@@ -879,7 +884,7 @@ function App() {
           onQueryChange={setQuery}
           onStrategyChange={setRecommendationStrategy}
           onToggleWatchlist={toggleWatchlist}
-          onClearWatchlist={() => setWatchlistIds([])}
+          onClearWatchlist={clearWatchlist}
         />
       ) : null}
 
@@ -951,7 +956,7 @@ function App() {
       ) : null}
       {selectedPlayer ? (
         <PlayerDrawer
-          isWatched={watchlistIds.includes(selectedPlayer.id)}
+          isWatched={watchlistIdSet.has(selectedPlayer.id)}
           player={selectedPlayer}
           recommendation={recommendations.find((item) => item.player.id === selectedPlayer.id)}
           onClose={() => setSelectedPlayer(null)}
@@ -2591,7 +2596,7 @@ function PlayersBoard({
   query,
   recommendations,
   strategy,
-  watchlistIds,
+  watchlistIdSet,
   watchlistPlayers,
   watchlistRecommendations,
   togglePosition,
@@ -2609,7 +2614,7 @@ function PlayersBoard({
   query: string
   recommendations: Recommendation[]
   strategy: RecommendationStrategy
-  watchlistIds: string[]
+  watchlistIdSet: ReadonlySet<string>
   watchlistPlayers: RankedPlayer[]
   watchlistRecommendations: Recommendation[]
   togglePosition: (position: Position) => void
@@ -2674,13 +2679,13 @@ function PlayersBoard({
                   <div className="positionPlayers">
                     {playersByPosition[position].map((player) => (
                       <PlayerSummary
-                        isWatched={watchlistIds.includes(player.id)}
+                        isWatched={watchlistIdSet.has(player.id)}
                         key={player.id}
                         leagueTeams={leagueTeams}
                         player={player}
                         variant="column"
-                        onSelect={() => onPlayerSelect(player)}
-                        onToggleWatchlist={() => onToggleWatchlist(player.id)}
+                        onPlayerSelect={onPlayerSelect}
+                        onToggleWatchlist={onToggleWatchlist}
                       />
                     ))}
                     {playersByPosition[position].length === 0 ? <p className="muted">No players.</p> : null}
@@ -2706,20 +2711,20 @@ function PlayersBoard({
               leagueTeams={leagueTeams}
               player={player}
               variant="shortlist"
-              onSelect={() => onPlayerSelect(player)}
-              onToggleWatchlist={() => onToggleWatchlist(player.id)}
+              onPlayerSelect={onPlayerSelect}
+              onToggleWatchlist={onToggleWatchlist}
             />
           ))}
           <div className="railSectionLabel">Best available</div>
           {recommendations.map((item) => (
             <div className="recommendationRailItem" key={item.player.id}>
               <PlayerSummary
-                isWatched={watchlistIds.includes(item.player.id)}
+                isWatched={watchlistIdSet.has(item.player.id)}
                 leagueTeams={leagueTeams}
                 player={item.player}
                 variant="shortlist"
-                onSelect={() => onPlayerSelect(item.player)}
-                onToggleWatchlist={() => onToggleWatchlist(item.player.id)}
+                onPlayerSelect={onPlayerSelect}
+                onToggleWatchlist={onToggleWatchlist}
               />
               <p>{item.reason}. {item.outlook}</p>
               <RecommendationSignals recommendation={item} />
@@ -2732,21 +2737,23 @@ function PlayersBoard({
   )
 }
 
-function PlayerSummary({
-  player,
-  leagueTeams,
-  variant,
-  isWatched,
-  onSelect,
-  onToggleWatchlist,
-}: {
+type PlayerSummaryProps = {
   player: RankedPlayer
   leagueTeams: number
   variant: 'shortlist' | 'column'
   isWatched: boolean
-  onSelect: () => void
-  onToggleWatchlist: () => void
-}) {
+  onPlayerSelect: (player: RankedPlayer) => void
+  onToggleWatchlist: (playerId: string) => void
+}
+
+const PlayerSummary = React.memo(function PlayerSummary({
+  player,
+  leagueTeams,
+  variant,
+  isWatched,
+  onPlayerSelect,
+  onToggleWatchlist,
+}: PlayerSummaryProps) {
   const tierColor = getTierColor(player.tier)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
@@ -2756,12 +2763,12 @@ function PlayerSummary({
         <span className="shortlistRank" style={{ color: tierColor }}>
           #{player.rank}
         </span>
-        <button className="playerNameButton shortlistName" onClick={onSelect} style={{ color: tierColor }} type="button">{player.name}</button>
+        <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
           {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
         </span>
         <span className="playerQuickActions">
-          <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={13} /></button>
+          <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={13} /></button>
         </span>
       </div>
     )
@@ -2773,7 +2780,7 @@ function PlayerSummary({
         #{player.rank}
       </div>
       <div className="playerName" style={{ color: tierColor }}>
-        <button className="playerNameButton" onClick={onSelect} type="button">{player.name}</button>
+        <button className="playerNameButton" onClick={() => onPlayerSelect(player)} type="button">{player.name}</button>
         <span className="playerInlineMeta">
           {adpLabel !== '-' ? (
             <span className="adpValue" title={player.adp ? `Overall average rank ${player.adp.toFixed(1)}` : ''}>
@@ -2788,11 +2795,11 @@ function PlayerSummary({
         </span>
       </div>
       <span className="playerQuickActions compactActions">
-        <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={onToggleWatchlist} type="button"><Star size={12} /></button>
+        <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={12} /></button>
       </span>
     </div>
   )
-}
+})
 
 function formatAdpRoundPick(adp: number | undefined, teams: number) {
   if (!adp || !teams) return '-'

@@ -1047,6 +1047,7 @@ h3 {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-secondary);
+  contain: layout paint;
 }
 
 .positionColumns {
@@ -1104,6 +1105,8 @@ h3 {
   border-left: 3px solid transparent;
   padding: 0.42rem 0.55rem;
   transition: background 0.2s ease;
+  content-visibility: auto;
+  contain-intrinsic-size: 36px;
 }
 
 .playerItem:hover,
