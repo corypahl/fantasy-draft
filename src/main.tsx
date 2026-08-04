@@ -1225,14 +1225,14 @@ function WatchlistComparison({
                 <tr>
                   <th className="watchCompareMetricHead" scope="col">Metric</th>
                   {players.map((player) => {
-                    const tierColor = getTierColor(player.tier)
+                    const positionColor = getPositionColor(player.position)
                     return (
-                      <th className="watchComparePlayerHead" key={player.id} scope="col" style={{ borderTopColor: tierColor }}>
+                      <th className="watchComparePlayerHead" key={player.id} scope="col" style={{ borderTopColor: positionColor }}>
                         <div className="watchComparePlayerTitle">
                           <span className={`position position${player.position}`}>{player.position}</span>
                           <button aria-label={`Remove ${player.name} from watchlist`} aria-pressed="true" className="watchCompareRemove watched" onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={14} /></button>
                         </div>
-                        <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
+                        <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
                         <small>{player.team || 'FA'} · {player.posRank || 'Unranked'} · Tier {player.tier || '—'}</small>
                       </th>
                     )
@@ -2782,15 +2782,16 @@ const PlayerSummary = React.memo(function PlayerSummary({
   onToggleWatchlist,
 }: PlayerSummaryProps) {
   const tierColor = getTierColor(player.tier)
+  const positionColor = getPositionColor(player.position)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
   if (variant === 'shortlist') {
     return (
-      <div className={isWatched ? 'shortlistItem watchedPlayerItem' : 'shortlistItem'} style={{ borderLeftColor: tierColor }}>
-        <span className="shortlistRank" style={{ color: tierColor }}>
+      <div className={isWatched ? 'shortlistItem watchedPlayerItem' : 'shortlistItem'} style={{ borderLeftColor: positionColor }}>
+        <span className="shortlistRank" style={{ color: positionColor }}>
           #{player.rank}
         </span>
-        <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
+        <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
           {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
         </span>
