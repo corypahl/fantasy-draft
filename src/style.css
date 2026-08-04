@@ -2183,26 +2183,31 @@ h3 {
 .validationAlert span { font-size: 0.72rem; }
 
 .drawerBackdrop { position: fixed; inset: 0; z-index: 80; display: flex; justify-content: flex-end; background: rgba(0, 0, 0, 0.68); }
-.playerDrawer { display: flex; flex-direction: column; gap: 1rem; width: min(440px, 100%); height: 100%; overflow-y: auto; border-left: 1px solid var(--border-color); background: var(--bg-card); padding: 1.25rem; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45); }
+.playerDrawer { display: flex; flex-direction: column; gap: 0.9rem; width: min(520px, 100%); height: 100%; overflow-y: auto; border-left: 1px solid var(--border-color); background: var(--bg-card); padding: 1.25rem; box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45); }
 .drawerHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .drawerHeader > div { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.65rem; align-items: center; }
 .drawerHeader h2 { margin: 0; color: var(--text-primary); font-size: 1.35rem; }
-.drawerHeader p { grid-column: 2; margin: 0; color: var(--text-muted); font-size: 0.75rem; }
 .drawerClose { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-secondary); }
+.drawerSection { display: grid; gap: 0.55rem; }
+.drawerSection > h3 { margin: 0; color: #bee3f8; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.09em; text-transform: uppercase; }
+.drawerMetricGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.drawerMetricGrid.threeColumn { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.drawerMetric { display: grid; gap: 0.18rem; min-width: 0; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.65rem 0.7rem; }
+.drawerMetric span { overflow: hidden; color: var(--text-muted); font-size: 0.61rem; font-weight: 900; letter-spacing: 0.04em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.drawerMetric strong { overflow: hidden; color: var(--text-primary); font-size: 0.95rem; text-overflow: ellipsis; white-space: nowrap; }
+.lastYearGrid .drawerMetric:last-child { grid-column: 1 / -1; }
 .drawerRecommendation { display: grid; gap: 0.25rem; border: 1px solid rgba(49, 130, 206, 0.4); border-radius: 8px; background: rgba(49, 130, 206, 0.1); padding: 0.85rem; }
 .drawerRecommendation strong { color: #90cdf4; font-size: 0.72rem; text-transform: uppercase; }
 .drawerRecommendation span { color: var(--text-primary); font-size: 0.82rem; line-height: 1.45; }
 .drawerRecommendation .recommendationSignals { margin: 0.3rem 0 0; }
 .drawerRecommendation .recommendationSignals span { color: #90cdf4; font-size: 0.62rem; line-height: 1; }
-.playerMetricGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
-.playerMetricGrid div { display: grid; gap: 0.2rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
-.playerMetricGrid span { color: var(--text-muted); font-size: 0.66rem; font-weight: 800; text-transform: uppercase; }
-.playerMetricGrid strong { color: var(--text-primary); font-size: 1rem; }
-.detailNotice { display: flex; gap: 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
-.detailNotice div { display: grid; gap: 0.15rem; }
-.detailNotice strong { color: var(--text-primary); font-size: 0.78rem; }
-.detailNotice span { color: var(--text-muted); font-size: 0.72rem; }
+.drawerNews { display: flex; gap: 0.65rem; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
+.drawerNews > div { display: grid; gap: 0.15rem; }
+.drawerNews strong { color: var(--text-primary); font-size: 0.78rem; }
+.drawerNews span { color: var(--text-muted); font-size: 0.72rem; }
 .injuryNotice { border-color: rgba(229, 62, 62, 0.4); }
+.healthyNotice { border-color: rgba(56, 161, 105, 0.35); color: #9ae6b4; }
+.drawerEmptyNotice { border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-muted); padding: 0.75rem; font-size: 0.75rem; }
 .drawerWatchButton { width: 100%; margin-top: auto; }
 
 @media (max-width: 1180px) {
@@ -2313,5 +2318,7 @@ h3 {
   .researchFilters .positionToggles { flex-wrap: nowrap; overflow-x: auto; }
 
   .playerDrawer { padding-bottom: 5rem; }
+  .drawerMetricGrid.threeColumn { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .drawerMetricGrid.threeColumn .drawerMetric:last-child { grid-column: 1 / -1; }
   .drawerWatchButton { position: sticky; bottom: 0; border-top-color: var(--border-color); background: var(--bg-secondary); }
 }

@@ -991,7 +991,9 @@ function App() {
         <PlayerDrawer
           isWatched={watchlistIdSet.has(selectedPlayer.id)}
           player={selectedPlayer}
-          recommendation={recommendations.find((item) => item.player.id === selectedPlayer.id)}
+          recommendation={recommendationByPlayerId.get(selectedPlayer.id)}
+          scoring={selectedLeague.scoring}
+          weeklyResults={data.previousYearWeeklyResults}
           onClose={() => setSelectedPlayer(null)}
           onToggleWatchlist={() => toggleWatchlist(selectedPlayer.id)}
         />
@@ -1405,37 +1407,97 @@ function titleCase(value: string) {
 function PlayerDrawer({
   player,
   recommendation,
+  scoring,
+  weeklyResults,
   isWatched,
   onClose,
   onToggleWatchlist,
 }: {
   player: RankedPlayer
   recommendation?: Recommendation
+  scoring: ScoringRules
+  weeklyResults: RankingsFile['previousYearWeeklyResults']
   isWatched: boolean
   onClose: () => void
   onToggleWatchlist: () => void
 }) {
+  const lastYear = useMemo(() => {
+    const nameKey = playerKey(player.name)
+    return buildConsistencyRows(weeklyResults, player.position, scoring, 0, '').find((row) => (
+      row.id === playerKey(player.name, player.team) || playerKey(row.name) === nameKey
+    ))
+  }, [player.name, player.position, player.team, scoring, weeklyResults])
+  const hasWeeklyHistory = Boolean(lastYear?.games)
+  const lastYearPpg = hasWeeklyHistory ? formatComparisonStat(lastYear?.ppg) : formatPreviousYearPointsPerGame(player.previousYear)
+
   return (
     <div className="drawerBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }} role="presentation">
       <aside aria-label={`${player.name} details`} aria-modal="true" className="playerDrawer" role="dialog">
         <div className="drawerHeader">
-          <div><span className={`position position${player.position}`}>{player.position}</span><h2>{player.name}</h2><p>{player.team} · {player.posRank || 'Unranked'} · Tier {player.tier || '-'}</p></div>
+          <div><span className={`position position${player.position}`}>{player.position}</span><h2>{player.name}</h2></div>
           <button aria-label="Close player details" className="drawerClose" onClick={onClose} type="button"><X size={20} /></button>
         </div>
-        {recommendation ? <div className="drawerRecommendation"><strong>Why now · {RECOMMENDATION_STRATEGIES[recommendation.strategy].label}</strong><span>{recommendation.reason}. {recommendation.outlook}</span><RecommendationSignals recommendation={recommendation} /></div> : null}
-        <div className="playerMetricGrid">
-          <div><span>Overall rank</span><strong>#{player.rank}</strong></div>
-          <div><span>ADP</span><strong>{player.adp?.toFixed(1) || '-'}</strong></div>
-          <div><span>Projected PPG</span><strong>{formatProjectedPointsPerGame(player.projectedPoints)}</strong></div>
-          <div><span>Bye</span><strong>{player.bye || '-'}</strong></div>
-        </div>
-        {player.injury ? <div className="detailNotice injuryNotice"><AlertTriangle size={16} /><div><strong>{player.injury.status}</strong><span>{player.injury.injury || 'Injury reported'} · {player.injury.updated || 'Update pending'}</span></div></div> : null}
-        {player.rookie ? <div className="detailNotice"><Baby size={16} /><div><strong>Rookie · Pick #{player.rookie.draftPick || '-'}</strong><span>{player.rookie.college || 'College unavailable'} · {player.rookie.source}</span></div></div> : null}
-        {player.depthChart ? <div className="detailNotice"><ListTree size={16} /><div><strong>{player.position}{player.depthChart.order} on the depth chart</strong><span>{player.depthChart.source}</span></div></div> : null}
+
+        <section className="drawerSection">
+          <h3>Basic</h3>
+          <div className="drawerMetricGrid">
+            <DrawerMetric label="Position" value={player.position} />
+            <DrawerMetric label="Team" value={player.team || 'FA'} />
+            <DrawerMetric label="Depth chart" value={player.depthChart ? `${player.position}${player.depthChart.order}` : '—'} />
+            <DrawerMetric label="Bye" value={player.bye ? String(player.bye) : '—'} />
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Rankings</h3>
+          <div className="drawerMetricGrid threeColumn">
+            <DrawerMetric label="Overall rank" value={`#${player.rank}`} />
+            <DrawerMetric label="Position rank" value={player.posRank || '—'} />
+            <DrawerMetric label="Tier" value={player.tier ? String(player.tier) : '—'} />
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Projection</h3>
+          <div className="drawerMetricGrid">
+            <DrawerMetric label="Projected PPG" value={formatProjectedPointsPerGame(player.projectedPoints)} />
+            <DrawerMetric label="ADP" value={player.adp?.toFixed(1) || '—'} />
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>Last Year</h3>
+          <div className="drawerMetricGrid lastYearGrid">
+            <DrawerMetric label="Position rank" value={player.previousYear?.rank ? `${player.position}${player.previousYear.rank}` : '—'} />
+            <DrawerMetric label="PPG" value={lastYearPpg} />
+            <DrawerMetric label="T12 finishes" value={hasWeeklyHistory ? String(lastYear!.top12) : '—'} />
+            <DrawerMetric label="13–24 finishes" value={hasWeeklyHistory ? String(Math.max(0, lastYear!.top24 - lastYear!.top12)) : '—'} />
+            <DrawerMetric label="25+ finishes" value={hasWeeklyHistory ? String(Math.max(0, lastYear!.games - lastYear!.top24)) : '—'} />
+          </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>News</h3>
+          {player.injury ? (
+            <div className="drawerNews injuryNotice"><AlertTriangle size={16} /><div><strong>{player.injury.status}</strong><span>{player.injury.injury || 'Injury reported'} · {player.injury.updated || 'Update pending'}</span></div></div>
+          ) : (
+            <div className="drawerNews healthyNotice"><Check size={16} /><div><strong>No current injury report</strong><span>No active injury flag in the latest data.</span></div></div>
+          )}
+        </section>
+
+        <section className="drawerSection">
+          <h3>Outlook</h3>
+          {recommendation ? <div className="drawerRecommendation"><strong>Why now · {RECOMMENDATION_STRATEGIES[recommendation.strategy].label}</strong><span>{recommendation.reason}. {recommendation.outlook}</span><RecommendationSignals recommendation={recommendation} /></div> : <div className="drawerEmptyNotice">No active recommendation context is available.</div>}
+        </section>
+
         <button className={isWatched ? 'iconTextButton drawerWatchButton watched' : 'iconTextButton drawerWatchButton'} onClick={onToggleWatchlist} type="button"><Star size={16} /> {isWatched ? 'Watching' : 'Add to watchlist'}</button>
       </aside>
     </div>
   )
+}
+
+function DrawerMetric({ label, value }: { label: string; value: string }) {
+  return <div className="drawerMetric"><span>{label}</span><strong>{value}</strong></div>
 }
 
 function ConsistencyPage({
