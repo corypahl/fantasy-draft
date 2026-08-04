@@ -524,6 +524,7 @@ function App() {
     return stored in RECOMMENDATION_STRATEGIES ? stored : 'balanced'
   })
   const [remoteLoaded, setRemoteLoaded] = useState(!API_URL)
+  const [remoteDraftReadyByLeague, setRemoteDraftReadyByLeague] = useState<Record<string, boolean>>({})
   const [draftInput, setDraftInput] = useState('')
   const [syncStatus, setSyncStatus] = useState('')
   const [isSyncing, setIsSyncing] = useState(false)
@@ -536,6 +537,10 @@ function App() {
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
+  const draftTeamCount = draft.teamNames.length || selectedLeague.lineup.teams
+  const selectedDraftSlot = clampLeagueDraftSlot(selectedLeague, draftTeamCount)
+  const selectedDraftTeamName = draft.teamNames[selectedDraftSlot - 1] || `Team ${selectedDraftSlot}`
+  const selectedRosterSize = getDraftedRosterForSlot(draft, selectedDraftSlot).length
 
   useEffect(() => {
     setDraftInput(draft.sleeperDraftId || selectedLeague.externalLeagueId || '')
@@ -598,16 +603,35 @@ function App() {
           const localProfiles = loadLocal<LeagueProfile[]>('league-profiles', [])
           setProfiles(mergeLeagueProfiles(remoteProfiles, localProfiles))
         }
-        if (draftPayload?.draft) setDraftsByLeague((current) => ({ ...current, [draftPayload.draft!.leagueId]: draftPayload.draft! }))
+        if (draftPayload?.draft) {
+          const draftLeagueId = draftPayload.draft.leagueId || draft.leagueId
+          setDraftsByLeague((current) => ({ ...current, [draftLeagueId]: { ...draftPayload.draft!, leagueId: draftLeagueId } }))
+          setRemoteDraftReadyByLeague((current) => ({ ...current, [draftLeagueId]: true }))
+        }
       })
       .finally(() => setRemoteLoaded(true))
   }, [])
 
   useEffect(() => {
+    if (!API_URL || !remoteLoaded || remoteDraftReadyByLeague[selectedLeague.id]) return
+    let cancelled = false
+    fetch(`${API_URL}/drafts/${draft.id}`, { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
+      .then((payload: { draft?: DraftState }) => {
+        if (cancelled || !payload.draft) return
+        const nextDraft = { ...payload.draft, leagueId: selectedLeague.id }
+        setDraftsByLeague((current) => ({ ...current, [selectedLeague.id]: nextDraft }))
+        setRemoteDraftReadyByLeague((current) => ({ ...current, [selectedLeague.id]: true }))
+      })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [draft.id, remoteDraftReadyByLeague, remoteLoaded, selectedLeague.id])
+
+  useEffect(() => {
     if (!remoteLoaded) return
     setPersistenceStatus('Saving')
-    persistState(profiles, draftsByLeague, draft).then((status) => setPersistenceStatus(status === 'Synced' ? 'Synced' : 'Saved locally'))
-  }, [profiles, draftsByLeague, draft, remoteLoaded])
+    persistState(profiles, draftsByLeague, draft, Boolean(remoteDraftReadyByLeague[selectedLeague.id])).then((status) => setPersistenceStatus(status === 'Synced' ? 'Synced' : 'Saved locally'))
+  }, [profiles, draftsByLeague, draft, remoteDraftReadyByLeague, remoteLoaded, selectedLeague.id])
 
   const players = useMemo(() => {
     const fromData = data.scoring[selectedLeague.rankingPreset] || data.scoring.halfPpr || []
@@ -755,6 +779,7 @@ function App() {
         ? await fetchSleeperDraftState(sourceId, selectedLeague, draft)
         : await fetchManagedDraftState(draft, selectedLeague)
       updateDraft(nextDraft)
+      setRemoteDraftReadyByLeague((current) => ({ ...current, [selectedLeague.id]: true }))
       setDraftInput(nextDraft.sleeperDraftId || sourceId)
       setSyncStatus(`Synced ${nextDraft.drafted.length} picks at ${new Date().toLocaleTimeString()}.`)
     } catch (error) {
@@ -880,6 +905,7 @@ function App() {
           playersByPosition={playersByPosition}
           query={query}
           recommendations={recommendations}
+          recommendationRosterLabel={`Pick ${selectedDraftSlot} · ${selectedDraftTeamName} · ${selectedRosterSize} drafted`}
           strategy={recommendationStrategy}
           watchlistIdSet={watchlistIdSet}
           watchlistPlayers={watchlistPlayers}
@@ -906,6 +932,7 @@ function App() {
           isSyncing={isSyncing}
           onAutoSyncChange={setAutoSync}
           onDraftInputChange={setDraftInput}
+          onDraftSlotChange={(draftSlot) => updateLeague({ draftSlot })}
           onStrategyChange={setRecommendationStrategy}
           onSyncDraft={() => void syncDraftState(false)}
         />
@@ -1626,6 +1653,7 @@ function DraftBoardPage({
   isSyncing,
   onAutoSyncChange,
   onDraftInputChange,
+  onDraftSlotChange,
   onStrategyChange,
   onSyncDraft,
 }: {
@@ -1639,6 +1667,7 @@ function DraftBoardPage({
   isSyncing: boolean
   onAutoSyncChange: (value: boolean) => void
   onDraftInputChange: (value: string) => void
+  onDraftSlotChange: (slot: number) => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
   onSyncDraft: () => void
 }) {
@@ -1652,7 +1681,8 @@ function DraftBoardPage({
   const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
   const currentTeam = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
   const userSlot = clampLeagueDraftSlot(league, totalTeams)
-  const userRoster = draft.drafted.filter((pick) => pick.slot === userSlot)
+  const userTeamName = draft.teamNames[userSlot - 1] || `Team ${userSlot}`
+  const userRoster = getDraftedRosterForSlot(draft, userSlot)
   const isUserPick = currentLocation.slot === userSlot
 
   return (
@@ -1685,6 +1715,12 @@ function DraftBoardPage({
           <strong>{isUserPick ? 'You are on the clock' : `${currentTeam} is on the clock`}</strong>
         </div>
         <div className="draftActions">
+          <label className="draftSlotSelector">
+            <span>Your draft position</span>
+            <select aria-label="Your draft position" value={userSlot} onChange={(event) => onDraftSlotChange(Number(event.target.value))}>
+              {draft.teamNames.map((teamName, index) => <option key={`${teamName}-${index}`} value={index + 1}>Pick {index + 1} · {teamName}</option>)}
+            </select>
+          </label>
           <label className="autoSyncToggle">
             <input checked={autoSync} onChange={(event) => onAutoSyncChange(event.target.checked)} type="checkbox" />
             Auto-sync
@@ -1695,7 +1731,7 @@ function DraftBoardPage({
       <div className="draftCommandGrid">
         <section className="commandCard">
           <div className="commandCardHeader recommendationCommandHeader">
-            <div><h3>Top recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small></div>
+            <div><h3>Top recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small><small className="rosterBasis">Based on {userRoster.length} drafted player{userRoster.length === 1 ? '' : 's'} at Pick {userSlot}.</small></div>
             <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><span>{recommendations.length} options</span></div>
           </div>
           <div className="recommendationStrip">
@@ -1712,7 +1748,7 @@ function DraftBoardPage({
           </div>
         </section>
         <section className="commandCard rosterCard">
-          <div className="commandCardHeader"><h3>Your roster</h3><span>Slot {userSlot}</span></div>
+          <div className="commandCardHeader"><h3>Your roster</h3><span>Pick {userSlot} · {userTeamName}</span></div>
           {userRoster.length ? userRoster.map((pick) => <span className={`rosterChip positionText${pick.position || ''}`} key={pick.pick}>{pick.position} {formatShortPlayerName(pick.playerName || pick.playerId)}</span>) : <p>No selections yet.</p>}
         </section>
       </div>
@@ -1720,7 +1756,7 @@ function DraftBoardPage({
         <div className="draftBoardGrid" style={{ gridTemplateColumns: `56px repeat(${totalTeams}, minmax(118px, 1fr))` }}>
           <div className="draftBoardCorner">Rd</div>
           {draft.teamNames.map((teamName, index) => (
-            <div className="draftBoardTeam" key={`${teamName}-${index}`}>
+            <div className={index + 1 === userSlot ? 'draftBoardTeam userTeam' : 'draftBoardTeam'} key={`${teamName}-${index}`}>
               <span>{teamName}</span>
             </div>
           ))}
@@ -1735,7 +1771,7 @@ function DraftBoardPage({
                   const pick = picksBySlotRound.get(`${slot}-${round}`)
                   const isCurrent = pickNumber === draft.currentPick
                   return (
-                    <div className={`draftBoardCell ${isCurrent ? 'current' : ''}`} key={`${slot}-${round}`}>
+                    <div className={`draftBoardCell ${slot === userSlot ? 'userTeam' : ''} ${isCurrent ? 'current' : ''}`} key={`${slot}-${round}`}>
                       {pick ? (
                         <div className="draftBoardPlayer" style={{ borderLeftColor: getPositionColor(pick.position) }}>
                           <strong style={{ color: getPositionColor(pick.position) }}>{formatShortPlayerName(pick.playerName || pick.playerId)}</strong>
@@ -2049,6 +2085,10 @@ function clampLeagueDraftSlot(league: LeagueProfile, totalTeams: number) {
   return Math.min(totalTeams, Math.max(1, league.draftSlot || Number(league.externalTeamId) || 1))
 }
 
+function getDraftedRosterForSlot(draft: DraftState, slot: number) {
+  return draft.drafted.filter((pick) => pick.slot === slot)
+}
+
 function getTabFromHash(): AppTab {
   const value = window.location.hash.replace('#', '') as AppTab
   return ['players', 'board', 'consistency', 'depth', 'injuries', 'rookies', 'leagues'].includes(value) ? value : 'players'
@@ -2086,7 +2126,7 @@ function buildRecommendations(
 ): Recommendation[] {
   const totalTeams = draft.teamNames.length || league.lineup.teams
   const userSlot = clampLeagueDraftSlot(league, totalTeams)
-  const roster = draft.drafted.filter((pick) => pick.slot === userSlot)
+  const roster = getDraftedRosterForSlot(draft, userSlot)
   const rosterCounts = new Map<Position, number>()
   roster.forEach((pick) => pick.position && rosterCounts.set(pick.position, (rosterCounts.get(pick.position) || 0) + 1))
   const draftedPositionCounts = new Map<Position, number>()
@@ -2625,6 +2665,7 @@ function PlayersBoard({
   playersByPosition,
   query,
   recommendations,
+  recommendationRosterLabel,
   strategy,
   watchlistIdSet,
   watchlistPlayers,
@@ -2643,6 +2684,7 @@ function PlayersBoard({
   playersByPosition: Record<Position, RankedPlayer[]>
   query: string
   recommendations: Recommendation[]
+  recommendationRosterLabel: string
   strategy: RecommendationStrategy
   watchlistIdSet: ReadonlySet<string>
   watchlistPlayers: RankedPlayer[]
@@ -2729,7 +2771,7 @@ function PlayersBoard({
 
       <aside className="shortlistRail">
         <div className="shortlistHeader">
-          <div><h3>Recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small></div>
+          <div><h3>Recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small><small className="rosterBasis">{recommendationRosterLabel}</small></div>
           <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><div className="shortlistCount">{recommendations.length} ranked</div></div>
         </div>
         <div className="shortlistContainer">
@@ -3079,10 +3121,10 @@ function loadLocal<T>(key: string, fallback: T): T {
   }
 }
 
-async function persistState(profiles: LeagueProfile[], draftsByLeague: Record<string, DraftState>, draft: DraftState) {
+async function persistState(profiles: LeagueProfile[], draftsByLeague: Record<string, DraftState>, draft: DraftState, remoteDraftReady: boolean) {
   localStorage.setItem('draft-wizard:league-profiles', JSON.stringify(profiles))
   localStorage.setItem('draft-wizard:drafts-by-league', JSON.stringify(draftsByLeague))
-  if (!API_URL) return 'Local'
+  if (!API_URL || !remoteDraftReady) return 'Local'
   try {
     const response = await fetch(`${API_URL}/drafts/${draft.id}`, {
       method: 'PUT',
