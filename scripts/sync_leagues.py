@@ -9,6 +9,25 @@ import boto3
 import requests
 
 
+GVSU_SCORING = {
+    "passingYardsPerPoint": 25,
+    "passingTd": 4,
+    "interception": -2,
+    "rushingYardsPerPoint": 10,
+    "receivingYardsPerPoint": 10,
+    "rushReceiveTd": 6,
+    "reception": 0.5,
+    "fumbleLost": -2,
+    "fieldGoal": 3,
+    "extraPoint": 1,
+    "dstSack": 1,
+    "dstInterception": 2,
+    "dstFumbleRecovery": 2,
+    "dstTouchdown": 6,
+    "dstSafety": 2,
+}
+
+
 LEAGUES = [
     {
         "id": "fanduel",
@@ -28,6 +47,10 @@ LEAGUES = [
         "platform": "espn",
         "externalLeagueId": "509557",
         "externalTeamId": os.environ.get("ESPN_TEAM_ID", ""),
+        "rankingPreset": "halfPpr",
+        # ESPN reuses stat labels across offense, kicking, and defense. These
+        # confirmed league values prevent those IDs from crossing categories.
+        "scoringOverrides": GVSU_SCORING,
     },
 ]
 
@@ -103,6 +126,7 @@ def fetch_espn_profile(config: Dict[str, Any], season: int) -> Dict[str, Any]:
     scoring_settings = settings.get("scoringSettings", {})
     roster_settings = settings.get("rosterSettings", {})
     scoring = espn_scoring(scoring_settings)
+    scoring.update(config.get("scoringOverrides", {}))
     preset = scoring_preset(scoring["reception"])
     team_count = settings.get("size") or len(league.get("teams", [])) or 10
 
@@ -113,7 +137,7 @@ def fetch_espn_profile(config: Dict[str, Any], season: int) -> Dict[str, Any]:
         "externalLeagueId": config["externalLeagueId"],
         "externalTeamId": config.get("externalTeamId", ""),
         "scoringPreset": preset,
-        "rankingPreset": ranking_preset(preset),
+        "rankingPreset": config.get("rankingPreset", ranking_preset(preset)),
         "lineup": espn_lineup(roster_settings, team_count),
         "scoring": scoring,
         "providerName": settings.get("name") or league.get("name"),

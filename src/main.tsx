@@ -173,27 +173,27 @@ const NFL_REGULAR_SEASON_GAMES = 17
 const RECOMMENDATION_STRATEGIES: Record<RecommendationStrategy, {
   label: string
   description: string
-  weights: { vor: number; tier: number; urgency: number; roster: number; floor: number; upside: number; value: number; injury: number; bye: number }
+  weights: { rank: number; vor: number; tier: number; urgency: number; roster: number; floor: number; upside: number; value: number; bye: number }
 }> = {
   balanced: {
     label: 'Balanced',
-    description: 'Blends value, roster fit, tier cliffs and next-pick urgency.',
-    weights: { vor: 0.32, tier: 0.08, urgency: 0.15, roster: 0.24, floor: 0.07, upside: 0.04, value: 0.10, injury: 0.14, bye: 0.05 },
+    description: 'Anchors to expert rank, then adjusts for league value, roster fit and urgency.',
+    weights: { rank: 0.28, vor: 0.28, tier: 0.08, urgency: 0.10, roster: 0.14, floor: 0.04, upside: 0.02, value: 0.06, bye: 0.03 },
   },
   upside: {
     label: 'Upside',
     description: 'Prioritizes ceiling, breakouts and players before a tier drop.',
-    weights: { vor: 0.25, tier: 0.15, urgency: 0.10, roster: 0.12, floor: 0.03, upside: 0.27, value: 0.08, injury: 0.08, bye: 0.02 },
+    weights: { rank: 0.22, vor: 0.22, tier: 0.15, urgency: 0.08, roster: 0.10, floor: 0.02, upside: 0.16, value: 0.05, bye: 0.02 },
   },
   safeFloor: {
     label: 'Safe Floor',
-    description: 'Favors durable, proven production and minimizes draft-day risk.',
-    weights: { vor: 0.28, tier: 0.06, urgency: 0.10, roster: 0.19, floor: 0.28, upside: 0, value: 0.09, injury: 0.24, bye: 0.08 },
+    description: 'Favors expert consensus and proven production without adding a separate injury penalty.',
+    weights: { rank: 0.28, vor: 0.25, tier: 0.06, urgency: 0.08, roster: 0.14, floor: 0.12, upside: 0, value: 0.07, bye: 0.06 },
   },
   zeroRb: {
     label: 'Zero-RB',
-    description: 'Builds WR/TE strength early, then attacks RB value in later rounds.',
-    weights: { vor: 0.30, tier: 0.10, urgency: 0.14, roster: 0.15, floor: 0.05, upside: 0.11, value: 0.15, injury: 0.12, bye: 0.05 },
+    description: 'Builds WR/TE strength early without passing on elite consensus RB value.',
+    weights: { rank: 0.24, vor: 0.25, tier: 0.10, urgency: 0.10, roster: 0.10, floor: 0.03, upside: 0.08, value: 0.10, bye: 0.04 },
   },
 }
 const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
@@ -355,11 +355,6 @@ const pprScoring: ScoringRules = {
   reception: 1,
 }
 
-const standardScoring: ScoringRules = {
-  ...halfPprScoring,
-  reception: 0,
-}
-
 const leagueProfiles: LeagueProfile[] = [
   {
     id: 'fanduel',
@@ -405,15 +400,15 @@ const leagueProfiles: LeagueProfile[] = [
     platform: 'espn',
     externalLeagueId: '509557',
     externalTeamId: '',
-    scoringPreset: 'standard',
-    rankingPreset: 'standard',
+    scoringPreset: 'halfPpr',
+    rankingPreset: 'halfPpr',
     lineup: {
       ...defaultLineup,
       teams: 10,
       flex: 1,
       bench: 7,
     },
-    scoring: standardScoring,
+    scoring: halfPprScoring,
   },
 ]
 
@@ -498,9 +493,19 @@ function createDraftState(profile: LeagueProfile): DraftState {
   }
 }
 
+function normalizeLeagueProfile(profile: LeagueProfile): LeagueProfile {
+  if (profile.id !== 'gvsu' && profile.externalLeagueId !== '509557') return profile
+  return {
+    ...profile,
+    scoringPreset: 'halfPpr',
+    rankingPreset: 'halfPpr',
+    scoring: { ...profile.scoring, ...halfPprScoring },
+  }
+}
+
 function App() {
   const [data, setData] = useState<RankingsFile>(seedData)
-  const [profiles, setProfiles] = useState<LeagueProfile[]>(loadLocal('league-profiles', leagueProfiles))
+  const [profiles, setProfiles] = useState<LeagueProfile[]>(() => loadLocal<LeagueProfile[]>('league-profiles', leagueProfiles).map(normalizeLeagueProfile))
   const [selectedLeagueId, setSelectedLeagueId] = useState(loadLocal('selected-league-id', leagueProfiles[0].id))
   const [draftsByLeague, setDraftsByLeague] = useState<Record<string, DraftState>>(
     loadLocal(
@@ -715,7 +720,7 @@ function App() {
   }
 
   function updateLeague(patch: Partial<LeagueProfile>) {
-    const nextLeague = { ...selectedLeague, ...patch }
+    const nextLeague = normalizeLeagueProfile({ ...selectedLeague, ...patch })
     setProfiles((current) => current.map((profile) => (profile.id === selectedLeague.id ? nextLeague : profile)))
     if (nextLeague.lineup.teams !== draft.teamNames.length) {
       updateDraft({
@@ -1052,7 +1057,6 @@ function RecommendationSignals({ recommendation, compact = false }: { recommenda
       ? `${Math.round(metrics.availabilityAtNextPick * 100)}% to pick ${metrics.nextUserPick}`
       : 'Final turn',
     metrics.tierDrop >= NFL_REGULAR_SEASON_GAMES * 0.5 ? `${(metrics.tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG cliff` : null,
-    !compact && metrics.injuryRisk >= 40 ? `${Math.round(metrics.injuryRisk)}% injury risk` : null,
   ].filter((signal): signal is string => Boolean(signal))
 
   return <div className={compact ? 'recommendationSignals compact' : 'recommendationSignals'}>{signals.slice(0, compact ? 2 : 4).map((signal) => <span key={signal}>{signal}</span>)}</div>
@@ -2053,7 +2057,7 @@ function getTabFromHash(): AppTab {
 function mergeLeagueProfiles(remote: LeagueProfile[], local: LeagueProfile[]) {
   const merged = new Map(remote.map((profile) => [profile.id, profile]))
   local.forEach((profile) => merged.set(profile.id, { ...(merged.get(profile.id) || {}), ...profile }))
-  return [...merged.values()]
+  return [...merged.values()].map(normalizeLeagueProfile)
 }
 
 function getScoringWarnings(league: LeagueProfile) {
@@ -2112,16 +2116,23 @@ function buildRecommendations(
   const currentRound = getSlotRoundForPick(draft.currentPick, totalTeams).round
   const totalRounds = draft.totalRounds || league.lineup.rosterSpots
   const weights = RECOMMENDATION_STRATEGIES[strategy].weights
+  const bestAvailableRank = Math.min(...players.map((player) => player.rank))
+  const replacementValueByPlayerId = new Map(players.map((player) => {
+    const replacementPoints = replacementByPosition.get(player.position)?.projectedPoints || 0
+    return [player.id, Math.max(0, player.projectedPoints - replacementPoints)] as const
+  }))
+  const maxReplacementValue = Math.max(0, ...replacementValueByPlayerId.values())
 
   return players.map((player) => {
     const pool = positionPools[player.position]
     const poolIndex = pool.findIndex((candidate) => candidate.id === player.id)
     const replacement = replacementByPosition.get(player.position)
     const replacementPoints = replacement?.projectedPoints || 0
-    const replacementValue = Math.max(0, player.projectedPoints - replacementPoints)
+    const replacementValue = replacementValueByPlayerId.get(player.id) || 0
     const replacementRankGap = replacement ? Math.max(0, replacement.rank - player.rank) : 0
-    const vorScore = player.projectedPoints > 0
-      ? clampRecommendationScore((replacementValue / Math.max(1, replacementPoints || player.projectedPoints * 0.55)) * 250)
+    const rankScore = clampRecommendationScore(100 - Math.max(0, player.rank - bestAvailableRank) * 5)
+    const vorScore = player.projectedPoints > 0 && maxReplacementValue > 0
+      ? clampRecommendationScore((replacementValue / maxReplacementValue) * 100)
       : clampRecommendationScore(replacementRankGap * 3)
     const nextTierPlayer = pool.slice(poolIndex + 1).find((candidate) => (
       player.tier && candidate.tier ? candidate.tier > player.tier : candidate.rank >= player.rank + 4
@@ -2145,12 +2156,16 @@ function buildRecommendations(
 
     if ((player.position === 'K' || player.position === 'DST') && currentRound < Math.max(8, totalRounds - 3)) strategyAdjustment -= 45
     if (strategy === 'zeroRb') {
-      if (player.position === 'RB' && currentRound <= 5) strategyAdjustment -= player.tier && player.tier <= 1 ? 28 : 46
-      if ((player.position === 'WR' || player.position === 'TE') && currentRound <= 5) strategyAdjustment += 12
+      if (player.position === 'RB' && currentRound <= 5) {
+        const eliteConsensusException = player.rank <= bestAvailableRank + 1 && (!player.tier || player.tier <= 1)
+        strategyAdjustment -= eliteConsensusException ? 0 : player.tier && player.tier <= 1 ? 18 : 38
+      }
+      if ((player.position === 'WR' || player.position === 'TE') && currentRound <= 5) strategyAdjustment += 8
       if (player.position === 'RB' && currentRound >= 6) strategyAdjustment += 18
     }
 
     const score =
+      rankScore * weights.rank +
       vorScore * weights.vor +
       tierScore * weights.tier +
       urgencyScore * weights.urgency +
@@ -2158,11 +2173,11 @@ function buildRecommendations(
       floor * weights.floor +
       upside * weights.upside +
       valueScore * weights.value -
-      injuryRisk * weights.injury -
       byeRisk * weights.bye +
       strategyAdjustment
 
     const factors: { score: number; text: string }[] = [
+      { score: rankScore, text: `Expert consensus ranks him #${player.rank} overall` },
       { score: vorScore, text: replacementValue > 0 ? `${Math.round(replacementValue)} projected points over ${player.position} replacement` : `Strong ${player.position} replacement value` },
       { score: tierScore, text: tierDrop >= NFL_REGULAR_SEASON_GAMES * 0.5 ? `${(tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG tier cliff behind him` : `Last strong option in his ${player.position} tier` },
       { score: rosterFit, text: getRosterFitReason(player.position, rosterCounts, league.lineup) },
@@ -2178,7 +2193,6 @@ function buildRecommendations(
     const reason = factors.sort((a, b) => b.score - a.score).slice(0, 2).map((factor) => factor.text).join(' · ')
     const outlookParts = [
       nextUserPick && availabilityAtNextPick !== undefined ? `Estimated ${Math.round(availabilityAtNextPick * 100)}% chance to reach pick ${nextUserPick}` : 'No later user pick remains',
-      injuryRisk >= 25 ? `${player.injury?.status || 'Reported injury'} (${Math.round(injuryRisk)}% risk)` : null,
       byeConflicts > 0 && player.bye ? `would add a ${ordinal(byeConflicts + 1)} Week ${player.bye} bye` : null,
       byeConflicts === 0 && player.bye && roster.length > 0 ? `no current Week ${player.bye} bye conflict` : null,
     ].filter((part): part is string => Boolean(part))
@@ -2268,7 +2282,7 @@ function getPlayerFloorScore(player: RankedPlayer) {
   const productionRetention = previousPpg && projectedPpg ? Math.min(1, previousPpg / projectedPpg) : 0.45
   const depthSecurity = player.depthChart?.order === 1 ? 15 : player.depthChart?.order === 2 ? 7 : 0
   const experience = (player.sleeper?.yearsExp || 0) >= 3 ? 10 : 0
-  return clampRecommendationScore(availability * 48 + productionRetention * 32 + depthSecurity + experience - getPlayerInjuryRisk(player) * 0.45)
+  return clampRecommendationScore(availability * 48 + productionRetention * 32 + depthSecurity + experience)
 }
 
 function getPlayerUpsideScore(player: RankedPlayer, positionIndex: number, positionPoolSize: number) {
