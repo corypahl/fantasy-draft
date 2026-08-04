@@ -1925,10 +1925,8 @@ h3 {
 }
 
 .dataHealth {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  display: grid;
+  gap: 0.55rem;
   margin-bottom: 1rem;
   border: 1px solid rgba(56, 161, 105, 0.35);
   border-radius: 8px;
@@ -1937,6 +1935,13 @@ h3 {
   padding: 0.6rem 0.85rem;
   font-size: 0.74rem;
   font-weight: 700;
+}
+
+.dataHealthSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .dataHealthWarning {
@@ -1954,7 +1959,42 @@ h3 {
 .dataHealthPrimary strong { color: var(--text-primary); }
 .dataHealthPrimary span:not(:last-child)::after { content: "·"; margin-left: 0.65rem; color: var(--text-muted); }
 .dataHealthSecondary { white-space: nowrap; }
-.healthWarning { color: #f6c453; }
+.healthWarningButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: #f6c453;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.healthWarningButton:hover,
+.healthWarningButton:focus-visible { color: #fbd38d; }
+.healthWarningButton svg { transition: transform 0.18s ease; }
+.healthWarningButton svg.expanded { transform: rotate(180deg); }
+
+.healthWarningDetails {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  border-top: 1px solid rgba(214, 158, 46, 0.3);
+  padding-top: 0.55rem;
+  color: var(--text-secondary);
+}
+
+.healthWarningDetails > div {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.1rem;
+}
+
+.healthWarningDetails strong { color: #f6c453; }
+.healthWarningDetails span { color: var(--text-muted); font-size: 0.68rem; }
+.healthWarningDetails ul { margin: 0; padding-left: 1rem; }
+.healthWarningDetails li + li { margin-top: 0.25rem; }
 
 .panelDescription,
 .settingsHeader p,
@@ -2051,8 +2091,6 @@ h3 {
   text-transform: uppercase;
 }
 
-.recommendationRailItem { border-bottom: 1px solid var(--border-color); padding-bottom: 0.45rem; }
-.recommendationRailItem p { margin: 0 0.5rem 0.25rem 3.1rem; color: var(--text-muted); font-size: 0.65rem; line-height: 1.35; }
 .recommendationSignals { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0.5rem 0.2rem 3.1rem; }
 .recommendationSignals span { border: 1px solid rgba(49, 130, 206, 0.35); border-radius: 999px; background: rgba(49, 130, 206, 0.08); color: #90cdf4; padding: 0.13rem 0.35rem; font-size: 0.57rem; font-weight: 900; white-space: nowrap; }
 .recommendationSignals.compact { margin: 0.32rem 0 0; }
@@ -2162,8 +2200,9 @@ h3 {
 }
 
 @media (max-width: 980px) {
-  .dataHealth { align-items: flex-start; flex-direction: column; }
+  .dataHealthSummary { align-items: flex-start; flex-direction: column; width: 100%; }
   .dataHealthPrimary { flex-wrap: wrap; }
+  .healthWarningDetails { flex-direction: column; gap: 0.4rem; }
   .researchFilters { grid-template-columns: 1fr; }
   .researchSearch { max-width: none; }
   .settingsHeader { flex-direction: column; }

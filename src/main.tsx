@@ -6,6 +6,7 @@ import {
   Baby,
   BarChart3,
   Check,
+  ChevronDown,
   ClipboardList,
   Copy,
   LayoutGrid,
@@ -971,18 +972,38 @@ function DataHealth({ data, league, persistenceStatus }: { data: RankingsFile; l
   const generated = new Date(data.generatedAt)
   const ageHours = Number.isFinite(generated.getTime()) ? (Date.now() - generated.getTime()) / 36e5 : Number.POSITIVE_INFINITY
   const warnings = getScoringWarnings(league)
+  const [showWarnings, setShowWarnings] = useState(false)
   return (
     <section className={`dataHealth ${ageHours > 48 || warnings.length ? 'dataHealthWarning' : ''}`} aria-label="Draft data status">
-      <div className="dataHealthPrimary">
-        {ageHours <= 48 && !warnings.length ? <Check size={16} /> : <AlertTriangle size={16} />}
-        <strong>{data.season} data</strong>
-        <span>{ageHours <= 48 ? `Updated ${formatRelativeTime(generated)}` : 'Data may be stale'}</span>
-        <span>{data.source}</span>
+      <div className="dataHealthSummary">
+        <div className="dataHealthPrimary">
+          {ageHours <= 48 && !warnings.length ? <Check size={16} /> : <AlertTriangle size={16} />}
+          <strong>{data.season} data</strong>
+          <span>{ageHours <= 48 ? `Updated ${formatRelativeTime(generated)}` : 'Data may be stale'}</span>
+          <span>{data.source}</span>
+        </div>
+        <div className="dataHealthSecondary">
+          {warnings.length ? (
+            <button
+              aria-controls="scoring-warning-details"
+              aria-expanded={showWarnings}
+              className="healthWarningButton"
+              onClick={() => setShowWarnings((current) => !current)}
+              type="button"
+            >
+              {warnings.length} scoring warning{warnings.length === 1 ? '' : 's'}
+              <ChevronDown aria-hidden="true" className={showWarnings ? 'expanded' : ''} size={14} />
+            </button>
+          ) : <span>Scoring verified</span>}
+          <span>{persistenceStatus}</span>
+        </div>
       </div>
-      <div className="dataHealthSecondary">
-        {warnings.length ? <span className="healthWarning">{warnings.length} scoring warning{warnings.length === 1 ? '' : 's'}</span> : <span>Scoring verified</span>}
-        <span>{persistenceStatus}</span>
-      </div>
+      {warnings.length && showWarnings ? (
+        <div aria-label="Scoring warning details" className="healthWarningDetails" id="scoring-warning-details" role="region">
+          <div><strong>Review scoring</strong><span>Update this value on the Leagues tab before draft day.</span></div>
+          <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+        </div>
+      ) : null}
     </section>
   )
 }
@@ -1041,7 +1062,6 @@ type ComparisonRow = {
   key: string
   label: string
   help?: string
-  quick?: boolean
   value: (player: RankedPlayer) => string
   numeric?: (player: RankedPlayer) => number | undefined
   best?: 'high' | 'low'
@@ -1110,51 +1130,51 @@ function WatchlistComparison({
     {
       label: 'Draft decision',
       rows: [
-        { key: 'model-score', label: 'Model score', help: 'Relative recommendation score using the selected strategy', quick: true, value: (player) => recommendationFor(player) ? Math.round(recommendationFor(player)!.score).toString() : '—', numeric: (player) => recommendationFor(player)?.score, best: 'high' },
-        { key: 'vor', label: 'Value over replacement', help: 'Projected season points above the current replacement player at this position', quick: true, value: (player) => recommendationFor(player) ? `+${formatComparisonStat(recommendationFor(player)!.metrics.replacementValue)} pts` : '—', numeric: (player) => recommendationFor(player)?.metrics.replacementValue, best: 'high' },
+        { key: 'model-score', label: 'Model score', help: 'Relative recommendation score using the selected strategy', value: (player) => recommendationFor(player) ? Math.round(recommendationFor(player)!.score).toString() : '—', numeric: (player) => recommendationFor(player)?.score, best: 'high' },
+        { key: 'vor', label: 'Value over replacement', help: 'Projected season points above the current replacement player at this position', value: (player) => recommendationFor(player) ? `+${formatComparisonStat(recommendationFor(player)!.metrics.replacementValue)} pts` : '—', numeric: (player) => recommendationFor(player)?.metrics.replacementValue, best: 'high' },
         { key: 'replacement', label: 'Replacement level', value: (player) => recommendationFor(player) ? `${formatProjectedPointsPerGame(recommendationFor(player)!.metrics.replacementPoints)} PPG` : '—' },
         { key: 'tier-drop', label: 'Tier cliff', help: 'Projected PPG lost by waiting for the next tier at this position', value: (player) => recommendationFor(player) ? `${(recommendationFor(player)!.metrics.tierDrop / NFL_REGULAR_SEASON_GAMES).toFixed(1)} PPG` : '—', numeric: (player) => recommendationFor(player)?.metrics.tierDrop, best: 'high' },
-        { key: 'availability', label: 'Chance at next pick', quick: true, value: (player) => formatNextPickAvailability(recommendationFor(player)) },
+        { key: 'availability', label: 'Chance at next pick', value: (player) => formatNextPickAvailability(recommendationFor(player)) },
         { key: 'roster-fit', label: 'Roster fit', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.rosterFit)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.rosterFit, best: 'high' },
         { key: 'floor', label: 'Floor score', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.floor)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.floor, best: 'high' },
         { key: 'upside', label: 'Upside score', value: (player) => recommendationFor(player) ? `${Math.round(recommendationFor(player)!.metrics.upside)}/100` : '—', numeric: (player) => recommendationFor(player)?.metrics.upside, best: 'high' },
-        { key: 'why-now', label: 'Why now', quick: true, value: (player) => recommendationFor(player)?.reason || '—' },
+        { key: 'why-now', label: 'Why now', value: (player) => recommendationFor(player)?.reason || '—' },
         { key: 'outlook', label: 'Pick outlook', value: (player) => recommendationFor(player)?.outlook || '—' },
       ],
     },
     {
       label: 'Draft value',
       rows: [
-        { key: 'rank', label: 'Overall rank', quick: true, value: (player) => `#${player.rank}`, numeric: (player) => player.rank, best: 'low' },
+        { key: 'rank', label: 'Overall rank', value: (player) => `#${player.rank}`, numeric: (player) => player.rank, best: 'low' },
         { key: 'position-rank', label: 'Position rank', value: (player) => player.posRank || '—', numeric: getPositionRankNumber, best: 'low', samePositionOnly: true },
         { key: 'tier', label: 'Tier', value: (player) => player.tier ? `Tier ${player.tier}` : '—', numeric: (player) => getFiniteComparisonValue(player.tier), best: 'low' },
-        { key: 'adp', label: 'ADP', help: 'Round.pick with overall ADP in parentheses', quick: true, value: (player) => player.adp ? `${formatAdpRoundPick(player.adp, leagueTeams)} (#${player.adp.toFixed(1)})` : '—' },
-        { key: 'adp-value', label: 'Value vs ADP', help: 'Positive means the player is ranked ahead of market cost', quick: true, value: formatAdpValue, numeric: getAdpValue, best: 'high' },
+        { key: 'adp', label: 'ADP', help: 'Round.pick with overall ADP in parentheses', value: (player) => player.adp ? `${formatAdpRoundPick(player.adp, leagueTeams)} (#${player.adp.toFixed(1)})` : '—' },
+        { key: 'adp-value', label: 'Value vs ADP', help: 'Positive means the player is ranked ahead of market cost', value: formatAdpValue, numeric: getAdpValue, best: 'high' },
       ],
     },
     {
       label: 'Projected output',
       rows: [
         { key: 'projected-points', label: 'Season points', value: (player) => formatComparisonStat(player.projectedPoints), numeric: (player) => getFiniteComparisonValue(player.projectedPoints), best: 'high' },
-        { key: 'projected-ppg', label: 'Projected PPG', quick: true, value: (player) => formatProjectedPointsPerGame(player.projectedPoints), numeric: (player) => player.projectedPoints > 0 ? player.projectedPoints / NFL_REGULAR_SEASON_GAMES : undefined, best: 'high' },
+        { key: 'projected-ppg', label: 'Projected PPG', value: (player) => formatProjectedPointsPerGame(player.projectedPoints), numeric: (player) => player.projectedPoints > 0 ? player.projectedPoints / NFL_REGULAR_SEASON_GAMES : undefined, best: 'high' },
         { key: 'projection-trend', label: 'Year-over-year', help: 'Projected PPG compared with last season', value: formatProjectionTrend, numeric: getProjectionTrend, best: 'high' },
       ],
     },
     {
       label: 'Last season',
       rows: [
-        { key: 'previous-ppg', label: 'Fantasy PPG', quick: true, value: (player) => formatPreviousYearPointsPerGame(player.previousYear), numeric: (player) => getPreviousYearPointsPerGame(player.previousYear), best: 'high' },
+        { key: 'previous-ppg', label: 'Fantasy PPG', value: (player) => formatPreviousYearPointsPerGame(player.previousYear), numeric: (player) => getPreviousYearPointsPerGame(player.previousYear), best: 'high' },
         { key: 'previous-points', label: 'Fantasy points', value: (player) => formatComparisonStat(player.previousYear?.fpts), numeric: (player) => getFiniteComparisonValue(player.previousYear?.fpts), best: 'high' },
-        { key: 'previous-games', label: 'Games played', quick: true, value: (player) => player.previousYear?.games ? String(player.previousYear.games) : '—', numeric: (player) => getFiniteComparisonValue(player.previousYear?.games), best: 'high' },
+        { key: 'previous-games', label: 'Games played', value: (player) => player.previousYear?.games ? String(player.previousYear.games) : '—', numeric: (player) => getFiniteComparisonValue(player.previousYear?.games), best: 'high' },
         { key: 'previous-finish', label: 'Position finish', value: (player) => player.previousYear?.rank ? `${player.position}${player.previousYear.rank}` : '—', numeric: (player) => getFiniteComparisonValue(player.previousYear?.rank), best: 'low', samePositionOnly: true },
       ],
     },
     {
       label: 'Availability & risk',
       rows: [
-        { key: 'health', label: 'Health', quick: true, value: formatHealth, numeric: (player) => getPlayerInjuryRisk(player), best: 'low' },
-        { key: 'bye', label: 'Bye week', quick: true, value: (player) => player.bye ? `Week ${player.bye}` : '—' },
-        { key: 'depth', label: 'Depth-chart role', quick: true, value: (player) => player.depthChart ? `${player.position}${player.depthChart.order}` : '—', numeric: (player) => getFiniteComparisonValue(player.depthChart?.order), best: 'low', samePositionOnly: true },
+        { key: 'health', label: 'Health', value: formatHealth, numeric: (player) => getPlayerInjuryRisk(player), best: 'low' },
+        { key: 'bye', label: 'Bye week', value: (player) => player.bye ? `Week ${player.bye}` : '—' },
+        { key: 'depth', label: 'Depth-chart role', value: (player) => player.depthChart ? `${player.position}${player.depthChart.order}` : '—', numeric: (player) => getFiniteComparisonValue(player.depthChart?.order), best: 'low', samePositionOnly: true },
         { key: 'experience', label: 'Age / experience', value: formatExperience },
         { key: 'rookie', label: 'Rookie profile', value: formatRookieProfile },
         { key: 'status', label: 'Roster status', value: (player) => player.sleeper?.status ? titleCase(player.sleeper.status) : '—' },
@@ -1162,9 +1182,8 @@ function WatchlistComparison({
     },
   ]
   const populatedSections = comparisonSections.map((section) => ({ ...section, rows: section.rows.filter((row) => players.some((player) => row.value(player) !== '—')) }))
-  const sections = populatedSections.map((section) => ({ ...section, rows: section.rows.filter((row) => showAllDetails || row.quick) }))
-  const allDetailCount = populatedSections.reduce((total, section) => total + section.rows.length, 0) + projectionRows.length
-  const quickDetailCount = populatedSections.reduce((total, section) => total + section.rows.filter((row) => row.quick).length, 0)
+  const sections = populatedSections
+  const hasDetails = populatedSections.some((section) => section.rows.length) || projectionRows.length > 0
 
   const insights = getComparisonInsights(players, recommendationById)
 
@@ -1178,59 +1197,63 @@ function WatchlistComparison({
           </small>
         </div>
         <div className="watchCompareActions">
-          {allDetailCount > quickDetailCount ? (
+          {hasDetails ? (
             <button aria-expanded={showAllDetails} className="watchCompareToggle" onClick={() => setShowAllDetails((current) => !current)} type="button">
-              {showAllDetails ? `Quick view (${quickDetailCount})` : `Show all details (${allDetailCount})`}
+              {showAllDetails ? 'Hide details' : 'Show all details'}
             </button>
           ) : null}
           <button aria-label="Clear all watched players" className="watchCompareClear" onClick={onClearWatchlist} type="button">Clear all</button>
         </div>
       </div>
 
-      {insights.length > 1 ? (
+      {insights.length ? (
         <div className="watchCompareInsights" aria-label="Comparison highlights">
           {insights.map((insight) => <div key={insight.label}><span>{insight.label}</span><strong>{insight.value}</strong></div>)}
         </div>
       ) : null}
 
-      <div className="watchCompareScroller" tabIndex={0}>
-        <table className="watchCompareTable">
-          <caption className="srOnly">Side-by-side details for starred players</caption>
-          <thead>
-            <tr>
-              <th className="watchCompareMetricHead" scope="col">Metric</th>
-              {players.map((player) => {
-                const tierColor = getTierColor(player.tier)
-                return (
-                  <th className="watchComparePlayerHead" key={player.id} scope="col" style={{ borderTopColor: tierColor }}>
-                    <div className="watchComparePlayerTitle">
-                      <span className={`position position${player.position}`}>{player.position}</span>
-                      <button aria-label={`Remove ${player.name} from watchlist`} aria-pressed="true" className="watchCompareRemove watched" onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={14} /></button>
-                    </div>
-                    <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
-                    <small>{player.team || 'FA'} · {player.posRank || 'Unranked'} · Tier {player.tier || '—'}</small>
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {sections.map((section) => section.rows.length ? (
-              <React.Fragment key={section.label}>
-                <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">{section.label}</th></tr>
-                {section.rows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
-              </React.Fragment>
-            ) : null)}
-            {showAllDetails && projectionRows.length ? (
-              <React.Fragment>
-                <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">Full projection breakdown</th></tr>
-                {projectionRows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
-              </React.Fragment>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-      {players.length > 3 ? <p className="watchCompareScrollHint">Scroll sideways to compare every starred player.</p> : null}
+      {showAllDetails ? (
+        <>
+          <div className="watchCompareScroller" tabIndex={0}>
+            <table className="watchCompareTable">
+              <caption className="srOnly">Side-by-side details for starred players</caption>
+              <thead>
+                <tr>
+                  <th className="watchCompareMetricHead" scope="col">Metric</th>
+                  {players.map((player) => {
+                    const tierColor = getTierColor(player.tier)
+                    return (
+                      <th className="watchComparePlayerHead" key={player.id} scope="col" style={{ borderTopColor: tierColor }}>
+                        <div className="watchComparePlayerTitle">
+                          <span className={`position position${player.position}`}>{player.position}</span>
+                          <button aria-label={`Remove ${player.name} from watchlist`} aria-pressed="true" className="watchCompareRemove watched" onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={14} /></button>
+                        </div>
+                        <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: tierColor }} type="button">{player.name}</button>
+                        <small>{player.team || 'FA'} · {player.posRank || 'Unranked'} · Tier {player.tier || '—'}</small>
+                      </th>
+                    )
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {sections.map((section) => section.rows.length ? (
+                  <React.Fragment key={section.label}>
+                    <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">{section.label}</th></tr>
+                    {section.rows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
+                  </React.Fragment>
+                ) : null)}
+                {projectionRows.length ? (
+                  <React.Fragment>
+                    <tr className="watchCompareSectionRow"><th colSpan={players.length + 1} scope="colgroup">Full projection breakdown</th></tr>
+                    {projectionRows.map((row) => <ComparisonTableRow key={row.key} players={players} row={row} samePosition={samePosition} />)}
+                  </React.Fragment>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          {players.length > 3 ? <p className="watchCompareScrollHint">Scroll sideways to compare every starred player.</p> : null}
+        </>
+      ) : null}
     </section>
   )
 }
@@ -1275,15 +1298,8 @@ function getComparisonInsights(players: RankedPlayer[], recommendationById: Map<
   const value = valueLeader ? getAdpValue(valueLeader) : undefined
   if (valueLeader && value !== undefined) insights.push({ label: 'Best ADP value', value: `${valueLeader.name} · ${value >= 0 ? '+' : ''}${value.toFixed(1)} picks` })
 
-  if (players.some((player) => player.injury || player.previousYear?.games)) {
-    const safest = [...players].sort((a, b) => getPlayerInjuryRisk(a) - getPlayerInjuryRisk(b) || (b.previousYear?.games || 0) - (a.previousYear?.games || 0))[0]
-    insights.push({ label: 'Safest profile', value: `${safest.name} · ${getPlayerInjuryRisk(safest) ? `${Math.round(getPlayerInjuryRisk(safest))}% risk` : 'no injury flag'}` })
-  }
-
-  const byeCounts = new Map<number, number>()
-  players.forEach((player) => { if (player.bye) byeCounts.set(player.bye, (byeCounts.get(player.bye) || 0) + 1) })
-  const overlaps = [...byeCounts.entries()].filter(([, count]) => count > 1).map(([week, count]) => `W${week} (${count})`)
-  if (overlaps.length) insights.push({ label: 'Bye overlap', value: overlaps.join(', ') })
+  const safest = [...players].sort((a, b) => getPlayerInjuryRisk(a) - getPlayerInjuryRisk(b) || (b.previousYear?.games || 0) - (a.previousYear?.games || 0))[0]
+  if (safest) insights.push({ label: 'Safest profile', value: `${safest.name} · ${getPlayerInjuryRisk(safest) ? `${Math.round(getPlayerInjuryRisk(safest))}% risk` : 'no injury flag'}` })
   return insights
 }
 
@@ -2717,18 +2733,15 @@ function PlayersBoard({
           ))}
           <div className="railSectionLabel">Best available</div>
           {recommendations.map((item) => (
-            <div className="recommendationRailItem" key={item.player.id}>
-              <PlayerSummary
-                isWatched={watchlistIdSet.has(item.player.id)}
-                leagueTeams={leagueTeams}
-                player={item.player}
-                variant="shortlist"
-                onPlayerSelect={onPlayerSelect}
-                onToggleWatchlist={onToggleWatchlist}
-              />
-              <p>{item.reason}. {item.outlook}</p>
-              <RecommendationSignals recommendation={item} />
-            </div>
+            <PlayerSummary
+              isWatched={watchlistIdSet.has(item.player.id)}
+              key={item.player.id}
+              leagueTeams={leagueTeams}
+              player={item.player}
+              variant="shortlist"
+              onPlayerSelect={onPlayerSelect}
+              onToggleWatchlist={onToggleWatchlist}
+            />
           ))}
           {recommendations.length === 0 ? <p className="muted">No matching players.</p> : null}
         </div>
