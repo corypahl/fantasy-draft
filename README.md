@@ -7,6 +7,7 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Create, duplicate, edit, or import Sleeper/managed ESPN league profiles.
 - Validate scoring anomalies before they affect projections or recommendations.
 - Sync platform draft state and enable 15-second auto-sync while picks remain controlled by the league platform.
+- Forecast every owner's next two selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players also appear as dashed picks directly on the live board.
 - Use VOR-based, roster-aware recommendations with Balanced, Upside, Safe Floor, and Zero-RB strategies, plus a persistent watchlist and player detail drawers across every research view.
 - Use a mobile-first draft-day command center with compact research cards and deep-linked tabs.
 

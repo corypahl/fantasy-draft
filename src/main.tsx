@@ -72,6 +72,27 @@ type Recommendation = {
   }
 }
 
+type DraftPrediction = {
+  pick: number
+  round: number
+  slot: number
+  teamName: string
+  player: RankedPlayer
+  confidence: number
+  reason: string
+  alternatives: RankedPlayer[]
+}
+
+type PredictionCandidate = {
+  player: RankedPlayer
+  score: number
+  marketScore: number
+  needScore: number
+  scarcityScore: number
+  tendencyScore: number
+  runScore: number
+}
+
 type DepthChartEntry = {
   name: string
   team: string
@@ -662,6 +683,10 @@ function App() {
     [draft, players, recommendationStrategy, selectedLeague, undraftedPlayers],
   )
   const recommendations = useMemo(() => rankedRecommendations.slice(0, 8), [rankedRecommendations])
+  const draftPredictions = useMemo(
+    () => buildDraftPredictions(undraftedPlayers, players, draft, selectedLeague),
+    [draft, players, selectedLeague, undraftedPlayers],
+  )
   const watchlistIdSet = useMemo(() => new Set(watchlistIds), [watchlistIds])
   const undraftedPlayerById = useMemo(() => new Map(undraftedPlayers.map((player) => [player.id, player])), [undraftedPlayers])
   const recommendationByPlayerId = useMemo(() => new Map(rankedRecommendations.map((recommendation) => [recommendation.player.id, recommendation])), [rankedRecommendations])
@@ -924,6 +949,7 @@ function App() {
         <DraftBoardPage
           draft={draft}
           league={selectedLeague}
+          predictions={draftPredictions}
           recommendations={recommendations}
           strategy={recommendationStrategy}
           draftInput={draftInput}
@@ -933,6 +959,7 @@ function App() {
           onAutoSyncChange={setAutoSync}
           onDraftInputChange={setDraftInput}
           onDraftSlotChange={(draftSlot) => updateLeague({ draftSlot })}
+          onPlayerSelect={setSelectedPlayer}
           onStrategyChange={setRecommendationStrategy}
           onSyncDraft={() => void syncDraftState(false)}
         />
@@ -1707,6 +1734,7 @@ function DepthChartsPage({
 function DraftBoardPage({
   draft,
   league,
+  predictions,
   recommendations,
   strategy,
   draftInput,
@@ -1716,11 +1744,13 @@ function DraftBoardPage({
   onAutoSyncChange,
   onDraftInputChange,
   onDraftSlotChange,
+  onPlayerSelect,
   onStrategyChange,
   onSyncDraft,
 }: {
   draft: DraftState
   league: LeagueProfile
+  predictions: DraftPrediction[]
   recommendations: Recommendation[]
   strategy: RecommendationStrategy
   draftInput: string
@@ -1730,6 +1760,7 @@ function DraftBoardPage({
   onAutoSyncChange: (value: boolean) => void
   onDraftInputChange: (value: string) => void
   onDraftSlotChange: (slot: number) => void
+  onPlayerSelect: (player: RankedPlayer) => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
   onSyncDraft: () => void
 }) {
@@ -1740,6 +1771,12 @@ function DraftBoardPage({
     draft.drafted.forEach((pick) => picks.set(`${pick.slot}-${pick.round}`, pick))
     return picks
   }, [draft.drafted])
+  const predictionsByPick = useMemo(() => new Map(predictions.map((prediction) => [prediction.pick, prediction])), [predictions])
+  const predictionsBySlot = useMemo(() => {
+    const grouped = new Map<number, DraftPrediction[]>()
+    predictions.forEach((prediction) => grouped.set(prediction.slot, [...(grouped.get(prediction.slot) || []), prediction]))
+    return grouped
+  }, [predictions])
   const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
   const currentTeam = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
   const userSlot = clampLeagueDraftSlot(league, totalTeams)
@@ -1790,6 +1827,43 @@ function DraftBoardPage({
         </div>
       </div>
       {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
+      <section className="predictionPanel" aria-labelledby="prediction-title">
+        <div className="predictionHeader">
+          <div>
+            <span className="eyebrow">Live forecast</span>
+            <h3 id="prediction-title">Next two picks by owner</h3>
+            <p>Simulated in pick order using ADP, roster needs, tier scarcity, position runs and each owner's draft tendencies.</p>
+          </div>
+          <span className="predictionWindow">{predictions.length ? `Picks ${predictions[0].pick}-${predictions[predictions.length - 1].pick}` : 'Draft complete'}</span>
+        </div>
+        {predictions.length ? (
+          <div className="predictionOwnerGrid">
+            {draft.teamNames.map((teamName, slotIndex) => {
+              const slot = slotIndex + 1
+              const ownerPredictions = predictionsBySlot.get(slot) || []
+              return (
+                <article className={slot === userSlot ? 'predictionOwner userTeam' : 'predictionOwner'} key={`${teamName}-${slot}`}>
+                  <div className="predictionOwnerHeader">
+                    <strong>{teamName}</strong>
+                    <span>Slot {slot}</span>
+                  </div>
+                  <div className="predictionOwnerPicks">
+                    {ownerPredictions.map((prediction, index) => (
+                      <button className="predictionPick" key={prediction.pick} onClick={() => onPlayerSelect(prediction.player)} type="button">
+                        <span className="predictionPickWhen">{index === 0 ? 'Next' : 'Then'} · #{prediction.pick} · R{prediction.round}</span>
+                        <strong style={{ color: getPositionColor(prediction.player.position) }}>{prediction.player.name}</strong>
+                        <span>{prediction.player.position} · {prediction.player.team} · Confidence {prediction.confidence}/100</span>
+                        <small>{prediction.reason}</small>
+                      </button>
+                    ))}
+                    {ownerPredictions.length === 0 ? <span className="predictionUnavailable">No picks remain</span> : null}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : <p className="predictionEmpty">No future picks remain to predict.</p>}
+      </section>
       <div className="draftCommandGrid">
         <section className="commandCard">
           <div className="commandCardHeader recommendationCommandHeader">
@@ -1831,14 +1905,20 @@ function DraftBoardPage({
                   const slot = slotIndex + 1
                   const pickNumber = getPickNumberForSlotRound(slot, round, totalTeams)
                   const pick = picksBySlotRound.get(`${slot}-${round}`)
+                  const prediction = predictionsByPick.get(pickNumber)
                   const isCurrent = pickNumber === draft.currentPick
                   return (
-                    <div className={`draftBoardCell ${slot === userSlot ? 'userTeam' : ''} ${isCurrent ? 'current' : ''}`} key={`${slot}-${round}`}>
+                    <div className={`draftBoardCell ${slot === userSlot ? 'userTeam' : ''} ${isCurrent ? 'current' : ''} ${prediction && !pick ? 'predicted' : ''}`} key={`${slot}-${round}`}>
                       {pick ? (
                         <div className="draftBoardPlayer" style={{ borderLeftColor: getPositionColor(pick.position) }}>
                           <strong style={{ color: getPositionColor(pick.position) }}>{formatShortPlayerName(pick.playerName || pick.playerId)}</strong>
                           <span>{pick.position || '-'} {pick.team || ''}</span>
                         </div>
+                      ) : prediction ? (
+                        <button className="draftBoardPrediction" onClick={() => onPlayerSelect(prediction.player)} title={`${prediction.reason}. Alternatives: ${prediction.alternatives.map((player) => player.name).join(', ')}`} type="button">
+                          <strong style={{ color: getPositionColor(prediction.player.position) }}>{formatShortPlayerName(prediction.player.name)}</strong>
+                          <span>{prediction.player.position} · {prediction.confidence} conf.</span>
+                        </button>
                       ) : (
                         <span className="draftBoardPick">#{pickNumber}</span>
                       )}
@@ -2169,6 +2249,208 @@ function getScoringWarnings(league: LeagueProfile) {
   if (league.scoring.passingYardsPerPoint <= 0 || league.scoring.rushingYardsPerPoint <= 0 || league.scoring.receivingYardsPerPoint <= 0) warnings.push('Yards-per-point values must be greater than zero.')
   if (league.lineup.teams < 2) warnings.push('League size must include at least two teams.')
   return warnings
+}
+
+function buildDraftPredictions(
+  players: RankedPlayer[],
+  allPlayers: RankedPlayer[],
+  draft: DraftState,
+  league: LeagueProfile,
+): DraftPrediction[] {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const totalRounds = draft.totalRounds || league.lineup.rosterSpots
+  const finalPick = totalTeams * totalRounds
+  if (!players.length || draft.currentPick > finalPick) return []
+
+  const playerLookup = new Map<string, RankedPlayer>()
+  allPlayers.forEach((player) => {
+    playerLookup.set(player.id, player)
+    playerLookup.set(playerKey(player.name), player)
+    playerLookup.set(playerKey(player.name, player.team), player)
+  })
+  const actualPickByNumber = new Map(draft.drafted.map((pick) => [pick.pick, pick]))
+  const actualHistoryBySlot = new Map<number, DraftPick[]>()
+  const simulatedRostersBySlot = new Map<number, DraftPick[]>()
+  draft.teamNames.forEach((_, index) => {
+    const slot = index + 1
+    const roster = draft.drafted.filter((pick) => pick.slot === slot)
+    actualHistoryBySlot.set(slot, roster)
+    simulatedRostersBySlot.set(slot, [...roster])
+  })
+
+  const remainingPlayers = [...players]
+  const recentPositions = draft.drafted
+    .slice(-6)
+    .map((pick) => pick.position)
+    .filter((position): position is Position => Boolean(position))
+  const predictionEnd = Math.min(finalPick, draft.currentPick + totalTeams * 2 - 1)
+  const predictions: DraftPrediction[] = []
+
+  for (let pickNumber = draft.currentPick; pickNumber <= predictionEnd; pickNumber += 1) {
+    if (actualPickByNumber.has(pickNumber)) continue
+    const { round, slot } = getSlotRoundForPick(pickNumber, totalTeams)
+    const roster = simulatedRostersBySlot.get(slot) || []
+    const rosterCounts = getPositionCounts(roster)
+    const ownerHistory = actualHistoryBySlot.get(slot) || []
+    const bestMarketPick = Math.min(...remainingPlayers.map(getPredictionMarketPick))
+    const positionPools = Object.fromEntries(POSITION_ORDER.map((position) => [
+      position,
+      remainingPlayers.filter((player) => player.position === position).sort((a, b) => getPredictionMarketPick(a) - getPredictionMarketPick(b)),
+    ])) as Record<Position, RankedPlayer[]>
+
+    const candidates = remainingPlayers.map<PredictionCandidate>((player) => {
+      const marketPick = getPredictionMarketPick(player)
+      const marketScore = clampRecommendationScore(100 - Math.max(0, marketPick - bestMarketPick) * 2.25)
+      const needScore = getPredictionNeedScore(player.position, rosterCounts, league.lineup, round, totalRounds)
+      const scarcityScore = getPredictionScarcityScore(player, positionPools[player.position])
+      const tendencyScore = getPredictionOwnerTendency(player.position, ownerHistory, playerLookup, league.lineup)
+      const recentPositionCount = recentPositions.filter((position) => position === player.position).length
+      const runScore = clampRecommendationScore(24 + recentPositionCount * 18)
+      let timingAdjustment = 0
+      if (player.position === 'K' || player.position === 'DST') {
+        const rostered = rosterCounts.get(player.position) || 0
+        const target = getCoreStarterTarget(player.position, league.lineup)
+        if (rostered >= target) timingAdjustment -= 45
+        else if (round >= totalRounds - 1) timingAdjustment += 46
+        else if (round >= totalRounds - 3) timingAdjustment += 22
+        else timingAdjustment -= 24
+      }
+      const score =
+        marketScore * 0.50 +
+        needScore * 0.31 +
+        scarcityScore * 0.08 +
+        tendencyScore * 0.07 +
+        runScore * 0.04 +
+        timingAdjustment
+      return { player, score, marketScore, needScore, scarcityScore, tendencyScore, runScore }
+    }).sort((a, b) => b.score - a.score || getPredictionMarketPick(a.player) - getPredictionMarketPick(b.player))
+
+    const selected = candidates[0]
+    if (!selected) break
+    const runnerUp = candidates[1]
+    const scoreMargin = runnerUp ? Math.max(0, selected.score - runnerUp.score) : 12
+    const confidence = Math.round(Math.min(88, Math.max(48,
+      52 + scoreMargin * 2.2 + Math.min(5, ownerHistory.length) + (selected.marketScore >= 88 ? 5 : 0),
+    )))
+    const prediction: DraftPrediction = {
+      pick: pickNumber,
+      round,
+      slot,
+      teamName: draft.teamNames[slot - 1] || `Team ${slot}`,
+      player: selected.player,
+      confidence,
+      reason: getPredictionReason(selected, rosterCounts, league.lineup, round, totalRounds, pickNumber),
+      alternatives: candidates.slice(1, 3).map((candidate) => candidate.player),
+    }
+    predictions.push(prediction)
+
+    const simulatedPick: DraftPick = {
+      pick: pickNumber,
+      round,
+      slot,
+      teamName: prediction.teamName,
+      playerId: selected.player.id,
+      playerName: selected.player.name,
+      position: selected.player.position,
+      team: selected.player.team,
+    }
+    simulatedRostersBySlot.set(slot, [...roster, simulatedPick])
+    const selectedIndex = remainingPlayers.findIndex((player) => player.id === selected.player.id)
+    if (selectedIndex >= 0) remainingPlayers.splice(selectedIndex, 1)
+    recentPositions.push(selected.player.position)
+    if (recentPositions.length > 6) recentPositions.shift()
+  }
+
+  return predictions
+}
+
+function getPositionCounts(roster: DraftPick[]) {
+  const counts = new Map<Position, number>()
+  roster.forEach((pick) => pick.position && counts.set(pick.position, (counts.get(pick.position) || 0) + 1))
+  return counts
+}
+
+function getPredictionMarketPick(player: RankedPlayer) {
+  return player.adp && player.adp > 0 ? player.adp : player.rank
+}
+
+function getPredictionNeedScore(
+  position: Position,
+  counts: Map<Position, number>,
+  lineup: LineupSettings,
+  round: number,
+  totalRounds: number,
+) {
+  const rostered = counts.get(position) || 0
+  const target = getCoreStarterTarget(position, lineup)
+  if (position === 'K' || position === 'DST') {
+    if (rostered >= target) return 2
+    if (round >= totalRounds - 1) return 100
+    if (round >= totalRounds - 3) return 78
+    return 5
+  }
+  if (rostered < target) return clampRecommendationScore(98 - (rostered / Math.max(1, target)) * 18)
+
+  const flexEligible = position === 'RB' || position === 'WR' || position === 'TE'
+  const flexUsed = (['RB', 'WR', 'TE'] as Position[]).reduce((total, item) => (
+    total + Math.max(0, (counts.get(item) || 0) - getCoreStarterTarget(item, lineup))
+  ), 0)
+  if (flexEligible && flexUsed < lineup.flex) return position === 'TE' ? 66 : 82
+  if (position === 'QB') return round <= Math.ceil(totalRounds * 0.55) ? 22 : 36
+  if (position === 'TE') return round <= Math.ceil(totalRounds * 0.6) ? 28 : 42
+  return clampRecommendationScore(58 - Math.max(0, rostered - target) * 9)
+}
+
+function getPredictionScarcityScore(player: RankedPlayer, positionPool: RankedPlayer[]) {
+  const index = positionPool.findIndex((candidate) => candidate.id === player.id)
+  const nextPlayer = index >= 0 ? positionPool[index + 1] : undefined
+  if (!nextPlayer) return 82
+  const rankGap = Math.max(0, getPredictionMarketPick(nextPlayer) - getPredictionMarketPick(player))
+  const tierGap = player.tier && nextPlayer.tier ? Math.max(0, nextPlayer.tier - player.tier) : 0
+  const pointsGap = player.projectedPoints > 0
+    ? Math.max(0, player.projectedPoints - nextPlayer.projectedPoints) / player.projectedPoints
+    : 0
+  return clampRecommendationScore(24 + rankGap * 5 + tierGap * 18 + pointsGap * 120)
+}
+
+function getPredictionOwnerTendency(
+  position: Position,
+  ownerHistory: DraftPick[],
+  playerLookup: Map<string, RankedPlayer>,
+  lineup: LineupSettings,
+) {
+  if (!ownerHistory.length) return 50
+  const positionPicks = ownerHistory.filter((pick) => pick.position === position)
+  const positionShare = positionPicks.length / ownerHistory.length
+  const expectedShare = getLeagueStarterShare(position, lineup) / Math.max(1, lineup.rosterSpots)
+  const reachValues = positionPicks.map((pick) => {
+    const ranked = playerLookup.get(pick.playerId) || (pick.playerName
+      ? playerLookup.get(playerKey(pick.playerName, pick.team)) || playerLookup.get(playerKey(pick.playerName))
+      : undefined)
+    return ranked ? getPredictionMarketPick(ranked) - pick.pick : 0
+  })
+  const averageReach = reachValues.length ? reachValues.reduce((total, reach) => total + reach, 0) / reachValues.length : 0
+  return clampRecommendationScore(48 + (positionShare - expectedShare) * 30 + Math.max(-12, Math.min(18, averageReach * 1.25)))
+}
+
+function getPredictionReason(
+  candidate: PredictionCandidate,
+  rosterCounts: Map<Position, number>,
+  lineup: LineupSettings,
+  round: number,
+  totalRounds: number,
+  pickNumber: number,
+) {
+  const position = candidate.player.position
+  const rostered = rosterCounts.get(position) || 0
+  const starterTarget = getCoreStarterTarget(position, lineup)
+  if ((position === 'K' || position === 'DST') && rostered < starterTarget && round >= totalRounds - 3) return `Late-round ${position} starter need`
+  if (rostered < starterTarget && candidate.needScore >= 80) return `Unfilled ${position} starter need`
+  if (candidate.runScore >= 72) return `${position} run pressure`
+  if (candidate.tendencyScore >= 64) return `Owner's ${position} draft tendency`
+  if (candidate.scarcityScore >= 68) return `${position} tier is thinning`
+  if (getPredictionMarketPick(candidate.player) <= pickNumber + 5 && candidate.marketScore >= 82) return 'Best player available near ADP'
+  return 'Best roster and market fit'
 }
 
 function formatRelativeTime(date: Date) {
