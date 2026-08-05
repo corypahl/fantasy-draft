@@ -1,4 +1,6 @@
 import argparse
+import csv
+import io
 import json
 import os
 import re
@@ -24,6 +26,7 @@ DATASET_KEYS = {
     "rookies": "data/rookies.json",
     "previous-year-results": "data/previous-year-results.json",
     "previous-year-weekly-results": "data/previous-year-weekly-results.json",
+    "schedules": "data/schedules.json",
     "combined": "data/fantasy-data.json",
 }
 
@@ -185,6 +188,7 @@ DEPTH_CHART_URLS = {
 DEPTH_LIMITS = {"QB": 2, "RB": 3, "WR": 3, "TE": 2, "K": 1}
 
 SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl"
+NFL_SCHEDULES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
 CBS_INJURIES_URL = "https://www.cbssports.com/nfl/injuries/"
 FOX_WIN_TOTALS_URL = "https://www.foxsports.com/stories/nfl/2026-nfl-win-totals-over-unders-all-32-squads"
 PFR_DRAFT_URL = "https://www.pro-football-reference.com/years/{year}/draft.htm"
@@ -223,6 +227,21 @@ NFL_TEAM_NAMES = {
     "TB": "Tampa Bay Buccaneers",
     "TEN": "Tennessee Titans",
     "WAS": "Washington Commanders",
+}
+
+INDOOR_STADIUMS = {
+    "allegiant stadium",
+    "at&t stadium",
+    "caesars superdome",
+    "ford field",
+    "lucas oil stadium",
+    "mercedes-benz stadium",
+    "mercedes-benz superdome",
+    "nrg stadium",
+    "reliant stadium",
+    "sofi stadium",
+    "state farm stadium",
+    "u.s. bank stadium",
 }
 
 PROJECTION_KEYS = {
@@ -368,6 +387,13 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
             "previousSeason": season - 1,
             "previousYearWeeklyResults": fetch_previous_year_weekly_results(season - 1),
         }
+    if dataset == "schedules":
+        return {
+            "generatedAt": generated_at,
+            "season": season,
+            "source": "nflverse schedule data",
+            "schedules": fetch_schedule_data(season),
+        }
     if dataset == "combined":
         return build_combined_payload(season)
     raise ValueError(f"Unsupported dataset: {dataset}")
@@ -381,6 +407,7 @@ def build_combined_payload(season: int) -> Dict:
     rookies = fetch_rookies(season)
     previous_year_results = fetch_previous_year_results(season - 1)
     previous_year_weekly_results = fetch_previous_year_weekly_results(season - 1)
+    schedules = fetch_schedule_data(season)
     enrichments = build_player_enrichments(depth_charts, injuries, rookies, previous_year_results, sleeper_players)
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
@@ -393,6 +420,7 @@ def build_combined_payload(season: int) -> Dict:
                 "projections": "FantasyPros with CBS Sports fallback",
                 "previousYearResults": "FantasyPros",
                 "previousYearWeeklyResults": "FantasyPros",
+                "schedules": "nflverse",
                 "depthCharts": "CBS Sports with Sleeper fallback",
                 "teamWinTotals": "FOX Sports / DraftKings",
                 "injuries": "CBS Sports",
@@ -409,6 +437,7 @@ def build_combined_payload(season: int) -> Dict:
         "rookies": rookies,
         "previousYearResults": previous_year_results,
         "previousYearWeeklyResults": previous_year_weekly_results,
+        "schedules": schedules,
     }
 
 
@@ -906,6 +935,42 @@ def fetch_previous_year_weekly_results(previous_year: int) -> Dict[str, List[Dic
     return results
 
 
+def fetch_schedule_data(season: int) -> Dict:
+    response = requests.get(NFL_SCHEDULES_URL, headers=HEADERS, timeout=30)
+    response.raise_for_status()
+    schedules = {
+        "currentSeason": season,
+        "previousSeason": season - 1,
+        "current": {team: [] for team in NFL_TEAM_NAMES},
+        "previous": {team: [] for team in NFL_TEAM_NAMES},
+    }
+    for row in csv.DictReader(io.StringIO(response.text)):
+        row_season = parse_int(row.get("season"))
+        if row_season not in {season, season - 1} or row.get("game_type") != "REG":
+            continue
+        week = parse_int(row.get("week"))
+        away_team = normalize_team(row.get("away_team") or "")
+        home_team = normalize_team(row.get("home_team") or "")
+        if not week or away_team not in NFL_TEAM_NAMES or home_team not in NFL_TEAM_NAMES:
+            continue
+        stadium = (row.get("stadium") or "").strip()
+        indoor = stadium.lower() in INDOOR_STADIUMS
+        schedule_key = "current" if row_season == season else "previous"
+        common = {
+            "week": week,
+            "stadium": stadium,
+            "roof": (row.get("roof") or "").strip().lower(),
+            "indoor": indoor,
+        }
+        schedules[schedule_key][away_team].append({**common, "opponent": home_team, "home": False})
+        schedules[schedule_key][home_team].append({**common, "opponent": away_team, "home": True})
+
+    for schedule_key in ("current", "previous"):
+        for games in schedules[schedule_key].values():
+            games.sort(key=lambda game: game["week"])
+    return schedules
+
+
 def parse_stat_row(position: str, keys: List[str], cells: List[str]) -> Optional[Dict]:
     values = {key: cells[index] if index < len(cells) else "" for index, key in enumerate(keys)}
     player = parse_player_cell(values.get("player", ""), fallback_position=position)
@@ -1063,6 +1128,7 @@ def normalize_team(team: str) -> str:
     team = team.upper()
     aliases = {
         "JAC": "JAX",
+        "LA": "LAR",
         "WSH": "WAS",
         "TXSO": "WAS",
     }

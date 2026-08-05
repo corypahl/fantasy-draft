@@ -29,6 +29,9 @@ jobs:
           - dataset: injuries
             key: data/injuries.json
             output: dist-data/injuries.json
+          - dataset: schedules
+            key: data/schedules.json
+            output: dist-data/schedules.json
     steps:
       - name: Checkout
         uses: actions/checkout@v5

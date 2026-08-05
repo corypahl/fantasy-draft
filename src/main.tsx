@@ -48,8 +48,47 @@ type Player = {
   sleeper?: SleeperDetail
 }
 
+type ScheduleGame = {
+  week: number
+  opponent: string
+  home: boolean
+  stadium: string
+  roof: string
+  indoor: boolean
+}
+
+type ScheduleData = {
+  currentSeason: number
+  previousSeason: number
+  current: Record<string, ScheduleGame[]>
+  previous: Record<string, ScheduleGame[]>
+}
+
+type ScheduleStrength = {
+  rank: number
+  score: number
+  label: 'Easy' | 'Neutral' | 'Tough'
+  opponentAverage: number
+  games: number
+}
+
+type DomeRate = {
+  indoorGames: number
+  totalGames: number
+  rate: number
+}
+
+type ScheduleMetrics = {
+  fullSeason: Record<string, Partial<Record<Position, ScheduleStrength>>>
+  earlyDefense: Record<string, ScheduleStrength>
+  domeRates: Record<string, DomeRate>
+}
+
 type RankedPlayer = Player & {
   projectedPoints: number
+  strengthOfSchedule?: ScheduleStrength
+  earlySeasonSos?: ScheduleStrength
+  domeRate?: DomeRate
 }
 
 type Recommendation = {
@@ -91,6 +130,46 @@ type PredictionCandidate = {
   scarcityScore: number
   tendencyScore: number
   runScore: number
+}
+
+type PositionRunAlert = {
+  position: Position
+  severity: 'building' | 'active' | 'critical'
+  recentPicks: number
+  projectedPicks: number
+  nextUserPick?: number
+  message: string
+  threatenedPlayers: RankedPlayer[]
+  pressureScore: number
+}
+
+type RosterSlotHealth = {
+  label: string
+  filled: number
+  total: number
+}
+
+type RosterHealth = {
+  status: 'Draft ready' | 'On track' | 'Needs attention' | 'Starters set'
+  startersFilled: number
+  starterSlots: number
+  projectedStarterPpg: number
+  byeConflicts: number
+  depthPlayers: number
+  urgentNeeds: string[]
+  coverage: RosterSlotHealth[]
+}
+
+type QuarterbackTierStatus = {
+  tier?: number
+  remaining: number
+  total: number
+}
+
+type QuarterbackTrackerData = {
+  drafted: number
+  remaining: number
+  tiers: QuarterbackTierStatus[]
 }
 
 type DepthChartEntry = {
@@ -218,7 +297,7 @@ const RECOMMENDATION_STRATEGIES: Record<RecommendationStrategy, {
   },
 }
 const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
-  QB: true,
+  QB: false,
   RB: true,
   WR: true,
   TE: true,
@@ -237,6 +316,7 @@ type RankingsFile = {
   rookies?: RookieDetail[]
   previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
   previousYearWeeklyResults?: Partial<Record<Position, PreviousYearWeeklyResult[]>>
+  schedules?: ScheduleData
 }
 
 type TeamWinTotal = {
@@ -259,6 +339,7 @@ type SplitDataFiles = {
   rookies: { rookies?: RookieDetail[] }
   previousYearResults: { previousYearResults?: RankingsFile['previousYearResults']; previousSeason?: number }
   previousYearWeeklyResults?: { previousYearWeeklyResults?: RankingsFile['previousYearWeeklyResults']; previousSeason?: number }
+  schedules?: { schedules?: ScheduleData }
 }
 
 type LineupSettings = {
@@ -593,7 +674,19 @@ function App() {
       .catch(() =>
         fetch(DATA_URL, { cache: 'no-store' })
           .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
-          .then((payload: RankingsFile) => setData(payload))
+          .then(async (payload: RankingsFile) => {
+            const [scheduleFile, weeklyFile] = await Promise.all([
+              fetchJson<NonNullable<SplitDataFiles['schedules']>>(`${DATA_BASE_URL}/schedules.json`).catch(() => undefined),
+              fetchJson<NonNullable<SplitDataFiles['previousYearWeeklyResults']>>(`${DATA_BASE_URL}/previous-year-weekly-results.json`).catch(() => undefined),
+            ])
+            setData({
+              ...payload,
+              schedules: payload.schedules || scheduleFile?.schedules,
+              previousYearWeeklyResults: Object.keys(payload.previousYearWeeklyResults || {}).length
+                ? payload.previousYearWeeklyResults
+                : weeklyFile?.previousYearWeeklyResults,
+            })
+          })
           .catch(() => setData(seedData)),
       )
   }, [])
@@ -654,16 +747,25 @@ function App() {
     persistState(profiles, draftsByLeague, draft, Boolean(remoteDraftReadyByLeague[selectedLeague.id])).then((status) => setPersistenceStatus(status === 'Synced' ? 'Synced' : 'Saved locally'))
   }, [profiles, draftsByLeague, draft, remoteDraftReadyByLeague, remoteLoaded, selectedLeague.id])
 
+  const scheduleMetrics = useMemo(
+    () => buildScheduleMetrics(data.schedules, data.previousYearWeeklyResults, selectedLeague.scoring),
+    [data.previousYearWeeklyResults, data.schedules, selectedLeague.scoring],
+  )
+
   const players = useMemo(() => {
     const fromData = data.scoring[selectedLeague.rankingPreset] || data.scoring.halfPpr || []
     return fromData.map((player) => {
       const projectedPoints = calculateProjectedPoints(player, selectedLeague.scoring)
+      const team = normalizeDisplayTeam(player.team)
       return {
         ...player,
         projectedPoints,
+        strengthOfSchedule: scheduleMetrics.fullSeason[team]?.[player.position],
+        earlySeasonSos: player.position === 'DST' ? scheduleMetrics.earlyDefense[team] : undefined,
+        domeRate: player.position === 'K' ? scheduleMetrics.domeRates[team] : undefined,
       }
     })
-  }, [data, selectedLeague])
+  }, [data.scoring, scheduleMetrics, selectedLeague.rankingPreset, selectedLeague.scoring])
 
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
   const draftedPlayerKeys = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerName).filter(Boolean).map((name) => playerKey(name!))), [draft.drafted])
@@ -686,6 +788,18 @@ function App() {
   const draftPredictions = useMemo(
     () => buildDraftPredictions(undraftedPlayers, players, draft, selectedLeague),
     [draft, players, selectedLeague, undraftedPlayers],
+  )
+  const rosterHealth = useMemo(
+    () => buildRosterHealth(players, draft, selectedLeague),
+    [draft, players, selectedLeague],
+  )
+  const positionRunAlerts = useMemo(
+    () => buildPositionRunAlerts(undraftedPlayers, draftPredictions, draft, selectedLeague),
+    [draft, draftPredictions, selectedLeague, undraftedPlayers],
+  )
+  const quarterbackTracker = useMemo(
+    () => buildQuarterbackTracker(players, undraftedPlayers, draft),
+    [draft, players, undraftedPlayers],
   )
   const watchlistIdSet = useMemo(() => new Set(watchlistIds), [watchlistIds])
   const undraftedPlayerById = useMemo(() => new Map(undraftedPlayers.map((player) => [player.id, player])), [undraftedPlayers])
@@ -928,6 +1042,7 @@ function App() {
           leagueName={selectedLeague.name}
           leagueTeams={selectedLeague.lineup.teams}
           playersByPosition={playersByPosition}
+          quarterbackTracker={quarterbackTracker}
           query={query}
           recommendations={recommendations}
           recommendationRosterLabel={`Pick ${selectedDraftSlot} · ${selectedDraftTeamName} · ${selectedRosterSize} drafted`}
@@ -949,8 +1064,10 @@ function App() {
         <DraftBoardPage
           draft={draft}
           league={selectedLeague}
+          positionRunAlerts={positionRunAlerts}
           predictions={draftPredictions}
           recommendations={recommendations}
+          rosterHealth={rosterHealth}
           strategy={recommendationStrategy}
           draftInput={draftInput}
           syncStatus={syncStatus}
@@ -1234,6 +1351,9 @@ function WatchlistComparison({
       rows: [
         { key: 'health', label: 'Health', value: formatHealth, numeric: (player) => getPlayerInjuryRisk(player), best: 'low' },
         { key: 'bye', label: 'Bye week', value: (player) => player.bye ? `Week ${player.bye}` : '—' },
+        { key: 'sos', label: 'Positional SOS', help: 'Ranked easiest to toughest using last season fantasy points allowed and this season opponents', value: (player) => formatScheduleStrength(player.strengthOfSchedule), numeric: (player) => player.strengthOfSchedule?.rank, best: 'low', samePositionOnly: true },
+        { key: 'early-sos', label: 'Early Season SOS', help: 'Defense schedule strength for Weeks 1-4', value: (player) => player.position === 'DST' ? formatScheduleStrength(player.earlySeasonSos) : '—', numeric: (player) => player.earlySeasonSos?.rank, best: 'low', samePositionOnly: true },
+        { key: 'dome-rate', label: 'Dome rate', help: 'Regular-season games in fixed or retractable roof venues', value: (player) => player.position === 'K' ? formatDomeRate(player.domeRate) : '—', numeric: (player) => player.domeRate?.rate, best: 'high', samePositionOnly: true },
         { key: 'depth', label: 'Depth-chart role', value: (player) => player.depthChart ? `${player.position}${player.depthChart.order}` : '—', numeric: (player) => getFiniteComparisonValue(player.depthChart?.order), best: 'low', samePositionOnly: true },
         { key: 'experience', label: 'Age / experience', value: formatExperience },
         { key: 'rookie', label: 'Rookie profile', value: formatRookieProfile },
@@ -1493,6 +1613,16 @@ function PlayerDrawer({
         </section>
 
         <section className="drawerSection">
+          <h3>Schedule</h3>
+          <div className="drawerMetricGrid">
+            <DrawerMetric label="Positional SOS" value={formatScheduleStrength(player.strengthOfSchedule)} />
+            {player.position === 'DST' ? <DrawerMetric label="Early Season SOS" value={formatScheduleStrength(player.earlySeasonSos)} /> : null}
+            {player.position === 'K' ? <DrawerMetric label="Dome rate" value={formatDomeRate(player.domeRate)} /> : null}
+            {player.strengthOfSchedule ? <DrawerMetric label="Opponent allowance" value={`${player.strengthOfSchedule.opponentAverage.toFixed(1)} PPG`} /> : null}
+          </div>
+        </section>
+
+        <section className="drawerSection">
           <h3>Last Year</h3>
           <div className="drawerMetricGrid lastYearGrid">
             <DrawerMetric label="Position rank" value={player.previousYear?.rank ? `${player.position}${player.previousYear.rank}` : '—'} />
@@ -1734,8 +1864,10 @@ function DepthChartsPage({
 function DraftBoardPage({
   draft,
   league,
+  positionRunAlerts,
   predictions,
   recommendations,
+  rosterHealth,
   strategy,
   draftInput,
   syncStatus,
@@ -1750,8 +1882,10 @@ function DraftBoardPage({
 }: {
   draft: DraftState
   league: LeagueProfile
+  positionRunAlerts: PositionRunAlert[]
   predictions: DraftPrediction[]
   recommendations: Recommendation[]
+  rosterHealth: RosterHealth
   strategy: RecommendationStrategy
   draftInput: string
   syncStatus: string
@@ -1827,6 +1961,7 @@ function DraftBoardPage({
         </div>
       </div>
       {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
+      <PositionRunAlerts alerts={positionRunAlerts} onPlayerSelect={onPlayerSelect} />
       <section className="predictionPanel" aria-labelledby="prediction-title">
         <div className="predictionHeader">
           <div>
@@ -1883,10 +2018,7 @@ function DraftBoardPage({
             ))}
           </div>
         </section>
-        <section className="commandCard rosterCard">
-          <div className="commandCardHeader"><h3>Your roster</h3><span>Pick {userSlot} · {userTeamName}</span></div>
-          {userRoster.length ? userRoster.map((pick) => <span className={`rosterChip positionText${pick.position || ''}`} key={pick.pick}>{pick.position} {formatShortPlayerName(pick.playerName || pick.playerId)}</span>) : <p>No selections yet.</p>}
-        </section>
+        <RosterHealthCard health={rosterHealth} roster={userRoster} teamLabel={`Pick ${userSlot} · ${userTeamName}`} />
       </div>
       <div className="draftBoardScroller">
         <div className="draftBoardGrid" style={{ gridTemplateColumns: `56px repeat(${totalTeams}, minmax(118px, 1fr))` }}>
@@ -1929,6 +2061,92 @@ function DraftBoardPage({
             )
           })}
         </div>
+      </div>
+    </section>
+  )
+}
+
+function PositionRunAlerts({
+  alerts,
+  onPlayerSelect,
+}: {
+  alerts: PositionRunAlert[]
+  onPlayerSelect: (player: RankedPlayer) => void
+}) {
+  const nextUserPick = alerts.find((alert) => alert.nextUserPick)?.nextUserPick
+  return (
+    <section className="runAlertsPanel" aria-labelledby="run-alerts-title" aria-live="polite">
+      <div className="runAlertsHeader">
+        <div>
+          <span className="eyebrow">Market pressure</span>
+          <h3 id="run-alerts-title">Positional-run alerts</h3>
+        </div>
+        <span>{nextUserPick ? `Through your pick #${nextUserPick}` : 'Live draft window'}</span>
+      </div>
+      {alerts.length ? (
+        <div className="runAlertGrid">
+          {alerts.map((alert) => (
+            <article className={`runAlertCard ${alert.severity}`} key={alert.position} style={{ borderLeftColor: getPositionColor(alert.position) }}>
+              <div className="runAlertTitle">
+                <span className={`runSeverity ${alert.severity}`}>{alert.severity}</span>
+                <strong style={{ color: getPositionColor(alert.position) }}>{alert.position} run</strong>
+                <small>{alert.recentPicks} recent · {alert.projectedPicks} projected</small>
+              </div>
+              <p>{alert.message}</p>
+              {alert.threatenedPlayers.length ? (
+                <div className="runThreats" aria-label={`${alert.position} players threatened`}>
+                  {alert.threatenedPlayers.map((player) => (
+                    <button key={player.id} onClick={() => onPlayerSelect(player)} type="button">{formatShortPlayerName(player.name)}</button>
+                  ))}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="runCalm"><Check size={15} /><span>No meaningful positional run is building before your next pick.</span></div>
+      )}
+    </section>
+  )
+}
+
+function RosterHealthCard({
+  health,
+  roster,
+  teamLabel,
+}: {
+  health: RosterHealth
+  roster: DraftPick[]
+  teamLabel: string
+}) {
+  const coveragePercent = health.starterSlots ? Math.round((health.startersFilled / health.starterSlots) * 100) : 100
+  return (
+    <section className="commandCard rosterCard rosterHealthCard" aria-labelledby="roster-health-title">
+      <div className="commandCardHeader rosterHealthHeader">
+        <div><h3 id="roster-health-title">Live roster health</h3><small>{teamLabel}</small></div>
+        <span className={`healthStatus ${health.status.replace(/\s+/g, '').toLowerCase()}`}>{health.status}</span>
+      </div>
+      <div className="healthMetrics">
+        <div><span>Starters</span><strong>{health.startersFilled}/{health.starterSlots}</strong></div>
+        <div><span>Projected PPG</span><strong>{health.projectedStarterPpg.toFixed(1)}</strong></div>
+        <div><span>Bye conflicts</span><strong>{health.byeConflicts}</strong></div>
+      </div>
+      <div className="healthProgress" aria-label={`${coveragePercent}% of starting lineup filled`}>
+        <span style={{ width: `${coveragePercent}%` }} />
+      </div>
+      <div className="healthCoverage">
+        {health.coverage.map((slot) => (
+          <div className={slot.filled >= slot.total ? 'filled' : ''} key={slot.label}>
+            <span>{slot.label}</span><strong>{slot.filled}/{slot.total}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="healthNeeds">
+        <span>Next needs</span>
+        <strong>{health.urgentNeeds.length ? health.urgentNeeds.slice(0, 3).join(' · ') : `Depth (${health.depthPlayers})`}</strong>
+      </div>
+      <div className="rosterPlayers">
+        {roster.length ? roster.map((pick) => <span className={`rosterChip positionText${pick.position || ''}`} key={pick.pick}>{pick.position} {formatShortPlayerName(pick.playerName || pick.playerId)}</span>) : <p>No selections yet.</p>}
       </div>
     </section>
   )
@@ -2139,6 +2357,109 @@ function calculatePreviousYearWeeklyPoints(row: PreviousYearWeeklyResult, scorin
   )
 }
 
+function buildScheduleMetrics(
+  schedules: ScheduleData | undefined,
+  weeklyResults: RankingsFile['previousYearWeeklyResults'],
+  scoring: ScoringRules,
+): ScheduleMetrics {
+  const empty: ScheduleMetrics = { fullSeason: {}, earlyDefense: {}, domeRates: {} }
+  if (!schedules || !weeklyResults) return empty
+
+  const opponentByTeamWeek = new Map<string, string>()
+  Object.entries(schedules.previous).forEach(([team, games]) => {
+    games.forEach((game) => opponentByTeamWeek.set(`${normalizeDisplayTeam(team)}|${game.week}`, normalizeDisplayTeam(game.opponent)))
+  })
+
+  const teamWeekPoints = new Map<string, number>()
+  POSITION_ORDER.forEach((position) => {
+    ;(weeklyResults[position] || []).forEach((row) => {
+      const team = normalizeDisplayTeam(row.team)
+      if (!opponentByTeamWeek.has(`${team}|${row.week}`)) return
+      const key = `${position}|${team}|${row.week}`
+      teamWeekPoints.set(key, (teamWeekPoints.get(key) || 0) + calculatePreviousYearWeeklyPoints(row, scoring))
+    })
+  })
+
+  const allowanceTotals = Object.fromEntries(POSITION_ORDER.map((position) => [position, new Map<string, { total: number; games: number }>()])) as Record<Position, Map<string, { total: number; games: number }>>
+  teamWeekPoints.forEach((points, key) => {
+    const [position, team, weekValue] = key.split('|') as [Position, string, string]
+    const opponent = opponentByTeamWeek.get(`${team}|${weekValue}`)
+    if (!opponent) return
+    const current = allowanceTotals[position].get(opponent) || { total: 0, games: 0 }
+    current.total += points
+    current.games += 1
+    allowanceTotals[position].set(opponent, current)
+  })
+
+  const allowanceAverages = Object.fromEntries(POSITION_ORDER.map((position) => {
+    const averages = new Map<string, number>()
+    allowanceTotals[position].forEach((value, team) => averages.set(team, value.games ? value.total / value.games : 0))
+    return [position, averages]
+  })) as Record<Position, Map<string, number>>
+  const fullSeason: ScheduleMetrics['fullSeason'] = {}
+
+  POSITION_ORDER.forEach((position) => {
+    const opponentValues = [...allowanceAverages[position].values()]
+    const fallback = opponentValues.length ? opponentValues.reduce((total, value) => total + value, 0) / opponentValues.length : 0
+    const teamAverages = new Map<string, { average: number; games: number }>()
+    Object.entries(schedules.current).forEach(([team, games]) => {
+      const values = games.map((game) => allowanceAverages[position].get(normalizeDisplayTeam(game.opponent)) ?? fallback)
+      if (!values.length) return
+      teamAverages.set(normalizeDisplayTeam(team), {
+        average: values.reduce((total, value) => total + value, 0) / values.length,
+        games: values.length,
+      })
+    })
+    Object.entries(rankScheduleAverages(teamAverages)).forEach(([team, strength]) => {
+      fullSeason[team] = { ...(fullSeason[team] || {}), [position]: strength }
+    })
+  })
+
+  const defenseAllowanceValues = [...allowanceAverages.DST.values()]
+  const defenseFallback = defenseAllowanceValues.length
+    ? defenseAllowanceValues.reduce((total, value) => total + value, 0) / defenseAllowanceValues.length
+    : 0
+  const earlyDefenseAverages = new Map<string, { average: number; games: number }>()
+  const domeRates: Record<string, DomeRate> = {}
+  Object.entries(schedules.current).forEach(([team, games]) => {
+    const normalizedTeam = normalizeDisplayTeam(team)
+    const earlyValues = games
+      .filter((game) => game.week <= 4)
+      .map((game) => allowanceAverages.DST.get(normalizeDisplayTeam(game.opponent)) ?? defenseFallback)
+    if (earlyValues.length) {
+      earlyDefenseAverages.set(normalizedTeam, {
+        average: earlyValues.reduce((total, value) => total + value, 0) / earlyValues.length,
+        games: earlyValues.length,
+      })
+    }
+    const indoorGames = games.filter((game) => game.indoor).length
+    domeRates[normalizedTeam] = {
+      indoorGames,
+      totalGames: games.length,
+      rate: games.length ? indoorGames / games.length : 0,
+    }
+  })
+
+  return {
+    fullSeason,
+    earlyDefense: rankScheduleAverages(earlyDefenseAverages),
+    domeRates,
+  }
+}
+
+function rankScheduleAverages(teamAverages: Map<string, { average: number; games: number }>) {
+  const ranked = [...teamAverages.entries()].sort((a, b) => b[1].average - a[1].average || a[0].localeCompare(b[0]))
+  const values = ranked.map(([, value]) => value.average)
+  const minimum = values.length ? Math.min(...values) : 0
+  const maximum = values.length ? Math.max(...values) : 0
+  return Object.fromEntries(ranked.map(([team, value], index) => {
+    const rank = index + 1
+    const score = maximum === minimum ? 50 : ((value.average - minimum) / (maximum - minimum)) * 100
+    const label: ScheduleStrength['label'] = rank <= 10 ? 'Easy' : rank >= 23 ? 'Tough' : 'Neutral'
+    return [team, { rank, score, label, opponentAverage: value.average, games: value.games } satisfies ScheduleStrength]
+  }))
+}
+
 function getConsistencyCellClass(rank: number | undefined) {
   if (!rank) return 'consistencyBye'
   if (rank <= 6) return 'consistencyTop6'
@@ -2187,6 +2508,8 @@ function getDepthEntries(entries: DepthChartEntry[] | undefined, limit: number) 
 function normalizeDisplayTeam(team: string) {
   if (team === 'TXSO') return 'WAS'
   if (team === 'WSH') return 'WAS'
+  if (team === 'JAC') return 'JAX'
+  if (team === 'LA') return 'LAR'
   return team
 }
 
@@ -2451,6 +2774,177 @@ function getPredictionReason(
   if (candidate.scarcityScore >= 68) return `${position} tier is thinning`
   if (getPredictionMarketPick(candidate.player) <= pickNumber + 5 && candidate.marketScore >= 82) return 'Best player available near ADP'
   return 'Best roster and market fit'
+}
+
+function buildPositionRunAlerts(
+  availablePlayers: RankedPlayer[],
+  predictions: DraftPrediction[],
+  draft: DraftState,
+  league: LeagueProfile,
+): PositionRunAlert[] {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const totalRounds = draft.totalRounds || league.lineup.rosterSpots
+  const userSlot = clampLeagueDraftSlot(league, totalTeams)
+  const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
+  const predictionStart = currentLocation.slot === userSlot ? draft.currentPick + 1 : draft.currentPick
+  const nextUserPick = findNextPickForSlot(predictionStart, userSlot, totalTeams, totalRounds)
+  const recentWindowSize = Math.min(8, Math.max(6, totalTeams))
+  const recentPicks = draft.drafted.slice(-recentWindowSize)
+  const forecastWindow = predictions.filter((prediction) => (
+    prediction.pick >= predictionStart && (nextUserPick === undefined || prediction.pick < nextUserPick)
+  ))
+  const rosterCounts = getPositionCounts(getDraftedRosterForSlot(draft, userSlot))
+  const currentRound = Math.min(totalRounds, currentLocation.round)
+  const skillPositions: Position[] = ['QB', 'RB', 'WR', 'TE']
+
+  return skillPositions.map((position): PositionRunAlert | null => {
+    const recentCount = recentPicks.filter((pick) => pick.position === position).length
+    const threatenedPredictions = forecastWindow.filter((prediction) => prediction.player.position === position)
+    const projectedCount = threatenedPredictions.length
+    const needScore = getPredictionNeedScore(position, rosterCounts, league.lineup, currentRound, totalRounds)
+    const pressureScore = recentCount * 1.35 + projectedCount + needScore / 100
+    if (recentCount + projectedCount < 2 || pressureScore < 2.75) return null
+
+    const severity: PositionRunAlert['severity'] = (
+      recentCount >= 4 || (projectedCount >= 4 && needScore >= 65) || pressureScore >= 7
+    ) ? 'critical' : (
+      recentCount >= 3 || projectedCount >= 3 || pressureScore >= 4.5
+    ) ? 'active' : 'building'
+    const starterTarget = getCoreStarterTarget(position, league.lineup)
+    const rostered = rosterCounts.get(position) || 0
+    const missingStarters = Math.max(0, starterTarget - rostered)
+    const topAvailable = availablePlayers.find((player) => player.position === position)
+    const activity = recentCount
+      ? `${recentCount} of the last ${recentPicks.length} picks were ${position}${projectedCount ? `, with ${projectedCount} more forecast before ${nextUserPick ? `pick #${nextUserPick}` : 'your next turn'}` : ''}.`
+      : `${projectedCount} ${position}${projectedCount === 1 ? '' : 's'} are forecast before ${nextUserPick ? `pick #${nextUserPick}` : 'your next turn'}.`
+    const impact = missingStarters
+      ? `You still need ${missingStarters} starting ${position}${missingStarters === 1 ? '' : 's'}.`
+      : needScore >= 65
+        ? 'Your flex coverage is still open.'
+        : topAvailable?.tier
+          ? `The available Tier ${topAvailable.tier} could thin quickly.`
+          : 'The remaining tier could thin quickly.'
+    return {
+      position,
+      severity,
+      recentPicks: recentCount,
+      projectedPicks: projectedCount,
+      nextUserPick,
+      message: `${activity} ${impact}`,
+      threatenedPlayers: threatenedPredictions.slice(0, 3).map((prediction) => prediction.player),
+      pressureScore,
+    }
+  }).filter((alert): alert is PositionRunAlert => Boolean(alert))
+    .sort((a, b) => (
+      getRunSeverityWeight(b.severity) - getRunSeverityWeight(a.severity) ||
+      b.pressureScore - a.pressureScore
+    ))
+    .slice(0, 3)
+}
+
+function getRunSeverityWeight(severity: PositionRunAlert['severity']) {
+  if (severity === 'critical') return 3
+  if (severity === 'active') return 2
+  return 1
+}
+
+function getRosterHealthCoreTarget(position: Position, lineup: LineupSettings) {
+  if (position === 'QB') return lineup.qb
+  if (position === 'RB') return lineup.rb
+  if (position === 'WR') return lineup.wr
+  if (position === 'TE') return lineup.te
+  if (position === 'K') return lineup.k
+  return lineup.dst
+}
+
+function buildRosterHealth(allPlayers: RankedPlayer[], draft: DraftState, league: LeagueProfile): RosterHealth {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const userSlot = clampLeagueDraftSlot(league, totalTeams)
+  const roster = getDraftedRosterForSlot(draft, userSlot)
+  const counts = getPositionCounts(roster)
+  const corePositions: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+  const coreFilled = new Map<Position, number>()
+  corePositions.forEach((position) => coreFilled.set(position, Math.min(counts.get(position) || 0, getRosterHealthCoreTarget(position, league.lineup))))
+
+  const qbExcess = Math.max(0, (counts.get('QB') || 0) - getRosterHealthCoreTarget('QB', league.lineup))
+  const skillExcess = (['RB', 'WR', 'TE'] as Position[]).reduce((total, position) => (
+    total + Math.max(0, (counts.get(position) || 0) - getRosterHealthCoreTarget(position, league.lineup))
+  ), 0)
+  const superflexFromQb = Math.min(league.lineup.superflex, qbExcess)
+  const superflexFromSkill = Math.min(Math.max(0, league.lineup.superflex - superflexFromQb), skillExcess)
+  const superflexFilled = superflexFromQb + superflexFromSkill
+  const flexFilled = Math.min(league.lineup.flex, Math.max(0, skillExcess - superflexFromSkill))
+
+  const coverage: RosterSlotHealth[] = [
+    ...(['QB', 'RB', 'WR', 'TE'] as Position[]).map((position) => ({
+      label: position,
+      filled: coreFilled.get(position) || 0,
+      total: getRosterHealthCoreTarget(position, league.lineup),
+    })),
+    { label: 'FLEX', filled: flexFilled, total: league.lineup.flex },
+    { label: 'SF', filled: superflexFilled, total: league.lineup.superflex },
+    ...(['K', 'DST'] as Position[]).map((position) => ({
+      label: position,
+      filled: coreFilled.get(position) || 0,
+      total: getRosterHealthCoreTarget(position, league.lineup),
+    })),
+  ].filter((slot) => slot.total > 0)
+  const startersFilled = coverage.reduce((total, slot) => total + slot.filled, 0)
+  const starterSlots = coverage.reduce((total, slot) => total + slot.total, 0)
+
+  const playerLookup = new Map<string, RankedPlayer>()
+  allPlayers.forEach((player) => {
+    playerLookup.set(player.id, player)
+    playerLookup.set(playerKey(player.name), player)
+    playerLookup.set(playerKey(player.name, player.team), player)
+  })
+  const rankedRoster = roster.map((pick) => (
+    playerLookup.get(pick.playerId) || (pick.playerName
+      ? playerLookup.get(playerKey(pick.playerName, pick.team)) || playerLookup.get(playerKey(pick.playerName))
+      : undefined)
+  )).filter((player): player is RankedPlayer => Boolean(player))
+  const selectedStarterIds = new Set<string>()
+  const takeBest = (eligible: (player: RankedPlayer) => boolean, count: number) => {
+    const selected = rankedRoster
+      .filter((player) => !selectedStarterIds.has(player.id) && eligible(player))
+      .sort((a, b) => b.projectedPoints - a.projectedPoints)
+      .slice(0, count)
+    selected.forEach((player) => selectedStarterIds.add(player.id))
+    return selected
+  }
+  const selectedStarters: RankedPlayer[] = []
+  corePositions.forEach((position) => selectedStarters.push(...takeBest((player) => player.position === position, getRosterHealthCoreTarget(position, league.lineup))))
+  selectedStarters.push(...takeBest((player) => ['QB', 'RB', 'WR', 'TE'].includes(player.position), league.lineup.superflex))
+  selectedStarters.push(...takeBest((player) => ['RB', 'WR', 'TE'].includes(player.position), league.lineup.flex))
+  const projectedStarterPpg = selectedStarters.reduce((total, player) => total + player.projectedPoints, 0) / NFL_REGULAR_SEASON_GAMES
+
+  const byeCounts = new Map<number, number>()
+  rankedRoster.forEach((player) => player.bye && byeCounts.set(player.bye, (byeCounts.get(player.bye) || 0) + 1))
+  const byeConflicts = [...byeCounts.values()].reduce((total, count) => total + Math.max(0, count - 1), 0)
+  const needPriority = ['RB', 'WR', 'QB', 'TE', 'FLEX', 'SF', 'K', 'DST']
+  const urgentNeeds = [...coverage]
+    .filter((slot) => slot.filled < slot.total)
+    .sort((a, b) => needPriority.indexOf(a.label) - needPriority.indexOf(b.label))
+    .map((slot) => slot.total - slot.filled > 1 ? `${slot.label} ×${slot.total - slot.filled}` : slot.label)
+  const expectedCoverage = Math.min(starterSlots, roster.length)
+  const status: RosterHealth['status'] = roster.length === 0
+    ? 'Draft ready'
+    : startersFilled === starterSlots
+      ? 'Starters set'
+      : startersFilled + 1 < expectedCoverage
+        ? 'Needs attention'
+        : 'On track'
+
+  return {
+    status,
+    startersFilled,
+    starterSlots,
+    projectedStarterPpg,
+    byeConflicts,
+    depthPlayers: Math.max(0, roster.length - startersFilled),
+    urgentNeeds,
+    coverage,
+  }
 }
 
 function formatRelativeTime(date: Date) {
@@ -2916,7 +3410,7 @@ function normalizeSleeperTeam(team: string | undefined) {
 }
 
 async function fetchSplitData(): Promise<RankingsFile> {
-  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults] = await Promise.all([
+  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules] = await Promise.all([
     fetchJson<SplitDataFiles['rankings']>(`${DATA_BASE_URL}/rankings.json`),
     fetchJson<SplitDataFiles['projections']>(`${DATA_BASE_URL}/projections.json`),
     fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`),
@@ -2926,9 +3420,10 @@ async function fetchSplitData(): Promise<RankingsFile> {
     fetchJson<NonNullable<SplitDataFiles['previousYearWeeklyResults']>>(`${DATA_BASE_URL}/previous-year-weekly-results.json`).catch(() => ({
       previousYearWeeklyResults: {},
     })),
+    fetchJson<NonNullable<SplitDataFiles['schedules']>>(`${DATA_BASE_URL}/schedules.json`).catch(() => ({ schedules: undefined })),
   ])
 
-  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults })
+  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules })
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -2971,6 +3466,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
     rookies,
     previousYearResults,
     previousYearWeeklyResults,
+    schedules: files.schedules?.schedules,
   }
 }
 
@@ -3002,11 +3498,36 @@ function mergeClientEnrichment(enrichments: Map<string, Partial<Player>>, name: 
   keys.forEach((key) => enrichments.set(key, { ...(enrichments.get(key) || {}), ...patch }))
 }
 
+function buildQuarterbackTracker(players: RankedPlayer[], undraftedPlayers: RankedPlayer[], draft: DraftState): QuarterbackTrackerData {
+  const quarterbacks = players.filter((player) => player.position === 'QB')
+  const remainingQuarterbacks = undraftedPlayers.filter((player) => player.position === 'QB')
+  const quarterbackById = new Map(quarterbacks.map((player) => [player.id, player]))
+  const quarterbackByName = new Map(quarterbacks.map((player) => [playerKey(player.name), player]))
+  const drafted = draft.drafted.filter((pick) => (
+    pick.position === 'QB' ||
+    quarterbackById.has(pick.playerId) ||
+    Boolean(pick.playerName && quarterbackByName.has(playerKey(pick.playerName)))
+  )).length
+  const tierKeys = Array.from(new Set(quarterbacks.map((player) => player.tier && player.tier > 0 ? player.tier : undefined)))
+    .sort((a, b) => (a ?? Number.POSITIVE_INFINITY) - (b ?? Number.POSITIVE_INFINITY))
+
+  return {
+    drafted,
+    remaining: remainingQuarterbacks.length,
+    tiers: tierKeys.map((tier) => ({
+      tier,
+      total: quarterbacks.filter((player) => player.tier === tier || (!tier && !player.tier)).length,
+      remaining: remainingQuarterbacks.filter((player) => player.tier === tier || (!tier && !player.tier)).length,
+    })),
+  }
+}
+
 function PlayersBoard({
   availableCount,
   leagueName,
   leagueTeams,
   playersByPosition,
+  quarterbackTracker,
   query,
   recommendations,
   recommendationRosterLabel,
@@ -3026,6 +3547,7 @@ function PlayersBoard({
   leagueName: string
   leagueTeams: number
   playersByPosition: Record<Position, RankedPlayer[]>
+  quarterbackTracker: QuarterbackTrackerData
   query: string
   recommendations: Recommendation[]
   recommendationRosterLabel: string
@@ -3114,6 +3636,11 @@ function PlayersBoard({
       </section>
 
       <aside className="shortlistRail">
+        <QuarterbackTracker
+          data={quarterbackTracker}
+          isVisible={visiblePositions.QB}
+          onToggle={() => togglePosition('QB')}
+        />
         <div className="shortlistHeader">
           <div><h3>Recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small><small className="rosterBasis">{recommendationRosterLabel}</small></div>
           <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><div className="shortlistCount">{recommendations.length} ranked</div></div>
@@ -3150,6 +3677,48 @@ function PlayersBoard({
   )
 }
 
+function QuarterbackTracker({
+  data,
+  isVisible,
+  onToggle,
+}: {
+  data: QuarterbackTrackerData
+  isVisible: boolean
+  onToggle: () => void
+}) {
+  return (
+    <section aria-labelledby="quarterback-tracker-title" className="quarterbackTracker">
+      <div className="quarterbackTrackerHeader">
+        <div>
+          <span>QB market</span>
+          <h3 id="quarterback-tracker-title">Quarterback tracker</h3>
+        </div>
+        <button aria-pressed={isVisible} className="quarterbackTrackerToggle" onClick={onToggle} type="button">
+          {isVisible ? 'Hide QBs' : 'Show QBs'}
+        </button>
+      </div>
+      <div className="quarterbackTrackerSummary">
+        <div><strong>{data.drafted}</strong><span>drafted</span></div>
+        <div><strong>{data.remaining}</strong><span>available</span></div>
+      </div>
+      <div aria-label="Quarterbacks remaining by tier" className="quarterbackTierGrid">
+        {data.tiers.map((tier) => (
+          <div
+            className={tier.remaining ? 'quarterbackTier' : 'quarterbackTier depleted'}
+            key={tier.tier ?? 'unranked'}
+            style={{ borderColor: getTierColor(tier.tier) }}
+            title={`${tier.remaining} of ${tier.total} quarterbacks remaining`}
+          >
+            <span>{tier.tier ? `T${tier.tier}` : 'Other'}</span>
+            <strong>{tier.remaining}</strong>
+            <small>left</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 type PlayerSummaryProps = {
   player: RankedPlayer
   leagueTeams: number
@@ -3171,6 +3740,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
   const positionColor = getPositionColor(player.position)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
+  const compactScheduleStats = getCompactScheduleStats(player)
   if (variant === 'shortlist') {
     return (
       <div className={isWatched ? 'shortlistItem watchedPlayerItem' : 'shortlistItem'} style={{ borderLeftColor: positionColor }}>
@@ -3179,7 +3749,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
         </span>
         <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
-          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}{compactScheduleStats.length ? ` | ${compactScheduleStats.join(' | ')}` : ''}
         </span>
         <span className="playerQuickActions">
           <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={13} /></button>
@@ -3204,6 +3774,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
           <span className="projectionValue" style={{ color: tierColor }} title={`${player.projectedPoints.toFixed(1)} projected season points`}>
             {projectedPointsPerGame}
           </span>
+          {compactScheduleStats.map((stat) => <span className="scheduleValue" key={stat}>{stat}</span>)}
           {player.injury ? <span className="injuryDot">I</span> : null}
           {player.rookie ? <span className="rookieDot">R</span> : null}
         </span>
@@ -3221,6 +3792,21 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
   const round = Math.ceil(overallPick / teams)
   const pick = ((overallPick - 1) % teams) + 1
   return `${round}.${pick.toString().padStart(2, '0')}`
+}
+
+function formatScheduleStrength(strength: ScheduleStrength | undefined) {
+  return strength ? `#${strength.rank} · ${strength.label}` : '—'
+}
+
+function formatDomeRate(domeRate: DomeRate | undefined) {
+  return domeRate ? `${domeRate.indoorGames}/${domeRate.totalGames} · ${Math.round(domeRate.rate * 100)}%` : '—'
+}
+
+function getCompactScheduleStats(player: RankedPlayer) {
+  const stats = player.strengthOfSchedule ? [`SOS #${player.strengthOfSchedule.rank}`] : []
+  if (player.position === 'DST' && player.earlySeasonSos) stats.push(`W1-4 #${player.earlySeasonSos.rank}`)
+  if (player.position === 'K' && player.domeRate) stats.push(`Dome ${player.domeRate.indoorGames}/${player.domeRate.totalGames}`)
+  return stats
 }
 
 function formatProjectedPointsPerGame(projectedPoints: number) {
