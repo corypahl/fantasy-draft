@@ -185,7 +185,7 @@ DEPTH_CHART_URLS = {
     "K": "https://www.cbssports.com/fantasy/football/depth-chart/K/",
 }
 
-DEPTH_LIMITS = {"QB": 2, "RB": 3, "WR": 3, "TE": 2, "K": 1}
+DEPTH_LIMITS = {"QB": 3, "RB": 5, "WR": 6, "TE": 4, "K": 2}
 
 SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl"
 NFL_SCHEDULES_URL = "https://raw.githubusercontent.com/nflverse/nfldata/master/data/games.csv"
@@ -353,7 +353,7 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
         return {
             "generatedAt": generated_at,
             "season": season,
-            "source": "CBS Sports depth charts with Sleeper fallback, FOX Sports win totals",
+            "source": "Sleeper depth charts with CBS Sports fallback, FOX Sports win totals",
             "depthCharts": fetch_depth_charts(fetch_sleeper_players()),
             "teamWinTotals": fetch_projected_win_totals(),
         }
@@ -361,8 +361,8 @@ def build_dataset_payload(dataset: str, season: int) -> Dict:
         return {
             "generatedAt": generated_at,
             "season": season,
-            "source": "CBS Sports injuries",
-            "injuries": fetch_injuries(),
+            "source": "Sleeper detailed injuries with CBS Sports fallback",
+            "injuries": fetch_injuries(fetch_sleeper_players()),
         }
     if dataset == "rookies":
         return {
@@ -403,7 +403,7 @@ def build_combined_payload(season: int) -> Dict:
     projections = fetch_projections(season)
     sleeper_players = fetch_sleeper_players()
     depth_charts = fetch_depth_charts(sleeper_players)
-    injuries = fetch_injuries()
+    injuries = fetch_injuries(sleeper_players)
     rookies = fetch_rookies(season)
     previous_year_results = fetch_previous_year_results(season - 1)
     previous_year_weekly_results = fetch_previous_year_weekly_results(season - 1)
@@ -412,7 +412,7 @@ def build_combined_payload(season: int) -> Dict:
     return {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "season": season,
-        "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, Wikipedia rookie draft results",
+        "source": "FantasyPros rankings/projections/stats, Sleeper injuries/depth charts/player metadata, Wikipedia rookie draft results",
         "metadata": {
             "previousSeason": season - 1,
             "sources": {
@@ -421,9 +421,9 @@ def build_combined_payload(season: int) -> Dict:
                 "previousYearResults": "FantasyPros",
                 "previousYearWeeklyResults": "FantasyPros",
                 "schedules": "nflverse",
-                "depthCharts": "CBS Sports with Sleeper fallback",
+                "depthCharts": "Sleeper with CBS Sports fallback",
                 "teamWinTotals": "FOX Sports / DraftKings",
-                "injuries": "CBS Sports",
+                "injuries": "Sleeper with CBS Sports fallback",
                 "rookies": "Wikipedia",
             },
         },
@@ -686,6 +686,32 @@ def fetch_sleeper_players() -> Dict[str, Dict]:
 
 def fetch_depth_charts(sleeper_players: Dict[str, Dict]) -> Dict[str, Dict[str, List[Dict]]]:
     charts: Dict[str, Dict[str, List[Dict]]] = {}
+    for player in sleeper_players.values():
+        position = player.get("position")
+        team = normalize_team(player.get("team") or "")
+        order = parse_int(player.get("depth_chart_order"))
+        name = player.get("full_name")
+        if position not in DEPTH_LIMITS or not team or not order or not name:
+            continue
+        if order > DEPTH_LIMITS[position] or player.get("active") is False:
+            continue
+        charts.setdefault(team, {}).setdefault(position, []).append(
+            {
+                "name": clean_player_name(name),
+                "team": team,
+                "position": position,
+                "role": player.get("depth_chart_position") or position,
+                "order": order,
+                "source": "Sleeper",
+            }
+        )
+
+    for positions in charts.values():
+        for values in positions.values():
+            values.sort(key=lambda item: (item["order"], item.get("role") or "", item["name"]))
+    if charts:
+        return charts
+
     for position, url in DEPTH_CHART_URLS.items():
         try:
             soup = fetch_soup(url)
@@ -713,34 +739,49 @@ def fetch_depth_charts(sleeper_players: Dict[str, Dict]) -> Dict[str, Dict[str, 
                     for index, name in enumerate(selected)
                 ]
 
-    if charts:
-        return charts
-
-    for player in sleeper_players.values():
-        position = player.get("position")
-        team = normalize_team(player.get("team") or "")
-        order = player.get("depth_chart_order")
-        if position not in DEPTH_LIMITS or not team or not order:
-            continue
-        if int(order) > DEPTH_LIMITS[position]:
-            continue
-        charts.setdefault(team, {}).setdefault(position, []).append(
-            {
-                "name": player.get("full_name"),
-                "team": team,
-                "position": position,
-                "order": int(order),
-                "source": "Sleeper",
-            }
-        )
-
     for positions in charts.values():
         for values in positions.values():
-            values.sort(key=lambda item: item["order"])
+            values.sort(key=lambda item: (item["order"], item["name"]))
     return charts
 
 
-def fetch_injuries() -> List[Dict]:
+def fetch_injuries(sleeper_players: Optional[Dict[str, Dict]] = None) -> List[Dict]:
+    players = sleeper_players if sleeper_players is not None else fetch_sleeper_players()
+    injuries = []
+    for player in players.values():
+        position = player.get("position")
+        name = player.get("full_name")
+        status = player.get("injury_status")
+        body_part = player.get("injury_body_part")
+        notes = player.get("injury_notes")
+        practice = player.get("practice_description") or player.get("practice_participation")
+        if position not in {"QB", "RB", "WR", "TE", "K"} or not name:
+            continue
+        if not any((status, body_part, notes, practice)):
+            continue
+        updated = format_sleeper_timestamp(player.get("news_updated"))
+        injuries.append(
+            {
+                "name": clean_player_name(name),
+                "team": normalize_team(player.get("team") or ""),
+                "position": position,
+                "updated": updated,
+                "injury": body_part or "Undisclosed",
+                "status": status or "Injury reported",
+                "detail": notes or "",
+                "practice": practice or "",
+                "started": player.get("injury_start_date") or "",
+                "rosterStatus": player.get("status") or "",
+                "source": "Sleeper",
+            }
+        )
+    if injuries:
+        return sorted(injuries, key=lambda item: item.get("updated") or "", reverse=True)
+
+    return fetch_cbs_injuries()
+
+
+def fetch_cbs_injuries() -> List[Dict]:
     injuries = []
     try:
         soup = fetch_soup(CBS_INJURIES_URL)
@@ -771,6 +812,18 @@ def fetch_injuries() -> List[Dict]:
     except requests.RequestException:
         pass
     return injuries
+
+
+def format_sleeper_timestamp(value) -> str:
+    timestamp = parse_float(value)
+    if not timestamp:
+        return ""
+    if timestamp > 100_000_000_000:
+        timestamp /= 1000
+    try:
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
+    except (OverflowError, OSError, ValueError):
+        return ""
 
 
 def fetch_projected_win_totals() -> Dict[str, Dict]:

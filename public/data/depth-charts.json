@@ -1,0 +1,5577 @@
+{
+  "generatedAt": "2026-08-10T14:30:37.693849+00:00",
+  "season": 2026,
+  "source": "Sleeper depth charts with CBS Sports fallback, FOX Sports win totals",
+  "depthCharts": {
+    "DAL": {
+      "K": [
+        {
+          "name": "Brandon Aubrey",
+          "team": "DAL",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "CeeDee Lamb",
+          "team": "DAL",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "George Pickens",
+          "team": "DAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ryan Flournoy",
+          "team": "DAL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "KaVontae Turpin",
+          "team": "DAL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Marquez Valdes-Scantling",
+          "team": "DAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jonathan Mingo",
+          "team": "DAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Dak Prescott",
+          "team": "DAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joe Milton",
+          "team": "DAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sam Howell",
+          "team": "DAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Jake Ferguson",
+          "team": "DAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Trigg",
+          "team": "DAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zack Kuntz",
+          "team": "DAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Luke Schoonmaker",
+          "team": "DAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Princeton Fant",
+          "team": "DAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Javonte Williams",
+          "team": "DAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Malik Davis",
+          "team": "DAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaydon Blue",
+          "team": "DAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Phil Mafah",
+          "team": "DAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Israel Abanikanda",
+          "team": "DAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "JAX": {
+      "WR": [
+        {
+          "name": "Brian Thomas",
+          "team": "JAX",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Parker Washington",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jakobi Meyers",
+          "team": "JAX",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chandler Brayboy",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Travis Hunter",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Trebor Pena",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Austin Trammell",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tim Jones",
+          "team": "JAX",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Bhayshul Tuten",
+          "team": "JAX",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Rodriguez",
+          "team": "JAX",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "J'Mari Taylor",
+          "team": "JAX",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "LeQuint Allen",
+          "team": "JAX",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ameer Abdullah",
+          "team": "JAX",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Brenton Strange",
+          "team": "JAX",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nate Boerkircher",
+          "team": "JAX",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Hunter Long",
+          "team": "JAX",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tanner Koziol",
+          "team": "JAX",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Trevor Lawrence",
+          "team": "JAX",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nick Mullens",
+          "team": "JAX",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Carter Bradley",
+          "team": "JAX",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Cam Little",
+          "team": "JAX",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "CHI": {
+      "RB": [
+        {
+          "name": "D'Andre Swift",
+          "team": "CHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kyle Monangai",
+          "team": "CHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Roschon Johnson",
+          "team": "CHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brittain Brown",
+          "team": "CHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Salvon Ahmed",
+          "team": "CHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Colston Loveland",
+          "team": "CHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cole Kmet",
+          "team": "CHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sam Roush",
+          "team": "CHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Stephen Carlson",
+          "team": "CHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nikola Kalinic",
+          "team": "CHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Rome Odunze",
+          "team": "CHI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Luther Burden",
+          "team": "CHI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jahdae Walker",
+          "team": "CHI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kalif Raymond",
+          "team": "CHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Maurice Alexander",
+          "team": "CHI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zavion Thomas",
+          "team": "CHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "JP Richardson",
+          "team": "CHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Caleb Williams",
+          "team": "CHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyson Bagent",
+          "team": "CHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Case Keenum",
+          "team": "CHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Cairo Santos",
+          "team": "CHI",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "TB": {
+      "RB": [
+        {
+          "name": "Bucky Irving",
+          "team": "TB",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kenny Gainwell",
+          "team": "TB",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sean Tucker",
+          "team": "TB",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Williams",
+          "team": "TB",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Cade Otton",
+          "team": "TB",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devin Culp",
+          "team": "TB",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Bauer Sharp",
+          "team": "TB",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Payne Durham",
+          "team": "TB",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Baker Mayfield",
+          "team": "TB",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jake Browning",
+          "team": "TB",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Connor Bazelak",
+          "team": "TB",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalon Daniels",
+          "team": "TB",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Emeka Egbuka",
+          "team": "TB",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Godwin",
+          "team": "TB",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen McMillan",
+          "team": "TB",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ted Hurst",
+          "team": "TB",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eric Rivers",
+          "team": "TB",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "David Sills",
+          "team": "TB",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Chase McLaughlin",
+          "team": "TB",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "CIN": {
+      "RB": [
+        {
+          "name": "Chase Brown",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Samaje Perine",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tahj Brooks",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jamal Haynes",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Gary Brightwell",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kendall Milton",
+          "team": "CIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Joe Burrow",
+          "team": "CIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joe Flacco",
+          "team": "CIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Johnson",
+          "team": "CIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Mike Gesicki",
+          "team": "CIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Erick All",
+          "team": "CIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drew Sample",
+          "team": "CIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jack Endries",
+          "team": "CIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Ja'Marr Chase",
+          "team": "CIN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tee Higgins",
+          "team": "CIN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Andrei Iosivas",
+          "team": "CIN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mitch Tinsley",
+          "team": "CIN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Colbie Young",
+          "team": "CIN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kendric Pryor",
+          "team": "CIN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Noah Thomas",
+          "team": "CIN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Evan McPherson",
+          "team": "CIN",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "CLE": {
+      "WR": [
+        {
+          "name": "Jerry Jeudy",
+          "team": "CLE",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "KC Concepcion",
+          "team": "CLE",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Denzel Boston",
+          "team": "CLE",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cedric Tillman",
+          "team": "CLE",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Aaron Anderson",
+          "team": "CLE",
+          "position": "WR",
+          "role": "WR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isaiah Bond",
+          "team": "CLE",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Shedeur Sanders",
+          "team": "CLE",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Deshaun Watson",
+          "team": "CLE",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Taylen Green",
+          "team": "CLE",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Andre Szmyt",
+          "team": "CLE",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Harold Fannin",
+          "team": "CLE",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joe Royer",
+          "team": "CLE",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jack Stoll",
+          "team": "CLE",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Blake Whiteheart",
+          "team": "CLE",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Quinshon Judkins",
+          "team": "CLE",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dylan Sampson",
+          "team": "CLE",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Raheim Sanders",
+          "team": "CLE",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "NE": {
+      "WR": [
+        {
+          "name": "A.J. Brown",
+          "team": "NE",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Romeo Doubs",
+          "team": "NE",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kayshon Boutte",
+          "team": "NE",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "DeMario Douglas",
+          "team": "NE",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mack Hollins",
+          "team": "NE",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kyle Williams",
+          "team": "NE",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Drake Maye",
+          "team": "NE",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tommy DeVito",
+          "team": "NE",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Behren Morton",
+          "team": "NE",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Hunter Henry",
+          "team": "NE",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eli Raridon",
+          "team": "NE",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "CJ Dippre",
+          "team": "NE",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Julian Hill",
+          "team": "NE",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "TreVeyon Henderson",
+          "team": "NE",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rhamondre Stevenson",
+          "team": "NE",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Terrell Jennings",
+          "team": "NE",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jam Miller",
+          "team": "NE",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Lan Larison",
+          "team": "NE",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Andy Borregales",
+          "team": "NE",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "LAC": {
+      "RB": [
+        {
+          "name": "Omarion Hampton",
+          "team": "LAC",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Keaton Mitchell",
+          "team": "LAC",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kimani Vidal",
+          "team": "LAC",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaret Patterson",
+          "team": "LAC",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Oronde Gadsden",
+          "team": "LAC",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "David Njoku",
+          "team": "LAC",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Charlie Kolar",
+          "team": "LAC",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Ladd McConkey",
+          "team": "LAC",
+          "position": "WR",
+          "role": "SWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Quentin Johnston",
+          "team": "LAC",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tre' Harris",
+          "team": "LAC",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brenen Thompson",
+          "team": "LAC",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "KeAndre Lambert-Smith",
+          "team": "LAC",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Derius Davis",
+          "team": "LAC",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Cameron Dicker",
+          "team": "LAC",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Justin Herbert",
+          "team": "LAC",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Trey Lance",
+          "team": "LAC",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "DJ Uiagalelei",
+          "team": "LAC",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "DEN": {
+      "RB": [
+        {
+          "name": "J.. Dobbins",
+          "team": "DEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "RJ Harvey",
+          "team": "DEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jonah Coleman",
+          "team": "DEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Badie",
+          "team": "DEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaleel McLaughlin",
+          "team": "DEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Courtland Sutton",
+          "team": "DEN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaylen Waddle",
+          "team": "DEN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Troy Franklin",
+          "team": "DEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Pat Bryant",
+          "team": "DEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Marvin Mims",
+          "team": "DEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Lil'Jordan Humphrey",
+          "team": "DEN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Bo Nix",
+          "team": "DEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jarrett Stidham",
+          "team": "DEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sam Ehlinger",
+          "team": "DEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Evan Engram",
+          "team": "DEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Adam Trautman",
+          "team": "DEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nate Adkins",
+          "team": "DEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dallen Bentley",
+          "team": "DEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Wil Lutz",
+          "team": "DEN",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "BAL": {
+      "RB": [
+        {
+          "name": "Derrick Henry",
+          "team": "BAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Justice Hill",
+          "team": "BAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Adam Randall",
+          "team": "BAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rasheen Ali",
+          "team": "BAL",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Zay Flowers",
+          "team": "BAL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rashod Bateman",
+          "team": "BAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ja'Kobi Lane",
+          "team": "BAL",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elijah Sarratt",
+          "team": "BAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cornelius Johnson",
+          "team": "BAL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devontez Walker",
+          "team": "BAL",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Moore",
+          "team": "BAL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Mark Andrews",
+          "team": "BAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Matt Hibner",
+          "team": "BAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Durham Smythe",
+          "team": "BAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Cuevas",
+          "team": "BAL",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Lamar Jackson",
+          "team": "BAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Huntley",
+          "team": "BAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Skylar Thompson",
+          "team": "BAL",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Tyler Loop",
+          "team": "BAL",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "ATL": {
+      "TE": [
+        {
+          "name": "Kyle Pitts",
+          "team": "ATL",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Austin Hooper",
+          "team": "ATL",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Charlie Woerner",
+          "team": "ATL",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joshua Simon",
+          "team": "ATL",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Drake London",
+          "team": "ATL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zachariah Branch",
+          "team": "ATL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jahan Dotson",
+          "team": "ATL",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dylan Drummond",
+          "team": "ATL",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Olamide Zaccheaus",
+          "team": "ATL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Blair",
+          "team": "ATL",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Antwane Wells",
+          "team": "ATL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kristian Wilkerson",
+          "team": "ATL",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Tua Tagovailoa",
+          "team": "ATL",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Penix",
+          "team": "ATL",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cooper Rush",
+          "team": "ATL",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Bijan Robinson",
+          "team": "ATL",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brian Robinson",
+          "team": "ATL",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Goodson",
+          "team": "ATL",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nathan Carter",
+          "team": "ATL",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Nick Folk",
+          "team": "ATL",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "IND": {
+      "TE": [
+        {
+          "name": "Tyler Warren",
+          "team": "IND",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Will Mallory",
+          "team": "IND",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mo Alie-Cox",
+          "team": "IND",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drew Ogletree",
+          "team": "IND",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Daniel Jones",
+          "team": "IND",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Anthony Richardson",
+          "team": "IND",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Riley Leonard",
+          "team": "IND",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Alec Pierce",
+          "team": "IND",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Downs",
+          "team": "IND",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ashton Dulin",
+          "team": "IND",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nick Westbrook-Ikhine",
+          "team": "IND",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Deion Burks",
+          "team": "IND",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Anthony Gould",
+          "team": "IND",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Jonathan Taylor",
+          "team": "IND",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "DJ Giddens",
+          "team": "IND",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Seth McGowan",
+          "team": "IND",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Blake Grupe",
+          "team": "IND",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Spencer Shrader",
+          "team": "IND",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "SF": {
+      "TE": [
+        {
+          "name": "George Kittle",
+          "team": "SF",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jake Tonges",
+          "team": "SF",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Hayden Rucci",
+          "team": "SF",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Luke Farrell",
+          "team": "SF",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Mike Evans",
+          "team": "SF",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Deebo Samuel",
+          "team": "SF",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ricky Pearsall",
+          "team": "SF",
+          "position": "WR",
+          "role": "WR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "De'Zhaun Stribling",
+          "team": "SF",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Christian Kirk",
+          "team": "SF",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brandon Aiyuk",
+          "team": "SF",
+          "position": "WR",
+          "role": "WR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Christian McCaffrey",
+          "team": "SF",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jordan James",
+          "team": "SF",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kaelon Black",
+          "team": "SF",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isaac Guerendo",
+          "team": "SF",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Brock Purdy",
+          "team": "SF",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mac Jones",
+          "team": "SF",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Adrian Martinez",
+          "team": "SF",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Eddy Pineiro",
+          "team": "SF",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "GB": {
+      "RB": [
+        {
+          "name": "Josh Jacobs",
+          "team": "GB",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Brooks",
+          "team": "GB",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "MarShawn Lloyd",
+          "team": "GB",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Pierre Strong",
+          "team": "GB",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Damien Martinez",
+          "team": "GB",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Christian Watson",
+          "team": "GB",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jayden Reed",
+          "team": "GB",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Matthew Golden",
+          "team": "GB",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Savion Williams",
+          "team": "GB",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Bo Melton",
+          "team": "GB",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Skyy Moore",
+          "team": "GB",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Jordan Love",
+          "team": "GB",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyrod Taylor",
+          "team": "GB",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kyle McCord",
+          "team": "GB",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Tucker Kraft",
+          "team": "GB",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Luke Musgrave",
+          "team": "GB",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drake Dabney",
+          "team": "GB",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Whyle",
+          "team": "GB",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Trey Smack",
+          "team": "GB",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "HOU": {
+      "QB": [
+        {
+          "name": "C.J. Stroud",
+          "team": "HOU",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Davis Mills",
+          "team": "HOU",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Graham Mertz",
+          "team": "HOU",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Nico Collins",
+          "team": "HOU",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jayden Higgins",
+          "team": "HOU",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tank Dell",
+          "team": "HOU",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaylin Noel",
+          "team": "HOU",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Hutchinson",
+          "team": "HOU",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Justin Watson",
+          "team": "HOU",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "David Montgomery",
+          "team": "HOU",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Woody Marks",
+          "team": "HOU",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jawhar Jordan",
+          "team": "HOU",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "British Brooks",
+          "team": "HOU",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Noah Whittington",
+          "team": "HOU",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Dalton Schultz",
+          "team": "HOU",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Marlin Klein",
+          "team": "HOU",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cade Stover",
+          "team": "HOU",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Foster Moreau",
+          "team": "HOU",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Ka'imi Fairbairn",
+          "team": "HOU",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "SEA": {
+      "QB": [
+        {
+          "name": "Sam Darnold",
+          "team": "SEA",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drew Lock",
+          "team": "SEA",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Milroe",
+          "team": "SEA",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Jaxon Smith-Njigba",
+          "team": "SEA",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rashid Shaheed",
+          "team": "SEA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cooper Kupp",
+          "team": "SEA",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tory Horton",
+          "team": "SEA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cody White",
+          "team": "SEA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jake Bobo",
+          "team": "SEA",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Velus Jones",
+          "team": "SEA",
+          "position": "WR",
+          "role": "RB",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Jadarian Price",
+          "team": "SEA",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zach Charbonnet",
+          "team": "SEA",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Emanuel Wilson",
+          "team": "SEA",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "George Holani",
+          "team": "SEA",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jacardia Wright",
+          "team": "SEA",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "AJ Barner",
+          "team": "SEA",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elijah Arroyo",
+          "team": "SEA",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nick Vannett",
+          "team": "SEA",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eric Saubert",
+          "team": "SEA",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nick Kallerup",
+          "team": "SEA",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Jason Myers",
+          "team": "SEA",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "WAS": {
+      "WR": [
+        {
+          "name": "Terry McLaurin",
+          "team": "WAS",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Stefon Diggs",
+          "team": "WAS",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Antonio Williams",
+          "team": "WAS",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dyami Brown",
+          "team": "WAS",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Van Jefferson",
+          "team": "WAS",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Treylon Burks",
+          "team": "WAS",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Jacory Croskey-Merritt",
+          "team": "WAS",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rachaad White",
+          "team": "WAS",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jerome Ford",
+          "team": "WAS",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jeremy McNichols",
+          "team": "WAS",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kaytron Allen",
+          "team": "WAS",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Jake Moody",
+          "team": "WAS",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drew Stevens",
+          "team": "WAS",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Chig Okonkwo",
+          "team": "WAS",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "John Bates",
+          "team": "WAS",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ben Sinnott",
+          "team": "WAS",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Lawrence Cager",
+          "team": "WAS",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Jayden Daniels",
+          "team": "WAS",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Marcus Mariota",
+          "team": "WAS",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sam Hartman",
+          "team": "WAS",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "LAR": {
+      "QB": [
+        {
+          "name": "Matthew Stafford",
+          "team": "LAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ty Simpson",
+          "team": "LAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Stetson Bennett",
+          "team": "LAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Puka Nacua",
+          "team": "LAR",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Davante Adams",
+          "team": "LAR",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jordan Whittington",
+          "team": "LAR",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Konata Mumpfield",
+          "team": "LAR",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Smith",
+          "team": "LAR",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "CJ Daniels",
+          "team": "LAR",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Terrance Ferguson",
+          "team": "LAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Colby Parkinson",
+          "team": "LAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Higbee",
+          "team": "LAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Davis Allen",
+          "team": "LAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Kyren Williams",
+          "team": "LAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Blake Corum",
+          "team": "LAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jarquez Hunter",
+          "team": "LAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ronnie Rivers",
+          "team": "LAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dean Connors",
+          "team": "LAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Harrison Mevis",
+          "team": "LAR",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "BUF": {
+      "WR": [
+        {
+          "name": "DJ Moore",
+          "team": "BUF",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Khalil Shakir",
+          "team": "BUF",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joshua Palmer",
+          "team": "BUF",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Keon Coleman",
+          "team": "BUF",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Skyler Bell",
+          "team": "BUF",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyrell Shavers",
+          "team": "BUF",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "James Cook",
+          "team": "BUF",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ty Johnson",
+          "team": "BUF",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Frank Gore",
+          "team": "BUF",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ray Davis",
+          "team": "BUF",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ian Wheeler",
+          "team": "BUF",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Dalton Kincaid",
+          "team": "BUF",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dawson Knox",
+          "team": "BUF",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jackson Hawes",
+          "team": "BUF",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Keleki Latu",
+          "team": "BUF",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Josh Allen",
+          "team": "BUF",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Shane Buechele",
+          "team": "BUF",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kyle Allen",
+          "team": "BUF",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Tyler Bass",
+          "team": "BUF",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "KC": {
+      "TE": [
+        {
+          "name": "Travis Kelce",
+          "team": "KC",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Noah Gray",
+          "team": "KC",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "John Michael Gyllenborg",
+          "team": "KC",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jared Wiley",
+          "team": "KC",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Harrison Butker",
+          "team": "KC",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Patrick Mahomes",
+          "team": "KC",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Justin Fields",
+          "team": "KC",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Oladokun",
+          "team": "KC",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Kenneth Walker",
+          "team": "KC",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Emari Demercado",
+          "team": "KC",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brashard Smith",
+          "team": "KC",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Emmett Johnson",
+          "team": "KC",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaydn Ott",
+          "team": "KC",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Rashee Rice",
+          "team": "KC",
+          "position": "WR",
+          "role": "SWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Worthy",
+          "team": "KC",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyquan Thornton",
+          "team": "KC",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Royals",
+          "team": "KC",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cyrus Allen",
+          "team": "KC",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nikko Remigio",
+          "team": "KC",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "NO": {
+      "K": [
+        {
+          "name": "Charlie Smyth",
+          "team": "NO",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tanner Brown",
+          "team": "NO",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Tyler Shough",
+          "team": "NO",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Spencer Rattler",
+          "team": "NO",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zach Wilson",
+          "team": "NO",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Juwan Johnson",
+          "team": "NO",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Noah Fant",
+          "team": "NO",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zaire Mitchell-Paden",
+          "team": "NO",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Oscar Delp",
+          "team": "NO",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Travis Etienne",
+          "team": "NO",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Alvin Kamara",
+          "team": "NO",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ty Chandler",
+          "team": "NO",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devin Neal",
+          "team": "NO",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kendre Miller",
+          "team": "NO",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Chris Olave",
+          "team": "NO",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jordyn Tyson",
+          "team": "NO",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Bub Means",
+          "team": "NO",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devaughn Vele",
+          "team": "NO",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Bryce Lance",
+          "team": "NO",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kevin Austin",
+          "team": "NO",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "MIN": {
+      "WR": [
+        {
+          "name": "Justin Jefferson",
+          "team": "MIN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jordan Addison",
+          "team": "MIN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jauan Jennings",
+          "team": "MIN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tai Felton",
+          "team": "MIN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jeshaun Jones",
+          "team": "MIN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Myles Price",
+          "team": "MIN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "T.J. Hockenson",
+          "team": "MIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Josh Oliver",
+          "team": "MIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ben Yurosek",
+          "team": "MIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Max Bredeson",
+          "team": "MIN",
+          "position": "TE",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Gavin Bartholomew",
+          "team": "MIN",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Aaron Jones",
+          "team": "MIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jordan Mason",
+          "team": "MIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Demond Claiborne",
+          "team": "MIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zavier Scott",
+          "team": "MIN",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Kyler Murray",
+          "team": "MIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "J.J. McCarthy",
+          "team": "MIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Carson Wentz",
+          "team": "MIN",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Will Reichard",
+          "team": "MIN",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "MIA": {
+      "WR": [
+        {
+          "name": "Theo Wease",
+          "team": "MIA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Malik Washington",
+          "team": "MIA",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Caleb Douglas",
+          "team": "MIA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Bell",
+          "team": "MIA",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Reagor",
+          "team": "MIA",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Tolbert",
+          "team": "MIA",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tutu Atwell",
+          "team": "MIA",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Zane Gonzalez",
+          "team": "MIA",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Riley Patterson",
+          "team": "MIA",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Greg Dulcich",
+          "team": "MIA",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Will Kacmarek",
+          "team": "MIA",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ben Sims",
+          "team": "MIA",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cole Turner",
+          "team": "MIA",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "De'Von Achane",
+          "team": "MIA",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaylen Wright",
+          "team": "MIA",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ollie Gordon",
+          "team": "MIA",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Carlos Washington",
+          "team": "MIA",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Donovan Edwards",
+          "team": "MIA",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Malik Willis",
+          "team": "MIA",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Quinn Ewers",
+          "team": "MIA",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cam Miller",
+          "team": "MIA",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "PHI": {
+      "QB": [
+        {
+          "name": "Jalen Hurts",
+          "team": "PHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tanner McKee",
+          "team": "PHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Andy Dalton",
+          "team": "PHI",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "DeVonta Smith",
+          "team": "PHI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Makai Lemon",
+          "team": "PHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dontayvion Wicks",
+          "team": "PHI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Marquise Brown",
+          "team": "PHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elijah Moore",
+          "team": "PHI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Darius Cooper",
+          "team": "PHI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Quez Watkins",
+          "team": "PHI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Saquon Barkley",
+          "team": "PHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tank Bigsby",
+          "team": "PHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elijah Mitchell",
+          "team": "PHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dameon Pierce",
+          "team": "PHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Will Shipley",
+          "team": "PHI",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Dallas Goedert",
+          "team": "PHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eli Stowers",
+          "team": "PHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Grant Calcaterra",
+          "team": "PHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Johnny Mundt",
+          "team": "PHI",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Jake Elliott",
+          "team": "PHI",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "LV": {
+      "RB": [
+        {
+          "name": "Ashton Jeanty",
+          "team": "LV",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mike Washington",
+          "team": "LV",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dare Ogunbowale",
+          "team": "LV",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dylan Laube",
+          "team": "LV",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Matt Gay",
+          "team": "LV",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Fernando Mendoza",
+          "team": "LV",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kirk Cousins",
+          "team": "LV",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Aidan O'Connell",
+          "team": "LV",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Tre Tucker",
+          "team": "LV",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Nailor",
+          "team": "LV",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jack Bech",
+          "team": "LV",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dont'e Thornton",
+          "team": "LV",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Malik Benson",
+          "team": "LV",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Phillip Dorsett",
+          "team": "LV",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chase Roberts",
+          "team": "LV",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Brock Bowers",
+          "team": "LV",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Mayer",
+          "team": "LV",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Connor Heyward",
+          "team": "LV",
+          "position": "TE",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ian Thomas",
+          "team": "LV",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Albert Okwuegbunam",
+          "team": "LV",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Carter Runyon",
+          "team": "LV",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "NYJ": {
+      "RB": [
+        {
+          "name": "Breece Hall",
+          "team": "NYJ",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Braelon Allen",
+          "team": "NYJ",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isaiah Davis",
+          "team": "NYJ",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Andrew Beck",
+          "team": "NYJ",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kene Nwangwu",
+          "team": "NYJ",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Geno Smith",
+          "team": "NYJ",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cade Klubnik",
+          "team": "NYJ",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brady Cook",
+          "team": "NYJ",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Garrett Wilson",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "RWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Adonai Mitchell",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Omar Cooper",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tim Patrick",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isaiah Williams",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Arian Smith",
+          "team": "NYJ",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Kenyon Sadiq",
+          "team": "NYJ",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mason Taylor",
+          "team": "NYJ",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jeremy Ruckert",
+          "team": "NYJ",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jelani Woods",
+          "team": "NYJ",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Jason Sanders",
+          "team": "NYJ",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cade York",
+          "team": "NYJ",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "PIT": {
+      "RB": [
+        {
+          "name": "Rico Dowdle",
+          "team": "PIT",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaylen Warren",
+          "team": "PIT",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eli Heidenreich",
+          "team": "PIT",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kaleb Johnson",
+          "team": "PIT",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Lew Nichols",
+          "team": "PIT",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Aaron Rodgers",
+          "team": "PIT",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mason Rudolph",
+          "team": "PIT",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Drew Allar",
+          "team": "PIT",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "DK Metcalf",
+          "team": "PIT",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Pittman",
+          "team": "PIT",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Germie Bernard",
+          "team": "PIT",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Roman Wilson",
+          "team": "PIT",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Ben Skowronek",
+          "team": "PIT",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kaden Wetjen",
+          "team": "PIT",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Pat Freiermuth",
+          "team": "PIT",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Darnell Washington",
+          "team": "PIT",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaheim Bell",
+          "team": "PIT",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Robert Tonyan",
+          "team": "PIT",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Chris Boswell",
+          "team": "PIT",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "CAR": {
+      "K": [
+        {
+          "name": "Ryan Fitzgerald",
+          "team": "CAR",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Tetairoa McMillan",
+          "team": "CAR",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "John Metchie",
+          "team": "CAR",
+          "position": "WR",
+          "role": "LWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jalen Coker",
+          "team": "CAR",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Legette",
+          "team": "CAR",
+          "position": "WR",
+          "role": "RWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chris Brazzell",
+          "team": "CAR",
+          "position": "WR",
+          "role": "WR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jimmy Horn",
+          "team": "CAR",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Bryce Young",
+          "team": "CAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kenny Pickett",
+          "team": "CAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kyle Trask",
+          "team": "CAR",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Ja'Tavion Sanders",
+          "team": "CAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tommy Tremble",
+          "team": "CAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mitchell Evans",
+          "team": "CAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "James Mitchell",
+          "team": "CAR",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Chuba Hubbard",
+          "team": "CAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jonathon Brooks",
+          "team": "CAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "AJ Dillon",
+          "team": "CAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Trevor Etienne",
+          "team": "CAR",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "ARI": {
+      "K": [
+        {
+          "name": "Chad Ryland",
+          "team": "ARI",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Marvin Harrison",
+          "team": "ARI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Wilson",
+          "team": "ARI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kendrick Bourne",
+          "team": "ARI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Weaver",
+          "team": "ARI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Reggie Virgil",
+          "team": "ARI",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Simi Fehoko",
+          "team": "ARI",
+          "position": "WR",
+          "role": "RWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devin Duvernay",
+          "team": "ARI",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Jeremiyah Love",
+          "team": "ARI",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Allgeier",
+          "team": "ARI",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "James Conner",
+          "team": "ARI",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Zonovan Knight",
+          "team": "ARI",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Trey Benson",
+          "team": "ARI",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Jacoby Brissett",
+          "team": "ARI",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Carson Beck",
+          "team": "ARI",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Gardner Minshew",
+          "team": "ARI",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kedon Slovis",
+          "team": "ARI",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Trey McBride",
+          "team": "ARI",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elijah Higgins",
+          "team": "ARI",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Teagan Quitoriano",
+          "team": "ARI",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Rivaldo Fairweather",
+          "team": "ARI",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "DET": {
+      "WR": [
+        {
+          "name": "Amon-Ra St. Brown",
+          "team": "DET",
+          "position": "WR",
+          "role": "SWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jameson Williams",
+          "team": "DET",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isaac TeSlaa",
+          "team": "DET",
+          "position": "WR",
+          "role": "LWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Greg Dortch",
+          "team": "DET",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tom Kennedy",
+          "team": "DET",
+          "position": "WR",
+          "role": "RWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Cedrick Wilson",
+          "team": "DET",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Lucky Jackson",
+          "team": "DET",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Jahmyr Gibbs",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Isiah Pacheco",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Sione Vaki",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jabari Small",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jacob Saylors",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Raheem Blackshear",
+          "team": "DET",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Sam LaPorta",
+          "team": "DET",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brock Wright",
+          "team": "DET",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyler Conklin",
+          "team": "DET",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Anthony Firkser",
+          "team": "DET",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Jared Goff",
+          "team": "DET",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joshua Dobbs",
+          "team": "DET",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Luke Altmyer",
+          "team": "DET",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Jake Bates",
+          "team": "DET",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "NYG": {
+      "RB": [
+        {
+          "name": "Cam Skattebo",
+          "team": "NYG",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyrone Tracy",
+          "team": "NYG",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Devin Singletary",
+          "team": "NYG",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Eric Gray",
+          "team": "NYG",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Ben Sauls",
+          "team": "NYG",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Dominic Zvada",
+          "team": "NYG",
+          "position": "K",
+          "role": "K",
+          "order": 2,
+          "source": "Sleeper"
+        }
+      ],
+      "TE": [
+        {
+          "name": "Isaiah Likely",
+          "team": "NYG",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Theo Johnson",
+          "team": "NYG",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tanner Conner",
+          "team": "NYG",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Thomas Fidone",
+          "team": "NYG",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Malik Nabers",
+          "team": "NYG",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Darnell Mooney",
+          "team": "NYG",
+          "position": "WR",
+          "role": "RWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Darius Slayton",
+          "team": "NYG",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Calvin Austin",
+          "team": "NYG",
+          "position": "WR",
+          "role": "SWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Odell Beckham",
+          "team": "NYG",
+          "position": "WR",
+          "role": "LWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Malachi Fields",
+          "team": "NYG",
+          "position": "WR",
+          "role": "LWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Jaxson Dart",
+          "team": "NYG",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jameis Winston",
+          "team": "NYG",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Brandon Allen",
+          "team": "NYG",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ]
+    },
+    "TEN": {
+      "TE": [
+        {
+          "name": "Gunnar Helm",
+          "team": "TEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Daniel Bellinger",
+          "team": "TEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Jaren Kanak",
+          "team": "TEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Joel Wilson",
+          "team": "TEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kylen Granson",
+          "team": "TEN",
+          "position": "TE",
+          "role": "TE",
+          "order": 4,
+          "source": "Sleeper"
+        }
+      ],
+      "RB": [
+        {
+          "name": "Tony Pollard",
+          "team": "TEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Tyjae Spears",
+          "team": "TEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Nicholas Singleton",
+          "team": "TEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Michael Carter",
+          "team": "TEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Kalel Mullings",
+          "team": "TEN",
+          "position": "RB",
+          "role": "RB",
+          "order": 5,
+          "source": "Sleeper"
+        }
+      ],
+      "QB": [
+        {
+          "name": "Cam Ward",
+          "team": "TEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Will Levis",
+          "team": "TEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Mitchell Trubisky",
+          "team": "TEN",
+          "position": "QB",
+          "role": "QB",
+          "order": 3,
+          "source": "Sleeper"
+        }
+      ],
+      "WR": [
+        {
+          "name": "Carnell Tate",
+          "team": "TEN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 1,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Wan'Dale Robinson",
+          "team": "TEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 2,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Calvin Ridley",
+          "team": "TEN",
+          "position": "WR",
+          "role": "RWR",
+          "order": 3,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Elic Ayomanor",
+          "team": "TEN",
+          "position": "WR",
+          "role": "LWR",
+          "order": 4,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Chimere Dike",
+          "team": "TEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 5,
+          "source": "Sleeper"
+        },
+        {
+          "name": "Xavier Restrepo",
+          "team": "TEN",
+          "position": "WR",
+          "role": "SWR",
+          "order": 6,
+          "source": "Sleeper"
+        }
+      ],
+      "K": [
+        {
+          "name": "Joey Slye",
+          "team": "TEN",
+          "position": "K",
+          "role": "K",
+          "order": 1,
+          "source": "Sleeper"
+        }
+      ]
+    }
+  },
+  "teamWinTotals": {
+    "ARI": {
+      "wins": 3.5,
+      "overOdds": "-136",
+      "underOdds": "+115",
+      "source": "FOX Sports / DraftKings"
+    },
+    "ATL": {
+      "wins": 6.5,
+      "overOdds": "-146",
+      "underOdds": "+125",
+      "source": "FOX Sports / DraftKings"
+    },
+    "BAL": {
+      "wins": 11.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "BUF": {
+      "wins": 10.5,
+      "overOdds": "-120",
+      "underOdds": "+100",
+      "source": "FOX Sports / DraftKings"
+    },
+    "CAR": {
+      "wins": 7.5,
+      "overOdds": "+110",
+      "underOdds": "-130",
+      "source": "FOX Sports / DraftKings"
+    },
+    "CHI": {
+      "wins": 9.5,
+      "overOdds": "+100",
+      "underOdds": "-120",
+      "source": "FOX Sports / DraftKings"
+    },
+    "CIN": {
+      "wins": 10.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "CLE": {
+      "wins": 5.5,
+      "overOdds": "-130",
+      "underOdds": "+110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "DAL": {
+      "wins": 9.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "DEN": {
+      "wins": 9.5,
+      "overOdds": "-115",
+      "underOdds": "-105",
+      "source": "FOX Sports / DraftKings"
+    },
+    "DET": {
+      "wins": 10.5,
+      "overOdds": "-110",
+      "underOdds": "-110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "GB": {
+      "wins": 9.5,
+      "overOdds": "-130",
+      "underOdds": "+110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "HOU": {
+      "wins": 9.5,
+      "overOdds": "-125",
+      "underOdds": "+105",
+      "source": "FOX Sports / DraftKings"
+    },
+    "IND": {
+      "wins": 7.5,
+      "overOdds": "-140",
+      "underOdds": "+115",
+      "source": "FOX Sports / DraftKings"
+    },
+    "JAX": {
+      "wins": 8.5,
+      "overOdds": "-140",
+      "underOdds": "+115",
+      "source": "FOX Sports / DraftKings"
+    },
+    "KC": {
+      "wins": 10.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "LV": {
+      "wins": 5.5,
+      "overOdds": "-145",
+      "underOdds": "+120",
+      "source": "FOX Sports / DraftKings"
+    },
+    "LAC": {
+      "wins": 9.5,
+      "overOdds": "-140",
+      "underOdds": "+115",
+      "source": "FOX Sports / DraftKings"
+    },
+    "LAR": {
+      "wins": 11.5,
+      "overOdds": "-125",
+      "underOdds": "+105",
+      "source": "FOX Sports / DraftKings"
+    },
+    "MIA": {
+      "wins": 4.5,
+      "overOdds": "+122",
+      "underOdds": "-146",
+      "source": "FOX Sports / DraftKings"
+    },
+    "MIN": {
+      "wins": 8.5,
+      "overOdds": "-110",
+      "underOdds": "-110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "NE": {
+      "wins": 10.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "NO": {
+      "wins": 7.5,
+      "overOdds": "-120",
+      "underOdds": "+100",
+      "source": "FOX Sports / DraftKings"
+    },
+    "NYG": {
+      "wins": 7.5,
+      "overOdds": "-110",
+      "underOdds": "-110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "NYJ": {
+      "wins": 5.5,
+      "overOdds": "-120",
+      "underOdds": "+100",
+      "source": "FOX Sports / DraftKings"
+    },
+    "PHI": {
+      "wins": 10.5,
+      "overOdds": "+115",
+      "underOdds": "-140",
+      "source": "FOX Sports / DraftKings"
+    },
+    "PIT": {
+      "wins": 8.5,
+      "overOdds": "+110",
+      "underOdds": "-130",
+      "source": "FOX Sports / DraftKings"
+    },
+    "SF": {
+      "wins": 9.5,
+      "overOdds": "-146",
+      "underOdds": "+120",
+      "source": "FOX Sports / DraftKings"
+    },
+    "SEA": {
+      "wins": 10.5,
+      "overOdds": "-115",
+      "underOdds": "-105",
+      "source": "FOX Sports / DraftKings"
+    },
+    "TB": {
+      "wins": 8.5,
+      "overOdds": "+115",
+      "underOdds": "-136",
+      "source": "FOX Sports / DraftKings"
+    },
+    "TEN": {
+      "wins": 6.5,
+      "overOdds": "-110",
+      "underOdds": "-110",
+      "source": "FOX Sports / DraftKings"
+    },
+    "WAS": {
+      "wins": 7.5,
+      "overOdds": "-125",
+      "underOdds": "+105",
+      "source": "FOX Sports / DraftKings"
+    }
+  }
+}

@@ -9,7 +9,7 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Sync platform draft state and enable 15-second auto-sync while picks remain controlled by the league platform.
 - Forecast every owner's next two selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players also appear as dashed picks directly on the live board.
 - Monitor personalized positional-run alerts and live roster health, including starter and flex coverage, projected starting PPG, bye conflicts, and prioritized remaining needs.
-- Draft from an RB/WR/TE-first player view while a persistent quarterback tracker shows how many QBs have been drafted and how many remain in every tier.
+- Draft from a QB/RB/WR/TE player view while a persistent quarterback tracker shows how many QBs have been drafted and how many remain in every tier.
 - Compare league-adjusted positional strength of schedule, Weeks 1-4 defense SOS, and kicker dome rate from current and prior-season schedule data.
 - Use VOR-based, roster-aware recommendations with Balanced, Upside, Safe Floor, and Zero-RB strategies, plus a persistent watchlist and player detail drawers across every research view.
 - Use a mobile-first draft-day command center with compact research cards and deep-linked tabs.
@@ -101,13 +101,13 @@ Enable GitHub Pages with source set to GitHub Actions.
 
 The scheduled workflow runs daily at `10:17 UTC` and can also be started manually from the Actions tab. It refreshes draft data in S3, then syncs league settings into DynamoDB.
 
-The scraper currently targets public FantasyPros, CBS Sports, Sleeper, nflverse, and Wikipedia data when available. It normalizes them into:
+The scraper currently targets public FantasyPros, Sleeper, CBS Sports, nflverse, and Wikipedia data when available. It normalizes them into:
 
 ```json
 {
   "generatedAt": "2026-07-14T00:00:00Z",
   "season": 2026,
-  "source": "FantasyPros rankings/projections/stats, CBS injuries/depth charts, Sleeper player metadata, nflverse schedules, and rookie draft results",
+  "source": "FantasyPros rankings/projections/stats, Sleeper injuries/depth charts/player metadata, nflverse schedules, and rookie draft results",
   "scoring": {
     "standard": [],
     "halfPpr": [],
@@ -133,8 +133,8 @@ The scraper currently targets public FantasyPros, CBS Sports, Sleeper, nflverse,
 
 Player rows are enriched when matching data is available:
 
-- `depthChart`: CBS depth order, with Sleeper fallback.
-- `injury`: CBS injury report, with Sleeper fallback.
+- `depthChart`: Sleeper team depth order and role, with CBS fallback.
+- `injury`: Sleeper injury status, body part, recovery notes, practice participation and update time, with CBS fallback.
 - `rookie`: rookie draft details from Pro Football Reference when available, with Sleeper rookie metadata fallback.
 - `previousYear`: prior-season FantasyPros stats and fantasy points.
 - `sleeper`: Sleeper player ID and metadata.

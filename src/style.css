@@ -2021,7 +2021,7 @@ h3 {
 
 .injuriesTable .infoHead,
 .injuriesTable .infoRow {
-  grid-template-columns: minmax(190px, 1.2fr) 72px 80px 140px minmax(180px, 1fr) 120px 130px;
+  grid-template-columns: minmax(180px, 1.1fr) 64px 68px 112px minmax(150px, 0.8fr) minmax(220px, 1.3fr) 90px 90px;
 }
 
 .rookiesTable .infoHead,
@@ -2056,6 +2056,10 @@ h3 {
 .warningText {
   color: #feb2b2 !important;
   font-weight: 800;
+}
+
+.injuryDetailText {
+  line-height: 1.35;
 }
 
 .emptyState {
@@ -2298,7 +2302,7 @@ h3 {
 
   .injuriesTable .infoHead,
   .injuriesTable .infoRow {
-    min-width: 1000px;
+    min-width: 1200px;
   }
 
   .rookiesTable .infoHead,
@@ -2686,11 +2690,29 @@ h3 {
 .drawerNews { display: flex; gap: 0.65rem; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
 .drawerNews > div { display: grid; gap: 0.15rem; }
 .drawerNews strong { color: var(--text-primary); font-size: 0.78rem; }
-.drawerNews span { color: var(--text-muted); font-size: 0.72rem; }
+.drawerNews span { color: var(--text-muted); font-size: 0.72rem; line-height: 1.4; }
+.drawerNews small { color: var(--text-muted); font-size: 0.62rem; font-weight: 700; }
 .injuryNotice { border-color: rgba(229, 62, 62, 0.4); }
 .healthyNotice { border-color: rgba(56, 161, 105, 0.35); color: #9ae6b4; }
 .drawerEmptyNotice { border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-muted); padding: 0.75rem; font-size: 0.75rem; }
 .drawerWatchButton { width: 100%; margin-top: auto; }
+
+.teamDepthGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.teamDepthPosition { min-width: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); }
+.teamDepthPosition.selectedPosition { border-color: rgba(49, 130, 206, 0.55); box-shadow: inset 0 3px 0 rgba(49, 130, 206, 0.5); }
+.teamDepthPositionHeader { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 1px solid var(--border-color); padding: 0.42rem 0.55rem; }
+.teamDepthPositionHeader span { font-size: 0.65rem; font-weight: 900; }
+.teamDepthPositionHeader small { color: var(--text-muted); font-size: 0.55rem; font-weight: 800; }
+.teamDepthPlayers { display: grid; }
+.teamDepthPlayer { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 0.35rem; min-width: 0; border: 0; border-top: 1px solid rgba(45, 55, 72, 0.5); background: transparent; color: var(--text-secondary); padding: 0.36rem 0.5rem; text-align: left; }
+.teamDepthPlayer:first-child { border-top: 0; }
+.teamDepthPlayer:not(:disabled) { cursor: pointer; }
+.teamDepthPlayer:not(:disabled):hover { background: rgba(49, 130, 206, 0.1); color: var(--text-primary); }
+.teamDepthPlayer > span { overflow: hidden; color: var(--text-muted); font-size: 0.52rem; font-weight: 900; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.teamDepthPlayer strong { overflow: hidden; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+.teamDepthPlayer.selected { background: rgba(49, 130, 206, 0.14); color: #bee3f8; }
+.teamDepthPlayer:disabled:not(.selected) { opacity: 0.7; }
+.teamDepthEmpty { color: var(--text-muted); padding: 0.55rem; font-size: 0.65rem; font-style: italic; }
 
 @media (max-width: 1180px) {
   .recommendationStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2807,6 +2829,7 @@ h3 {
   .researchFilters .positionToggles { flex-wrap: nowrap; overflow-x: auto; }
 
   .playerDrawer { padding-bottom: 5rem; }
+  .teamDepthGrid { grid-template-columns: 1fr; }
   .drawerMetricGrid.threeColumn { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .drawerMetricGrid.threeColumn .drawerMetric:last-child { grid-column: 1 / -1; }
   .drawerWatchButton { position: sticky; bottom: 0; border-top-color: var(--border-color); background: var(--bg-secondary); }

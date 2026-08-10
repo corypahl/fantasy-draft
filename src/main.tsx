@@ -176,6 +176,7 @@ type DepthChartEntry = {
   name: string
   team: string
   position: Position
+  role?: string
   order: number
   source: string
 }
@@ -187,6 +188,10 @@ type InjuryDetail = {
   updated?: string
   injury?: string
   status: string
+  detail?: string
+  practice?: string
+  started?: string
+  rosterStatus?: string
   source: string
 }
 
@@ -297,7 +302,7 @@ const RECOMMENDATION_STRATEGIES: Record<RecommendationStrategy, {
   },
 }
 const DEFAULT_VISIBLE_POSITIONS: Record<Position, boolean> = {
-  QB: false,
+  QB: true,
   RB: true,
   WR: true,
   TE: true,
@@ -675,12 +680,28 @@ function App() {
         fetch(DATA_URL, { cache: 'no-store' })
           .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
           .then(async (payload: RankingsFile) => {
-            const [scheduleFile, weeklyFile] = await Promise.all([
+            const [scheduleFile, weeklyFile, depthChartFile, injuryFile] = await Promise.all([
               fetchJson<NonNullable<SplitDataFiles['schedules']>>(`${DATA_BASE_URL}/schedules.json`).catch(() => undefined),
               fetchJson<NonNullable<SplitDataFiles['previousYearWeeklyResults']>>(`${DATA_BASE_URL}/previous-year-weekly-results.json`).catch(() => undefined),
+              fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`).catch(() => undefined),
+              fetchJson<SplitDataFiles['injuries']>(`${DATA_BASE_URL}/injuries.json`).catch(() => undefined),
             ])
+            const depthCharts = Object.keys(payload.depthCharts || {}).length ? payload.depthCharts : depthChartFile?.depthCharts
+            const teamWinTotals = Object.keys(payload.teamWinTotals || {}).length ? payload.teamWinTotals : depthChartFile?.teamWinTotals
+            const injuries = payload.injuries?.length ? payload.injuries : injuryFile?.injuries || []
+            const enrichments = buildClientEnrichments(depthCharts, injuries, payload.rookies || [], payload.previousYearResults)
             setData({
               ...payload,
+              scoring: Object.fromEntries(Object.entries(payload.scoring).map(([preset, players]) => [
+                preset,
+                (players || []).map((player) => ({
+                  ...player,
+                  ...(enrichments.get(playerKey(player.name, player.team)) || enrichments.get(playerKey(player.name)) || {}),
+                })),
+              ])) as RankingsFile['scoring'],
+              depthCharts,
+              teamWinTotals,
+              injuries,
               schedules: payload.schedules || scheduleFile?.schedules,
               previousYearWeeklyResults: Object.keys(payload.previousYearWeeklyResults || {}).length
                 ? payload.previousYearWeeklyResults
@@ -1133,12 +1154,15 @@ function App() {
       ) : null}
       {selectedPlayer ? (
         <PlayerDrawer
+          depthCharts={data.depthCharts}
           isWatched={watchlistIdSet.has(selectedPlayer.id)}
           player={selectedPlayer}
+          playerByKey={playerByKey}
           recommendation={recommendationByPlayerId.get(selectedPlayer.id)}
           scoring={selectedLeague.scoring}
           weeklyResults={data.previousYearWeeklyResults}
           onClose={() => setSelectedPlayer(null)}
+          onPlayerSelect={setSelectedPlayer}
           onToggleWatchlist={() => toggleWatchlist(selectedPlayer.id)}
         />
       ) : null}
@@ -1530,7 +1554,7 @@ function formatComparisonStat(input: number | undefined) {
 
 function formatHealth(player: RankedPlayer) {
   if (!player.injury) return 'No injury flag'
-  return `${player.injury.status}${player.injury.injury ? ` · ${player.injury.injury}` : ''}`
+  return [player.injury.status, player.injury.injury, player.injury.detail].filter(Boolean).join(' · ')
 }
 
 function formatExperience(player: RankedPlayer) {
@@ -1552,20 +1576,26 @@ function titleCase(value: string) {
 }
 
 function PlayerDrawer({
+  depthCharts,
   player,
+  playerByKey,
   recommendation,
   scoring,
   weeklyResults,
   isWatched,
   onClose,
+  onPlayerSelect,
   onToggleWatchlist,
 }: {
+  depthCharts: RankingsFile['depthCharts']
   player: RankedPlayer
+  playerByKey: Map<string, RankedPlayer>
   recommendation?: Recommendation
   scoring: ScoringRules
   weeklyResults: RankingsFile['previousYearWeeklyResults']
   isWatched: boolean
   onClose: () => void
+  onPlayerSelect: (player: RankedPlayer) => void
   onToggleWatchlist: () => void
 }) {
   const lastYear = useMemo(() => {
@@ -1576,6 +1606,7 @@ function PlayerDrawer({
   }, [player.name, player.position, player.team, scoring, weeklyResults])
   const hasWeeklyHistory = Boolean(lastYear?.games)
   const lastYearPpg = hasWeeklyHistory ? formatComparisonStat(lastYear?.ppg) : formatPreviousYearPointsPerGame(player.previousYear)
+  const teamDepthChart = getTeamDepthChart(depthCharts, player.team)
 
   return (
     <div className="drawerBackdrop" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose() }} role="presentation">
@@ -1587,13 +1618,19 @@ function PlayerDrawer({
 
         <section className="drawerSection">
           <h3>Basic</h3>
-          <div className="drawerMetricGrid">
+          <div className="drawerMetricGrid threeColumn">
             <DrawerMetric label="Position" value={player.position} />
             <DrawerMetric label="Team" value={player.team || 'FA'} />
-            <DrawerMetric label="Depth chart" value={player.depthChart ? `${player.position}${player.depthChart.order}` : '—'} />
             <DrawerMetric label="Bye" value={player.bye ? String(player.bye) : '—'} />
           </div>
         </section>
+
+        <TeamDepthChart
+          chart={teamDepthChart}
+          player={player}
+          playerByKey={playerByKey}
+          onPlayerSelect={onPlayerSelect}
+        />
 
         <section className="drawerSection">
           <h3>Rankings</h3>
@@ -1636,7 +1673,14 @@ function PlayerDrawer({
         <section className="drawerSection">
           <h3>News</h3>
           {player.injury ? (
-            <div className="drawerNews injuryNotice"><AlertTriangle size={16} /><div><strong>{player.injury.status}</strong><span>{player.injury.injury || 'Injury reported'} · {player.injury.updated || 'Update pending'}</span></div></div>
+            <div className="drawerNews injuryNotice">
+              <AlertTriangle size={16} />
+              <div>
+                <strong>{player.injury.status} · {player.injury.injury || 'Injury reported'}</strong>
+                <span>{formatInjuryDetails(player.injury)}</span>
+                <small>Updated {formatInjuryUpdated(player.injury.updated)} · {player.injury.source}</small>
+              </div>
+            </div>
           ) : (
             <div className="drawerNews healthyNotice"><Check size={16} /><div><strong>No current injury report</strong><span>No active injury flag in the latest data.</span></div></div>
           )}
@@ -1650,6 +1694,62 @@ function PlayerDrawer({
         <button className={isWatched ? 'iconTextButton drawerWatchButton watched' : 'iconTextButton drawerWatchButton'} onClick={onToggleWatchlist} type="button"><Star size={16} /> {isWatched ? 'Watching' : 'Add to watchlist'}</button>
       </aside>
     </div>
+  )
+}
+
+function getTeamDepthChart(depthCharts: RankingsFile['depthCharts'], team: string) {
+  const normalizedTeam = normalizeDisplayTeam(team)
+  return Object.entries(depthCharts || {}).find(([teamCode]) => normalizeDisplayTeam(teamCode) === normalizedTeam)?.[1]
+}
+
+function TeamDepthChart({
+  chart,
+  player,
+  playerByKey,
+  onPlayerSelect,
+}: {
+  chart?: Partial<Record<Position, DepthChartEntry[]>>
+  player: RankedPlayer
+  playerByKey: Map<string, RankedPlayer>
+  onPlayerSelect: (player: RankedPlayer) => void
+}) {
+  const positions: DepthChartColumn[] = ['QB', 'RB', 'WR', 'TE', 'K']
+  return (
+    <section className="drawerSection teamDepthSection">
+      <h3>{player.team || 'Team'} depth chart</h3>
+      {chart ? (
+        <div className="teamDepthGrid">
+          {positions.map((position) => (
+            <div className={position === player.position ? 'teamDepthPosition selectedPosition' : 'teamDepthPosition'} key={position}>
+              <div className="teamDepthPositionHeader">
+                <span className={`positionText${position}`}>{position}</span>
+                <small>{chart[position]?.length || 0} listed</small>
+              </div>
+              <div className="teamDepthPlayers">
+                {(chart[position] || []).map((entry) => {
+                  const ranked = playerByKey.get(playerKey(entry.name, entry.team)) || playerByKey.get(playerKey(entry.name))
+                  const isSelected = playerKey(entry.name) === playerKey(player.name)
+                  return (
+                    <button
+                      aria-current={isSelected ? 'true' : undefined}
+                      className={isSelected ? 'teamDepthPlayer selected' : 'teamDepthPlayer'}
+                      disabled={!ranked || isSelected}
+                      key={`${entry.role || position}-${entry.order}-${entry.name}`}
+                      onClick={() => ranked && onPlayerSelect(ranked)}
+                      type="button"
+                    >
+                      <span>{entry.role || `${position}${entry.order}`}</span>
+                      <strong>{entry.name}</strong>
+                    </button>
+                  )
+                })}
+                {!chart[position]?.length ? <span className="teamDepthEmpty">No listing</span> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : <div className="drawerEmptyNotice">No team depth chart is available.</div>}
+    </section>
   )
 }
 
@@ -2165,11 +2265,11 @@ function InjuriesPage({
 }) {
   const [query, setQuery] = useState('')
   const [position, setPosition] = useState<'ALL' | Position>('ALL')
-  const filteredRows = rows.filter((row) => (position === 'ALL' || row.position === position) && (!query.trim() || `${row.name} ${row.team} ${row.injury} ${row.status}`.toLowerCase().includes(query.toLowerCase().trim())))
+  const filteredRows = rows.filter((row) => (position === 'ALL' || row.position === position) && (!query.trim() || `${row.name} ${row.team} ${row.injury} ${row.status} ${row.detail} ${row.practice}`.toLowerCase().includes(query.toLowerCase().trim())))
   return (
     <section className="panel pagePanel">
       <div className="panelHeader">
-        <div><h2>Injuries</h2><p className="panelDescription">Prioritized by fantasy tier and report recency.</p></div>
+        <div><h2>Injuries</h2><p className="panelDescription">Detailed body part, recovery notes and practice participation from the latest player feed.</p></div>
         <span className="countPill">{filteredRows.length} reports</span>
       </div>
       <ResearchFilters position={position} query={query} queryLabel="Search player, injury or status" onPositionChange={setPosition} onQueryChange={setQuery} />
@@ -2180,6 +2280,7 @@ function InjuriesPage({
           <span>Pos</span>
           <span>Status</span>
           <span>Injury</span>
+          <span>Details</span>
           <span>Updated</span>
           <span>Source</span>
         </div>
@@ -2187,13 +2288,14 @@ function InjuriesPage({
           const tierColor = getTierColor(getPlayerTier(row.name, row.team, playerTierByKey))
           const ranked = playerByKey.get(playerKey(row.name, row.team)) || playerByKey.get(playerKey(row.name))
           return (
-            <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}`} style={{ borderLeftColor: tierColor }}>
+            <div className="infoRow" key={`${row.name}-${row.team || 'FA'}-${row.status}-${row.updated || ''}`} style={{ borderLeftColor: tierColor }}>
               <strong data-label="Player" style={{ color: tierColor }}><button className="tablePlayerButton" disabled={!ranked} onClick={() => ranked && onPlayerSelect(ranked)} type="button">{row.name}</button></strong>
               <span data-label="Team">{row.team || '-'}</span>
               <span data-label="Position" className={`position position${row.position}`}>{row.position}</span>
               <span data-label="Status" className="warningText">{row.status}</span>
               <span data-label="Injury">{row.injury || '-'}</span>
-              <small data-label="Updated">{row.updated || '-'}</small>
+              <span className="injuryDetailText" data-label="Details">{formatInjuryDetails(row)}</span>
+              <small data-label="Updated">{formatInjuryUpdated(row.updated)}</small>
               <small data-label="Source">{row.source}</small>
             </div>
           )
@@ -3279,9 +3381,30 @@ function depthPlayerClass(player: DepthChartEntry | undefined) {
 
 function parseInjuryDate(value: string | undefined) {
   if (!value) return 0
+  const direct = Date.parse(value)
+  if (Number.isFinite(direct)) return direct
   const now = new Date()
   const parsed = Date.parse(`${value} ${now.getFullYear()}`)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatInjuryDetails(injury: InjuryDetail) {
+  const details = [
+    injury.detail,
+    injury.practice ? `Practice: ${injury.practice}` : null,
+    injury.started ? `Since ${injury.started}` : null,
+  ].filter(Boolean)
+  return details.length ? details.join(' · ') : 'No additional notes'
+}
+
+function formatInjuryUpdated(value: string | undefined) {
+  if (!value) return 'Update pending'
+  const timestamp = parseInjuryDate(value)
+  if (!timestamp) return value
+  const date = new Date(timestamp)
+  return date.getFullYear() === new Date().getFullYear()
+    ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function slugify(value: string) {
@@ -3444,7 +3567,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
   return {
     generatedAt: files.rankings.generatedAt,
     season: files.rankings.season,
-    source: 'Split data files: FantasyPros rankings/projections/stats, CBS injuries/depth charts, rookie draft results',
+    source: 'Split data files: FantasyPros rankings/projections/stats, Sleeper injuries/depth charts, rookie draft results',
     scoring: Object.fromEntries(
       Object.entries(files.rankings.scoring).map(([scoring, players]) => [
         scoring,
