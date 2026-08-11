@@ -1158,10 +1158,23 @@ h3 {
 
 .projectionValue,
 .adpValue,
+.rankAdpDelta,
 .scheduleValue,
 .injuryDot,
 .rookieDot {
   font-weight: 900;
+}
+
+.rankAdpDelta.positive {
+  color: var(--accent-green);
+}
+
+.rankAdpDelta.negative {
+  color: var(--accent-red);
+}
+
+.rankAdpDelta.neutral {
+  color: var(--text-secondary);
 }
 
 .scheduleValue {

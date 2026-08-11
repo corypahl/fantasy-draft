@@ -1530,7 +1530,7 @@ function getAdpValue(player: RankedPlayer) {
 function formatAdpValue(player: RankedPlayer) {
   const value = getAdpValue(player)
   if (value === undefined) return '—'
-  return `${value >= 0 ? '+' : ''}${value.toFixed(1)} picks`
+  return `${formatCompactAdpValue(player)} picks`
 }
 
 function getProjectionTrend(player: RankedPlayer) {
@@ -3872,7 +3872,9 @@ const PlayerSummary = React.memo(function PlayerSummary({
         </span>
         <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
-          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}{compactScheduleStats.length ? ` | ${compactScheduleStats.join(' | ')}` : ''}
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
+          {player.adp ? <span className={`rankAdpDelta ${getAdpValueTone(player)}`} title={getAdpValueTitle(player)}> | {formatCompactAdpValue(player)}</span> : null}
+          {compactScheduleStats.length ? ` | ${compactScheduleStats.join(' | ')}` : ''}
         </span>
         <span className="playerQuickActions">
           <button aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`} aria-pressed={isWatched} className={isWatched ? 'watched' : ''} onClick={() => onToggleWatchlist(player.id)} type="button"><Star size={13} /></button>
@@ -3892,6 +3894,11 @@ const PlayerSummary = React.memo(function PlayerSummary({
           {adpLabel !== '-' ? (
             <span className="adpValue" title={player.adp ? `Overall average rank ${player.adp.toFixed(1)}` : ''}>
               ({adpLabel})
+            </span>
+          ) : null}
+          {player.adp ? (
+            <span className={`rankAdpDelta ${getAdpValueTone(player)}`} title={getAdpValueTitle(player)}>
+              {formatCompactAdpValue(player)}
             </span>
           ) : null}
           <span className="projectionValue" style={{ color: tierColor }} title={`${player.projectedPoints.toFixed(1)} projected season points`}>
@@ -3915,6 +3922,23 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
   const round = Math.ceil(overallPick / teams)
   const pick = ((overallPick - 1) % teams) + 1
   return `${round}.${pick.toString().padStart(2, '0')}`
+}
+
+function formatCompactAdpValue(player: RankedPlayer) {
+  const value = getAdpValue(player)
+  if (value === undefined) return '-'
+  const roundedValue = Math.round(value * 10) / 10
+  return `${roundedValue >= 0 ? '+' : ''}${roundedValue}`
+}
+
+function getAdpValueTone(player: RankedPlayer) {
+  const value = getAdpValue(player)
+  if (!value) return 'neutral'
+  return value > 0 ? 'positive' : 'negative'
+}
+
+function getAdpValueTitle(player: RankedPlayer) {
+  return `Rank vs ADP: ${formatCompactAdpValue(player)} (rank #${player.rank}, ADP #${player.adp?.toFixed(1)})`
 }
 
 function formatScheduleStrength(strength: ScheduleStrength | undefined) {
