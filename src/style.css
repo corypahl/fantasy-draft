@@ -696,6 +696,34 @@ h3 {
   min-height: 38px;
 }
 
+.playerControlActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.draftedVisibilityToggle {
+  min-height: 40px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.45rem 0.7rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.draftedVisibilityToggle:hover,
+.draftedVisibilityToggle:focus-visible,
+.draftedVisibilityToggle.active {
+  border-color: rgba(49, 130, 206, 0.72);
+  background: rgba(49, 130, 206, 0.14);
+  color: #bee3f8;
+}
+
 .watchComparePanel {
   display: grid;
   gap: 0.8rem;
@@ -1083,14 +1111,30 @@ h3 {
   font-weight: 700;
 }
 
-.positionCount {
-  border-radius: 4px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  padding: 0.18rem 0.45rem;
-  font-size: 0.78rem;
-  font-weight: 700;
+.positionTierCounts {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.18rem;
+  min-width: 0;
 }
+
+.positionTierCount {
+  min-width: 27px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgba(8, 15, 29, 0.68);
+  padding: 0.15rem 0.22rem;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.positionTierCount.red { color: #fc8181; }
+.positionTierCount.green { color: #68d391; }
+.positionTierCount.yellow { color: #faf089; }
+.positionTierCount.orange { color: #f6ad55; }
 
 .positionPlayers {
   flex: 1;
@@ -1115,6 +1159,16 @@ h3 {
 .playerItem:hover,
 .shortlistItem:hover {
   background: var(--bg-tertiary);
+}
+
+.playerItem.draftedPlayerItem {
+  opacity: 0.55;
+  background: rgba(74, 85, 104, 0.08);
+}
+
+.playerItem.draftedPlayerItem:hover,
+.playerItem.draftedPlayerItem:focus-within {
+  opacity: 0.82;
 }
 
 .playerItem:last-child {
@@ -1179,6 +1233,19 @@ h3 {
 .injuryDot,
 .rookieDot {
   font-weight: 900;
+}
+
+.draftedPlayerBadge {
+  border: 1px solid rgba(160, 174, 192, 0.48);
+  border-radius: 999px;
+  background: rgba(74, 85, 104, 0.2);
+  color: #cbd5e0;
+  padding: 0.07rem 0.28rem;
+  font-size: 0.48rem;
+  font-weight: 950;
+  letter-spacing: 0.035em;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 .playerStatStack {
@@ -1897,145 +1964,6 @@ h3 {
   background: var(--bg-card);
 }
 
-.quarterbackTracker {
-  display: grid;
-  flex: 0 0 auto;
-  gap: 0.65rem;
-  border-bottom: 1px solid rgba(229, 62, 62, 0.32);
-  background: linear-gradient(145deg, rgba(229, 62, 62, 0.12), rgba(15, 23, 42, 0.92));
-  padding: 0.8rem 0.85rem;
-}
-
-.quarterbackTrackerHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-}
-
-.quarterbackTrackerHeader > div {
-  min-width: 0;
-}
-
-.quarterbackTrackerHeader span {
-  display: block;
-  margin-bottom: 0.1rem;
-  color: #fc8181;
-  font-size: 0.55rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.quarterbackTrackerHeader h3 {
-  overflow: hidden;
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.quarterbackTrackerToggle {
-  flex: 0 0 auto;
-  min-height: 30px;
-  border: 1px solid rgba(229, 62, 62, 0.45);
-  border-radius: 6px;
-  background: rgba(229, 62, 62, 0.12);
-  color: #feb2b2;
-  padding: 0.3rem 0.5rem;
-  font-size: 0.62rem;
-  font-weight: 900;
-}
-
-.quarterbackTrackerToggle:hover,
-.quarterbackTrackerToggle:focus-visible,
-.quarterbackTrackerToggle[aria-pressed='true'] {
-  border-color: var(--accent-red);
-  background: var(--accent-red);
-  color: #fff;
-}
-
-.quarterbackTrackerSummary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
-}
-
-.quarterbackTrackerSummary > div {
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  border: 1px solid rgba(229, 62, 62, 0.2);
-  border-radius: 6px;
-  background: rgba(8, 15, 29, 0.5);
-  padding: 0.38rem 0.48rem;
-}
-
-.quarterbackTrackerSummary strong {
-  color: #fff;
-  font-size: 1rem;
-}
-
-.quarterbackTrackerSummary span {
-  color: var(--text-muted);
-  font-size: 0.58rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.quarterbackTierGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.3rem;
-}
-
-.quarterbackTier {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: baseline;
-  gap: 0.18rem;
-  min-width: 0;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  background: rgba(8, 15, 29, 0.64);
-  padding: 0.26rem 0.34rem;
-}
-
-.quarterbackTier span {
-  color: var(--text-muted);
-  font-size: 0.55rem;
-  font-weight: 900;
-}
-
-.quarterbackTier strong {
-  color: var(--text-primary);
-  font-size: 0.72rem;
-  text-align: right;
-}
-
-.quarterbackTier small {
-  grid-column: 1 / -1;
-  color: var(--text-muted);
-  font-size: 0.46rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  text-align: right;
-  text-transform: uppercase;
-}
-
-.quarterbackTier.empty {
-  border-color: var(--accent-red);
-}
-
-.quarterbackTier.low {
-  border-color: var(--accent-yellow);
-}
-
-.quarterbackTier.healthy {
-  border-color: var(--accent-green);
-}
-
 .draftBoardCell.userTeam { background: rgba(56, 161, 105, 0.045); }
 
 .draftBoardCell.current {
@@ -2361,6 +2289,10 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .playerControlActions {
+    justify-content: space-between;
+  }
+
   .positionToggles {
     flex-wrap: wrap;
   }
@@ -2428,6 +2360,15 @@ h3 {
 @media (max-width: 620px) {
   .playerListPanel {
     padding: 0.85rem;
+  }
+
+  .playerControlActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .draftedVisibilityToggle {
+    width: 100%;
   }
 
   .playerListHeader,
@@ -2902,9 +2843,6 @@ h3 {
   .watchCompareValue { width: 174px; min-width: 174px; }
   .watchCompareScrollHint { display: block; }
   .shortlistHeader { align-items: center; flex-direction: row; padding: 0.7rem; }
-  .quarterbackTracker { gap: 0.5rem; padding: 0.65rem 0.7rem; }
-  .quarterbackTierGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .quarterbackTier small { display: none; }
   .shortlistHeader > div:first-child { min-width: 0; }
   .shortlistHeader small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .shortlistHeader .recommendationHeaderControls { align-items: flex-end; flex-direction: column; gap: 0.2rem; }

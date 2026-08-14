@@ -160,17 +160,9 @@ type RosterHealth = {
   coverage: RosterSlotHealth[]
 }
 
-type QuarterbackTierStatus = {
-  tier: number
-  remaining: number
-  total: number
-}
-
-type QuarterbackTrackerData = {
-  drafted: number
-  remaining: number
-  tiers: QuarterbackTierStatus[]
-}
+type HeaderTierColor = 'red' | 'green' | 'yellow' | 'orange'
+type TierAvailabilityCount = { available: number; total: number }
+type PositionTierAvailability = Record<Position, Record<HeaderTierColor, TierAvailabilityCount>>
 
 type DepthChartEntry = {
   name: string
@@ -274,6 +266,13 @@ type SleeperDetail = {
 }
 
 const POSITION_ORDER: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
+const HEADER_TIER_COLOR_ORDER: HeaderTierColor[] = ['red', 'green', 'yellow', 'orange']
+const HEADER_TIER_LABELS: Record<HeaderTierColor, string> = {
+  red: 'Red tier (T9-T10)',
+  green: 'Green tier (T3-T4)',
+  yellow: 'Yellow tier (T5-T6)',
+  orange: 'Orange tier (T7-T8)',
+}
 const NFL_REGULAR_SEASON_GAMES = 17
 const RECOMMENDATION_STRATEGIES: Record<RecommendationStrategy, {
   label: string
@@ -627,6 +626,7 @@ function App() {
   )
   const [query, setQuery] = useState('')
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
+  const [showDraftedPlayers, setShowDraftedPlayers] = useState(() => loadLocal('show-drafted-players', false))
   const [activeTab, setActiveTab] = useState<AppTab>(() => getTabFromHash())
   const [consistencyPosition, setConsistencyPosition] = useState<Position>('QB')
   const [consistencyQuery, setConsistencyQuery] = useState('')
@@ -682,6 +682,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('draft-wizard:recommendation-strategy', JSON.stringify(recommendationStrategy))
   }, [recommendationStrategy])
+
+  useEffect(() => {
+    localStorage.setItem('draft-wizard:show-drafted-players', JSON.stringify(showDraftedPlayers))
+  }, [showDraftedPlayers])
 
   useEffect(() => {
     fetchSplitData()
@@ -810,6 +814,13 @@ function App() {
     return undraftedPlayers
       .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
   }, [query, undraftedPlayers])
+  const displayedPlayers = useMemo<RankedPlayer[]>(() => {
+    const lowerQuery = query.toLowerCase().trim()
+    const playerPool = showDraftedPlayers ? players : undraftedPlayers
+    return playerPool
+      .filter((player) => !lowerQuery || `${player.name} ${player.team} ${player.position}`.toLowerCase().includes(lowerQuery))
+      .sort((a, b) => a.rank - b.rank)
+  }, [players, query, showDraftedPlayers, undraftedPlayers])
 
   const rankedRecommendations = useMemo(
     () => buildRecommendations(undraftedPlayers, players, draft, selectedLeague, recommendationStrategy),
@@ -827,10 +838,6 @@ function App() {
   const positionRunAlerts = useMemo(
     () => buildPositionRunAlerts(undraftedPlayers, draftPredictions, draft, selectedLeague),
     [draft, draftPredictions, selectedLeague, undraftedPlayers],
-  )
-  const quarterbackTracker = useMemo(
-    () => buildQuarterbackTracker(players, undraftedPlayers, draft),
-    [draft, players, undraftedPlayers],
   )
   const watchlistIdSet = useMemo(() => new Set(watchlistIds), [watchlistIds])
   const undraftedPlayerById = useMemo(() => new Map(undraftedPlayers.map((player) => [player.id, player])), [undraftedPlayers])
@@ -860,10 +867,20 @@ function App() {
       K: [],
       DST: [],
     }
-    availablePlayers.forEach((player) => grouped[player.position].push(player))
+    displayedPlayers.forEach((player) => grouped[player.position].push(player))
     POSITION_ORDER.forEach((item) => grouped[item].sort((a, b) => a.rank - b.rank))
     return grouped
-  }, [availablePlayers])
+  }, [displayedPlayers])
+  const positionTierAvailability = useMemo<PositionTierAvailability>(() => {
+    const counts = createEmptyPositionTierAvailability()
+    players.forEach((player) => {
+      const color = getHeaderTierColor(player.tier)
+      if (!color) return
+      counts[player.position][color].total += 1
+      if (!isDraftedPlayer(player, draftedIds, draftedPlayerKeys)) counts[player.position][color].available += 1
+    })
+    return counts
+  }, [draftedIds, draftedPlayerKeys, players])
 
   const injuryNameSet = useMemo(() => new Set((data.injuries || []).map((item) => playerKey(item.name))), [data.injuries])
   const rookieNameSet = useMemo(() => new Set((data.rookies || []).map((item) => playerKey(item.name))), [data.rookies])
@@ -1103,10 +1120,13 @@ function App() {
       {activeTab === 'players' ? (
         <PlayersBoard
           availableCount={availablePlayers.length}
+          displayedCount={displayedPlayers.length}
+          draftedIds={draftedIds}
+          draftedPlayerKeys={draftedPlayerKeys}
           leagueName={selectedLeague.name}
           leagueTeams={selectedLeague.lineup.teams}
           playersByPosition={playersByPosition}
-          quarterbackTracker={quarterbackTracker}
+          positionTierAvailability={positionTierAvailability}
           query={query}
           recommendations={recommendations}
           recommendationRosterLabel={`Pick ${selectedDraftSlot} · ${selectedDraftTeamName} · ${selectedRosterSize} drafted`}
@@ -1116,8 +1136,10 @@ function App() {
           watchlistRecommendations={watchlistRecommendations}
           togglePosition={togglePosition}
           visiblePositions={visiblePositions}
+          showDraftedPlayers={showDraftedPlayers}
           onPlayerSelect={setSelectedPlayer}
           onQueryChange={setQuery}
+          onShowDraftedPlayersChange={setShowDraftedPlayers}
           onStrategyChange={setRecommendationStrategy}
           onToggleWatchlist={toggleWatchlist}
           onClearWatchlist={clearWatchlist}
@@ -3691,35 +3713,15 @@ function mergeClientEnrichment(enrichments: Map<string, Partial<Player>>, name: 
   keys.forEach((key) => enrichments.set(key, { ...(enrichments.get(key) || {}), ...patch }))
 }
 
-function buildQuarterbackTracker(players: RankedPlayer[], undraftedPlayers: RankedPlayer[], draft: DraftState): QuarterbackTrackerData {
-  const quarterbacks = players.filter((player) => player.position === 'QB')
-  const remainingQuarterbacks = undraftedPlayers.filter((player) => player.position === 'QB')
-  const quarterbackById = new Map(quarterbacks.map((player) => [player.id, player]))
-  const quarterbackByName = new Map(quarterbacks.map((player) => [playerKey(player.name), player]))
-  const drafted = draft.drafted.filter((pick) => (
-    pick.position === 'QB' ||
-    quarterbackById.has(pick.playerId) ||
-    Boolean(pick.playerName && quarterbackByName.has(playerKey(pick.playerName)))
-  )).length
-  const tierNumbers = Array.from({ length: 8 }, (_, index) => index + 1)
-
-  return {
-    drafted,
-    remaining: remainingQuarterbacks.length,
-    tiers: tierNumbers.map((tier) => ({
-      tier,
-      total: quarterbacks.filter((player) => player.tier === tier).length,
-      remaining: remainingQuarterbacks.filter((player) => player.tier === tier).length,
-    })),
-  }
-}
-
 function PlayersBoard({
   availableCount,
+  displayedCount,
+  draftedIds,
+  draftedPlayerKeys,
   leagueName,
   leagueTeams,
   playersByPosition,
-  quarterbackTracker,
+  positionTierAvailability,
   query,
   recommendations,
   recommendationRosterLabel,
@@ -3729,17 +3731,22 @@ function PlayersBoard({
   watchlistRecommendations,
   togglePosition,
   visiblePositions,
+  showDraftedPlayers,
   onPlayerSelect,
   onQueryChange,
+  onShowDraftedPlayersChange,
   onStrategyChange,
   onToggleWatchlist,
   onClearWatchlist,
 }: {
   availableCount: number
+  displayedCount: number
+  draftedIds: ReadonlySet<string>
+  draftedPlayerKeys: ReadonlySet<string>
   leagueName: string
   leagueTeams: number
   playersByPosition: Record<Position, RankedPlayer[]>
-  quarterbackTracker: QuarterbackTrackerData
+  positionTierAvailability: PositionTierAvailability
   query: string
   recommendations: Recommendation[]
   recommendationRosterLabel: string
@@ -3749,8 +3756,10 @@ function PlayersBoard({
   watchlistRecommendations: Recommendation[]
   togglePosition: (position: Position) => void
   visiblePositions: Record<Position, boolean>
+  showDraftedPlayers: boolean
   onPlayerSelect: (player: RankedPlayer) => void
   onQueryChange: (query: string) => void
+  onShowDraftedPlayersChange: (showDrafted: boolean) => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
   onToggleWatchlist: (playerId: string) => void
   onClearWatchlist: () => void
@@ -3762,7 +3771,11 @@ function PlayersBoard({
       <section className="playerListPanel">
         <div className="playerListHeader">
           <h2>Available Players - {leagueName}</h2>
-          <div className="playerCount">{availableCount} player{availableCount === 1 ? '' : 's'} available</div>
+          <div className="playerCount">
+            {showDraftedPlayers
+              ? `${displayedCount} shown · ${availableCount} available`
+              : `${availableCount} player${availableCount === 1 ? '' : 's'} available`}
+          </div>
         </div>
 
         <WatchlistComparison
@@ -3780,35 +3793,59 @@ function PlayersBoard({
             <span className="srOnly">Search available players</span>
             <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
           </label>
-          <div className="positionToggles" aria-label="Visible position columns">
-            {POSITION_ORDER.map((position) => (
-              <button
-                className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
-                key={position}
-                onClick={() => togglePosition(position)}
-                aria-pressed={visiblePositions[position]}
-                type="button"
-              >
-                {position}
-              </button>
-            ))}
+          <div className="playerControlActions">
+            <button
+              aria-pressed={showDraftedPlayers}
+              className={`draftedVisibilityToggle ${showDraftedPlayers ? 'active' : ''}`}
+              onClick={() => onShowDraftedPlayersChange(!showDraftedPlayers)}
+              type="button"
+            >
+              {showDraftedPlayers ? 'Hide drafted' : 'Show drafted'}
+            </button>
+            <div className="positionToggles" aria-label="Visible position columns">
+              {POSITION_ORDER.map((position) => (
+                <button
+                  className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
+                  key={position}
+                  onClick={() => togglePosition(position)}
+                  aria-pressed={visiblePositions[position]}
+                  type="button"
+                >
+                  {position}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="playersContainer">
-          {availableCount === 0 ? (
-            <div className="noPlayers">All players have been drafted.</div>
+          {displayedCount === 0 ? (
+            <div className="noPlayers">{query ? 'No matching players.' : 'All players have been drafted.'}</div>
           ) : (
             <section className="positionColumns">
               {activePositions.map((position) => (
                 <div className={`positionColumn positionColumn${position}`} key={position}>
                   <div className="positionHeader">
                     <span className="positionLabel">{position}</span>
-                    <span className="positionCount">({playersByPosition[position].length})</span>
+                    <div className="positionTierCounts" aria-label={`${position} tier availability`}>
+                      {HEADER_TIER_COLOR_ORDER.map((color) => {
+                        const count = positionTierAvailability[position][color]
+                        return (
+                          <span
+                            className={`positionTierCount ${color}`}
+                            key={color}
+                            title={`${HEADER_TIER_LABELS[color]}: ${count.available} of ${count.total} available`}
+                          >
+                            {count.available}/{count.total}
+                          </span>
+                        )
+                      })}
+                    </div>
                   </div>
                   <div className="positionPlayers">
                     {playersByPosition[position].map((player) => (
                       <PlayerSummary
+                        isDrafted={isDraftedPlayer(player, draftedIds, draftedPlayerKeys)}
                         isWatched={watchlistIdSet.has(player.id)}
                         key={player.id}
                         leagueTeams={leagueTeams}
@@ -3828,11 +3865,6 @@ function PlayersBoard({
       </section>
 
       <aside className="shortlistRail">
-        <QuarterbackTracker
-          data={quarterbackTracker}
-          isVisible={visiblePositions.QB}
-          onToggle={() => togglePosition('QB')}
-        />
         <div className="shortlistHeader">
           <div><h3>Recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small><small className="rosterBasis">{recommendationRosterLabel}</small></div>
           <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><div className="shortlistCount">{recommendations.length} ranked</div></div>
@@ -3869,57 +3901,12 @@ function PlayersBoard({
   )
 }
 
-function QuarterbackTracker({
-  data,
-  isVisible,
-  onToggle,
-}: {
-  data: QuarterbackTrackerData
-  isVisible: boolean
-  onToggle: () => void
-}) {
-  return (
-    <section aria-labelledby="quarterback-tracker-title" className="quarterbackTracker">
-      <div className="quarterbackTrackerHeader">
-        <div>
-          <span>QB market</span>
-          <h3 id="quarterback-tracker-title">Quarterback tracker</h3>
-        </div>
-        <button aria-pressed={isVisible} className="quarterbackTrackerToggle" onClick={onToggle} type="button">
-          {isVisible ? 'Hide QBs' : 'Show QBs'}
-        </button>
-      </div>
-      <div className="quarterbackTrackerSummary">
-        <div><strong>{data.drafted}</strong><span>drafted</span></div>
-        <div><strong>{data.remaining}</strong><span>available</span></div>
-      </div>
-      <div aria-label="Quarterbacks remaining by tier" className="quarterbackTierGrid">
-        {data.tiers.map((tier) => (
-          <div
-            className={`quarterbackTier ${getQuarterbackTierAvailabilityClass(tier.remaining)}`}
-            key={tier.tier}
-            title={`${tier.remaining} of ${tier.total} quarterbacks remaining`}
-          >
-            <span>T{tier.tier}</span>
-            <strong>{tier.remaining}/{tier.total}</strong>
-            <small>left</small>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function getQuarterbackTierAvailabilityClass(remaining: number) {
-  if (remaining === 0) return 'empty'
-  return remaining < 3 ? 'low' : 'healthy'
-}
-
 type PlayerSummaryProps = {
   player: RankedPlayer
   leagueTeams: number
   variant: 'shortlist' | 'column'
   isWatched: boolean
+  isDrafted?: boolean
   onPlayerSelect: (player: RankedPlayer) => void
   onToggleWatchlist: (playerId: string) => void
 }
@@ -3929,6 +3916,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
   leagueTeams,
   variant,
   isWatched,
+  isDrafted = false,
   onPlayerSelect,
   onToggleWatchlist,
 }: PlayerSummaryProps) {
@@ -3958,7 +3946,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
   }
 
   return (
-    <div className={isWatched ? 'playerItem watchedPlayerItem' : 'playerItem'} style={{ borderLeftColor: tierColor }}>
+    <div className={`playerItem${isWatched ? ' watchedPlayerItem' : ''}${isDrafted ? ' draftedPlayerItem' : ''}`} style={{ borderLeftColor: tierColor }}>
       <div className="playerRank" style={{ color: tierColor }}>
         <strong>#{player.rank}</strong>
         <small>{player.posRank || '—'}</small>
@@ -3966,19 +3954,20 @@ const PlayerSummary = React.memo(function PlayerSummary({
       <div className="playerIdentity" style={{ color: tierColor }}>
         <button className="playerNameButton" onClick={() => onPlayerSelect(player)} type="button">{player.name}</button>
         <span className="playerSecondaryMeta">
+          {isDrafted ? <span className="draftedPlayerBadge">Drafted</span> : null}
           {compactScheduleStats.map((stat) => <span className="scheduleValue" key={stat}>{stat}</span>)}
           {player.injury ? <span className="injuryDot">I</span> : null}
           {player.rookie ? <span className="rookieDot">R</span> : null}
         </span>
       </div>
       <div className="playerStatStack">
-        <span title={player.adp ? `Overall ADP #${player.adp.toFixed(1)}` : 'ADP unavailable'}>
-          <small>ADP</small>
-          <strong>{adpLabel}</strong>
-        </span>
         <span title={`${player.projectedPoints.toFixed(1)} projected season points`}>
           <small>Proj</small>
           <strong style={{ color: tierColor }}>{projectedPointsPerGame}</strong>
+        </span>
+        <span title={player.adp ? `Overall ADP #${player.adp.toFixed(1)}` : 'ADP unavailable'}>
+          <small>ADP</small>
+          <strong>{adpLabel}</strong>
         </span>
         <span title={getAdpValueTitle(player)}>
           <small>Value</small>
@@ -4064,6 +4053,35 @@ function getTierColor(tier: number | undefined) {
   if (tier <= 8) return '#dd6b20'
   if (tier <= 10) return '#e53e3e'
   return '#718096'
+}
+
+function getHeaderTierColor(tier: number | undefined): HeaderTierColor | undefined {
+  if (!tier || tier < 3 || tier > 10) return undefined
+  if (tier <= 4) return 'green'
+  if (tier <= 6) return 'yellow'
+  if (tier <= 8) return 'orange'
+  return 'red'
+}
+
+function createEmptyPositionTierAvailability(): PositionTierAvailability {
+  const createCounts = (): Record<HeaderTierColor, TierAvailabilityCount> => ({
+    red: { available: 0, total: 0 },
+    green: { available: 0, total: 0 },
+    yellow: { available: 0, total: 0 },
+    orange: { available: 0, total: 0 },
+  })
+  return {
+    QB: createCounts(),
+    RB: createCounts(),
+    WR: createCounts(),
+    TE: createCounts(),
+    K: createCounts(),
+    DST: createCounts(),
+  }
+}
+
+function isDraftedPlayer(player: RankedPlayer, draftedIds: ReadonlySet<string>, draftedPlayerKeys: ReadonlySet<string>) {
+  return draftedIds.has(player.id) || draftedPlayerKeys.has(playerKey(player.name))
 }
 
 function SettingsPanel({
