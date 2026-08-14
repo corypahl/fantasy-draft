@@ -3934,8 +3934,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
         </span>
         <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
-          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
-          {player.adp ? <> | <span className={`adpValueBadge compact ${adpValueBand.tone}`} title={getAdpValueTitle(player)}>{adpValueBand.label}</span></> : null}
+          {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | <span className={`adpValueText compact ${adpValueBand.tone}`} title={getAdpValueTitle(player)}>{adpLabel}</span>
           {compactScheduleStats.length ? ` | ${compactScheduleStats.join(' | ')}` : ''}
         </span>
         <span className="playerQuickActions">
@@ -3965,13 +3964,9 @@ const PlayerSummary = React.memo(function PlayerSummary({
           <small>Proj</small>
           <strong style={{ color: tierColor }}>{projectedPointsPerGame}</strong>
         </span>
-        <span title={player.adp ? `Overall ADP #${player.adp.toFixed(1)}` : 'ADP unavailable'}>
-          <small>ADP</small>
-          <strong>{adpLabel}</strong>
-        </span>
         <span title={getAdpValueTitle(player)}>
-          <small>Value</small>
-          <strong className={`adpValueBadge ${adpValueBand.tone}`}>{adpValueBand.label}</strong>
+          <small>ADP</small>
+          <strong className={`adpValueText ${adpValueBand.tone}`}>{adpLabel}</strong>
         </span>
       </div>
       <span className="playerQuickActions compactActions">
