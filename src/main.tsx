@@ -3952,27 +3952,29 @@ const PlayerSummary = React.memo(function PlayerSummary({
   return (
     <div className={isWatched ? 'playerItem watchedPlayerItem' : 'playerItem'} style={{ borderLeftColor: tierColor }}>
       <div className="playerRank" style={{ color: tierColor }}>
-        #{player.rank}
+        <strong>#{player.rank}</strong>
+        <small>{player.posRank || '—'}</small>
       </div>
-      <div className="playerName" style={{ color: tierColor }}>
+      <div className="playerIdentity" style={{ color: tierColor }}>
         <button className="playerNameButton" onClick={() => onPlayerSelect(player)} type="button">{player.name}</button>
-        <span className="playerInlineMeta">
-          {adpLabel !== '-' ? (
-            <span className="adpValue" title={player.adp ? `Overall average rank ${player.adp.toFixed(1)}` : ''}>
-              ({adpLabel})
-            </span>
-          ) : null}
-          {player.adp ? (
-            <span className={`rankAdpDelta ${getAdpValueTone(player)}`} title={getAdpValueTitle(player)}>
-              {formatCompactAdpValue(player)}
-            </span>
-          ) : null}
-          <span className="projectionValue" style={{ color: tierColor }} title={`${player.projectedPoints.toFixed(1)} projected season points`}>
-            {projectedPointsPerGame}
-          </span>
+        <span className="playerSecondaryMeta">
           {compactScheduleStats.map((stat) => <span className="scheduleValue" key={stat}>{stat}</span>)}
           {player.injury ? <span className="injuryDot">I</span> : null}
           {player.rookie ? <span className="rookieDot">R</span> : null}
+        </span>
+      </div>
+      <div className="playerStatStack">
+        <span title={player.adp ? `Overall ADP #${player.adp.toFixed(1)}` : 'ADP unavailable'}>
+          <small>ADP</small>
+          <strong>{adpLabel}</strong>
+        </span>
+        <span title={`${player.projectedPoints.toFixed(1)} projected season points`}>
+          <small>Proj</small>
+          <strong style={{ color: tierColor }}>{projectedPointsPerGame}</strong>
+        </span>
+        <span title={getAdpValueTitle(player)}>
+          <small>Value</small>
+          <strong className={`rankAdpDelta ${getAdpValueTone(player)}`}>{formatCompactAdpValue(player)}</strong>
         </span>
       </div>
       <span className="playerQuickActions compactActions">
@@ -4004,6 +4006,7 @@ function getAdpValueTone(player: RankedPlayer) {
 }
 
 function getAdpValueTitle(player: RankedPlayer) {
+  if (!player.adp) return 'Rank vs ADP unavailable'
   return `Rank vs ADP: ${formatCompactAdpValue(player)} (rank #${player.rank}, ADP #${player.adp?.toFixed(1)})`
 }
 
