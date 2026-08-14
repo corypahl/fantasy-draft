@@ -1131,7 +1131,7 @@ h3 {
   text-align: center;
 }
 
-.positionTierCount.red { color: #fc8181; }
+.positionTierCount.blue { color: #63b3ed; }
 .positionTierCount.green { color: #68d391; }
 .positionTierCount.yellow { color: #faf089; }
 .positionTierCount.orange { color: #f6ad55; }

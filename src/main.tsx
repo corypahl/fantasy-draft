@@ -160,7 +160,7 @@ type RosterHealth = {
   coverage: RosterSlotHealth[]
 }
 
-type HeaderTierColor = 'red' | 'green' | 'yellow' | 'orange'
+type HeaderTierColor = 'blue' | 'green' | 'yellow' | 'orange'
 type TierAvailabilityCount = { available: number; total: number }
 type PositionTierAvailability = Record<Position, Record<HeaderTierColor, TierAvailabilityCount>>
 
@@ -266,9 +266,9 @@ type SleeperDetail = {
 }
 
 const POSITION_ORDER: Position[] = ['QB', 'RB', 'WR', 'TE', 'K', 'DST']
-const HEADER_TIER_COLOR_ORDER: HeaderTierColor[] = ['red', 'green', 'yellow', 'orange']
+const HEADER_TIER_COLOR_ORDER: HeaderTierColor[] = ['blue', 'green', 'yellow', 'orange']
 const HEADER_TIER_LABELS: Record<HeaderTierColor, string> = {
-  red: 'Red tier (T9-T10)',
+  blue: 'Blue tier (T1-T2)',
   green: 'Green tier (T3-T4)',
   yellow: 'Yellow tier (T5-T6)',
   orange: 'Orange tier (T7-T8)',
@@ -4051,16 +4051,16 @@ function getTierColor(tier: number | undefined) {
 }
 
 function getHeaderTierColor(tier: number | undefined): HeaderTierColor | undefined {
-  if (!tier || tier < 3 || tier > 10) return undefined
+  if (!tier || tier > 8) return undefined
+  if (tier <= 2) return 'blue'
   if (tier <= 4) return 'green'
   if (tier <= 6) return 'yellow'
-  if (tier <= 8) return 'orange'
-  return 'red'
+  return 'orange'
 }
 
 function createEmptyPositionTierAvailability(): PositionTierAvailability {
   const createCounts = (): Record<HeaderTierColor, TierAvailabilityCount> => ({
-    red: { available: 0, total: 0 },
+    blue: { available: 0, total: 0 },
     green: { available: 0, total: 0 },
     yellow: { available: 0, total: 0 },
     orange: { available: 0, total: 0 },
