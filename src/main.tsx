@@ -411,6 +411,7 @@ type DraftState = {
   teamNames: string[]
   sleeperDraftId?: string
   source?: 'manual' | 'sleeper' | 'espn'
+  sessionType?: 'live' | 'mock'
   status?: string
   totalRounds?: number
   leagueName?: string
@@ -610,6 +611,10 @@ function normalizeLeagueProfile(profile: LeagueProfile): LeagueProfile {
   }
 }
 
+function getDraftSessionType(draft: DraftState) {
+  return draft.sessionType || (draft.source === 'sleeper' || draft.source === 'espn' ? 'live' : undefined)
+}
+
 function App() {
   const [data, setData] = useState<RankingsFile>(seedData)
   const [profiles, setProfiles] = useState<LeagueProfile[]>(() => loadLocal<LeagueProfile[]>('league-profiles', leagueProfiles).map(normalizeLeagueProfile))
@@ -644,15 +649,20 @@ function App() {
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
+  const draftSessionType = getDraftSessionType(draft)
   const draftTeamCount = draft.teamNames.length || selectedLeague.lineup.teams
   const selectedDraftSlot = clampLeagueDraftSlot(selectedLeague, draftTeamCount)
   const selectedDraftTeamName = draft.teamNames[selectedDraftSlot - 1] || `Team ${selectedDraftSlot}`
   const selectedRosterSize = getDraftedRosterForSlot(draft, selectedDraftSlot).length
 
   useEffect(() => {
-    setDraftInput(draft.sleeperDraftId || selectedLeague.externalLeagueId || '')
+    setDraftInput(draftSessionType === 'mock' ? draft.sleeperDraftId || '' : '')
+  }, [draftSessionType, draft.sleeperDraftId, selectedLeague.id])
+
+  useEffect(() => {
     setSyncStatus('')
-  }, [draft.sleeperDraftId, selectedLeague.externalLeagueId, selectedLeague.id])
+    setAutoSync(false)
+  }, [selectedLeague.id])
 
   useEffect(() => {
     const onHashChange = () => setActiveTab(getTabFromHash())
@@ -927,33 +937,66 @@ function App() {
   }
 
   const syncDraftState = useCallback(async (quiet = false) => {
-    const sourceId = draftInput.trim() || selectedLeague.externalLeagueId
+    const sourceId = draftInput.trim()
     if (!sourceId) {
-      setSyncStatus(`Enter a ${selectedLeague.platform === 'sleeper' ? 'Sleeper draft or league' : 'league'} ID.`)
+      setSyncStatus('Enter a Sleeper mock draft ID.')
       return
     }
-    if (!quiet) setSyncStatus(`Loading ${selectedLeague.platform === 'sleeper' ? 'Sleeper' : 'ESPN'} draft...`)
+    if (!quiet) setSyncStatus('Loading Sleeper mock draft...')
     setIsSyncing(true)
     try {
-      const nextDraft = selectedLeague.platform === 'sleeper'
-        ? await fetchSleeperDraftState(sourceId, selectedLeague, draft)
-        : await fetchManagedDraftState(draft, selectedLeague)
+      const nextDraft = await fetchSleeperDraftState(sourceId, selectedLeague, draft, 'mock')
       updateDraft(nextDraft)
       setRemoteDraftReadyByLeague((current) => ({ ...current, [selectedLeague.id]: true }))
       setDraftInput(nextDraft.sleeperDraftId || sourceId)
       setSyncStatus(`Synced ${nextDraft.drafted.length} picks at ${new Date().toLocaleTimeString()}.`)
     } catch (error) {
-      setSyncStatus(error instanceof Error ? error.message : `Unable to load ${selectedLeague.platform.toUpperCase()} draft.`)
+      setSyncStatus(error instanceof Error ? error.message : 'Unable to load Sleeper mock draft.')
     } finally {
       setIsSyncing(false)
     }
   }, [draft, draftInput, selectedLeague])
 
+  const syncLeagueDraftState = useCallback(async (quiet = false) => {
+    const sourceId = selectedLeague.externalLeagueId.trim()
+    if (!sourceId) {
+      setSyncStatus(`Enter the ${selectedLeague.platform.toUpperCase()} league ID on the Leagues page first.`)
+      return
+    }
+    if (!quiet) setSyncStatus(`Loading ${selectedLeague.platform.toUpperCase()} live draft...`)
+    setIsSyncing(true)
+    try {
+      const baseDraft = draftSessionType === 'mock' ? createDraftState(selectedLeague) : draft
+      const nextDraft = selectedLeague.platform === 'sleeper'
+        ? await fetchSleeperDraftState(sourceId, selectedLeague, baseDraft, 'live')
+        : await fetchManagedDraftState(baseDraft, selectedLeague)
+      updateDraft(nextDraft)
+      setRemoteDraftReadyByLeague((current) => ({ ...current, [selectedLeague.id]: true }))
+      setDraftInput('')
+      setSyncStatus(`Synced ${nextDraft.drafted.length} live picks at ${new Date().toLocaleTimeString()}.`)
+    } catch (error) {
+      setSyncStatus(error instanceof Error ? error.message : `Unable to load ${selectedLeague.platform.toUpperCase()} live draft.`)
+    } finally {
+      setIsSyncing(false)
+    }
+  }, [draft, draftSessionType, selectedLeague])
+
+  function resetMockDraft() {
+    if (draft.drafted.length && !window.confirm(`Reset ${selectedLeague.name}'s draft session and restore every player?`)) return
+    updateDraft(createDraftState(selectedLeague))
+    setDraftInput('')
+    setAutoSync(false)
+    setSyncStatus('Draft session reset. The full player pool is available again.')
+  }
+
   useEffect(() => {
     if (!autoSync || activeTab !== 'board') return
-    const timer = window.setInterval(() => void syncDraftState(true), 15000)
+    const timer = window.setInterval(
+      () => void (draftSessionType === 'live' ? syncLeagueDraftState(true) : syncDraftState(true)),
+      15000,
+    )
     return () => window.clearInterval(timer)
-  }, [activeTab, autoSync, syncDraftState])
+  }, [activeTab, autoSync, draftSessionType, syncDraftState, syncLeagueDraftState])
 
   function navigateTab(tab: AppTab) {
     if (tab === activeTab) return
@@ -1099,7 +1142,9 @@ function App() {
           onDraftSlotChange={(draftSlot) => updateLeague({ draftSlot })}
           onPlayerSelect={setSelectedPlayer}
           onStrategyChange={setRecommendationStrategy}
+          onSyncLiveDraft={() => void syncLeagueDraftState(false)}
           onSyncDraft={() => void syncDraftState(false)}
+          onResetDraft={resetMockDraft}
         />
       ) : null}
 
@@ -1977,7 +2022,9 @@ function DraftBoardPage({
   onDraftInputChange,
   onDraftSlotChange,
   onPlayerSelect,
+  onResetDraft,
   onStrategyChange,
+  onSyncLiveDraft,
   onSyncDraft,
 }: {
   draft: DraftState
@@ -1995,7 +2042,9 @@ function DraftBoardPage({
   onDraftInputChange: (value: string) => void
   onDraftSlotChange: (slot: number) => void
   onPlayerSelect: (player: RankedPlayer) => void
+  onResetDraft: () => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
+  onSyncLiveDraft: () => void
   onSyncDraft: () => void
 }) {
   const totalTeams = draft.teamNames.length || league.lineup.teams
@@ -2017,6 +2066,9 @@ function DraftBoardPage({
   const userTeamName = draft.teamNames[userSlot - 1] || `Team ${userSlot}`
   const userRoster = getDraftedRosterForSlot(draft, userSlot)
   const isUserPick = currentLocation.slot === userSlot
+  const draftSessionType = getDraftSessionType(draft)
+  const hasMockDraft = draftSessionType === 'mock'
+  const hasActiveDraft = Boolean(draft.drafted.length || draft.lastSyncedAt || draft.sleeperDraftId)
 
   return (
     <section className="panel pagePanel draftBoardPanel">
@@ -2025,22 +2077,29 @@ function DraftBoardPage({
           <h2>Draft Board</h2>
           <div className="draftBoardMeta">
             <span>{league.name}</span>
+            <span>{hasMockDraft ? 'Sleeper mock' : draftSessionType === 'live' ? `${league.platform.toUpperCase()} live` : hasActiveDraft ? 'Connected draft' : 'Base player set'}</span>
             {draft.leagueName ? <span>{draft.leagueName}</span> : null}
             {draft.status ? <span>{draft.status.replace(/_/g, ' ')}</span> : null}
             {draft.lastSyncedAt ? <span>Synced {new Date(draft.lastSyncedAt).toLocaleTimeString()}</span> : null}
           </div>
         </div>
-        <div className="draftSync">
-          <input
-            aria-label={`${league.platform === 'sleeper' ? 'Sleeper draft or league' : 'ESPN league'} ID`}
-            placeholder={`${league.platform === 'sleeper' ? 'Sleeper draft or league' : 'ESPN league'} ID`}
-            value={draftInput}
-            onChange={(event) => onDraftInputChange(event.target.value)}
-          />
-          <button className="iconTextButton" disabled={isSyncing} onClick={onSyncDraft} type="button">
-            <RefreshCw className={isSyncing ? 'spin' : ''} size={15} /> {isSyncing ? 'Syncing' : `Sync ${league.platform.toUpperCase()}`}
+        <form className="draftSync" onSubmit={(event) => { event.preventDefault(); onSyncDraft() }}>
+          <label className="mockDraftIdField">
+            <span>Sleeper mock draft ID</span>
+            <input
+              inputMode="numeric"
+              placeholder="Enter draft ID"
+              value={draftInput}
+              onChange={(event) => onDraftInputChange(event.target.value)}
+            />
+          </label>
+          <button className="iconTextButton" disabled={isSyncing || !draftInput.trim()} type="submit">
+            <RefreshCw className={isSyncing ? 'spin' : ''} size={15} /> {isSyncing ? 'Syncing' : hasMockDraft ? 'Update mock' : 'Start mock'}
           </button>
-        </div>
+          <button className="iconTextButton resetDraftButton" disabled={isSyncing || !hasActiveDraft} onClick={onResetDraft} type="button">
+            <Trash2 size={15} /> Reset
+          </button>
+        </form>
       </div>
       <div className={`onClockBanner ${isUserPick ? 'userPick' : ''}`}>
         <div>
@@ -2048,6 +2107,9 @@ function DraftBoardPage({
           <strong>{isUserPick ? 'You are on the clock' : `${currentTeam} is on the clock`}</strong>
         </div>
         <div className="draftActions">
+          <button className="iconTextButton liveDraftButton" disabled={isSyncing || !league.externalLeagueId.trim()} onClick={onSyncLiveDraft} type="button">
+            <RefreshCw className={isSyncing && draftSessionType === 'live' ? 'spin' : ''} size={14} /> Sync {league.platform.toUpperCase()} live
+          </button>
           <label className="draftSlotSelector">
             <span>Your draft position</span>
             <select aria-label="Your draft position" value={userSlot} onChange={(event) => onDraftSlotChange(Number(event.target.value))}>
@@ -2055,8 +2117,8 @@ function DraftBoardPage({
             </select>
           </label>
           <label className="autoSyncToggle">
-            <input checked={autoSync} onChange={(event) => onAutoSyncChange(event.target.checked)} type="checkbox" />
-            Auto-sync
+            <input checked={autoSync} disabled={!hasActiveDraft} onChange={(event) => onAutoSyncChange(event.target.checked)} type="checkbox" />
+            Auto-sync {draftSessionType === 'live' ? 'live draft' : 'mock'}
           </label>
         </div>
       </div>
@@ -3431,10 +3493,10 @@ async function fetchManagedDraftState(currentDraft: DraftState, league: LeaguePr
   if (!response.ok) throw new Error(`ESPN draft sync failed (${response.status}). Keep drafting in ESPN and retry sync here.`)
   const payload: { draft?: DraftState } = await response.json()
   if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Recommendations will update when the managed feed starts.')
-  return { ...payload.draft, leagueId: league.id, source: 'espn', lastSyncedAt: new Date().toISOString() }
+  return { ...payload.draft, leagueId: league.id, source: 'espn', sessionType: 'live', lastSyncedAt: new Date().toISOString() }
 }
 
-async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, currentDraft: DraftState): Promise<DraftState> {
+async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, currentDraft: DraftState, sessionType: 'live' | 'mock' = 'live'): Promise<DraftState> {
   const draftData = await resolveSleeperDraft(sourceId)
   const draftId = String(draftData.draft_id || sourceId)
   const draftOrderUserIds = Object.keys(draftData.draft_order || {})
@@ -3475,9 +3537,10 @@ async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, c
     teamNames,
     sleeperDraftId: draftId,
     source: 'sleeper',
+    sessionType,
     status: draftData.status || 'unknown',
     totalRounds,
-    leagueName: draftData.metadata?.name || draftData.league_id || league.name,
+    leagueName: draftData.metadata?.name || draftData.league_id || (sessionType === 'mock' ? `${league.name} mock` : league.name),
     lastSyncedAt: new Date().toISOString(),
   }
 }

@@ -6,7 +6,8 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 
 - Create, duplicate, edit, or import Sleeper/managed ESPN league profiles.
 - Validate scoring anomalies before they affect projections or recommendations.
-- Sync platform draft state and enable 15-second auto-sync while picks remain controlled by the league platform.
+- Connect any league profile to a Sleeper mock draft ID, update picks on demand or every 15 seconds, and reset back to the full player pool between mocks.
+- Keep the existing Sleeper and managed ESPN live-draft sync available as a separate Board action.
 - Forecast every owner's next two selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players also appear as dashed picks directly on the live board.
 - Monitor personalized positional-run alerts and live roster health, including starter and flex coverage, projected starting PPG, bye conflicts, and prioritized remaining needs.
 - Draft from a QB/RB/WR/TE player view while a persistent quarterback tracker shows how many QBs have been drafted and how many remain in every tier.
@@ -55,6 +56,10 @@ The app is set up for three draft companion profiles:
 Each profile has its own platform, league/team IDs, lineup rules, scoring rules, and ranking set. The scraper pulls one common projection dataset, and the browser recalculates projected fantasy points per selected league. Ranking context can still differ by league through the selected `standard`, `halfPpr`, or `ppr` ranking set.
 
 League settings are synced into the `fantasy-leagues` DynamoDB table by `scripts/sync_leagues.py`. Sleeper settings come from public league endpoints. ESPN settings use repository secrets for the private ESPN cookies.
+
+## Mock drafts
+
+Select the league profile whose rules you want to use, open the Board tab, and enter the ID from the Sleeper mock draft. `Start mock` loads the current picks, `Update mock` refreshes them on demand, and auto-sync checks Sleeper every 15 seconds. The selected profile continues to control scoring, rankings, roster needs, and recommendations even when the profile is an ESPN league. Use `Reset` to disconnect the session, clear every pick, and restore the base player pool before starting another mock.
 
 ## Deploy AWS
 
