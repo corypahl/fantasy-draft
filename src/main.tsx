@@ -161,7 +161,7 @@ type RosterHealth = {
 }
 
 type QuarterbackTierStatus = {
-  tier?: number
+  tier: number
   remaining: number
   total: number
 }
@@ -3694,16 +3694,15 @@ function buildQuarterbackTracker(players: RankedPlayer[], undraftedPlayers: Rank
     quarterbackById.has(pick.playerId) ||
     Boolean(pick.playerName && quarterbackByName.has(playerKey(pick.playerName)))
   )).length
-  const tierKeys = Array.from(new Set(quarterbacks.map((player) => player.tier && player.tier > 0 ? player.tier : undefined)))
-    .sort((a, b) => (a ?? Number.POSITIVE_INFINITY) - (b ?? Number.POSITIVE_INFINITY))
+  const tierNumbers = Array.from({ length: 8 }, (_, index) => index + 1)
 
   return {
     drafted,
     remaining: remainingQuarterbacks.length,
-    tiers: tierKeys.map((tier) => ({
+    tiers: tierNumbers.map((tier) => ({
       tier,
-      total: quarterbacks.filter((player) => player.tier === tier || (!tier && !player.tier)).length,
-      remaining: remainingQuarterbacks.filter((player) => player.tier === tier || (!tier && !player.tier)).length,
+      total: quarterbacks.filter((player) => player.tier === tier).length,
+      remaining: remainingQuarterbacks.filter((player) => player.tier === tier).length,
     })),
   }
 }
@@ -3890,19 +3889,23 @@ function QuarterbackTracker({
       <div aria-label="Quarterbacks remaining by tier" className="quarterbackTierGrid">
         {data.tiers.map((tier) => (
           <div
-            className={tier.remaining ? 'quarterbackTier' : 'quarterbackTier depleted'}
-            key={tier.tier ?? 'unranked'}
-            style={{ borderColor: getTierColor(tier.tier) }}
+            className={`quarterbackTier ${getQuarterbackTierAvailabilityClass(tier.remaining)}`}
+            key={tier.tier}
             title={`${tier.remaining} of ${tier.total} quarterbacks remaining`}
           >
-            <span>{tier.tier ? `T${tier.tier}` : 'Other'}</span>
-            <strong>{tier.remaining}</strong>
+            <span>T{tier.tier}</span>
+            <strong>{tier.remaining}/{tier.total}</strong>
             <small>left</small>
           </div>
         ))}
       </div>
     </section>
   )
+}
+
+function getQuarterbackTierAvailabilityClass(remaining: number) {
+  if (remaining === 0) return 'empty'
+  return remaining < 3 ? 'low' : 'healthy'
 }
 
 type PlayerSummaryProps = {

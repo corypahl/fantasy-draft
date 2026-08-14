@@ -1931,8 +1931,16 @@ h3 {
   text-transform: uppercase;
 }
 
-.quarterbackTier.depleted {
-  opacity: 0.46;
+.quarterbackTier.empty {
+  border-color: var(--accent-red);
+}
+
+.quarterbackTier.low {
+  border-color: var(--accent-yellow);
+}
+
+.quarterbackTier.healthy {
+  border-color: var(--accent-green);
 }
 
 .draftBoardCell.userTeam { background: rgba(56, 161, 105, 0.045); }
@@ -2801,7 +2809,7 @@ h3 {
   .watchCompareScrollHint { display: block; }
   .shortlistHeader { align-items: center; flex-direction: row; padding: 0.7rem; }
   .quarterbackTracker { gap: 0.5rem; padding: 0.65rem 0.7rem; }
-  .quarterbackTierGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .quarterbackTierGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .quarterbackTier small { display: none; }
   .shortlistHeader > div:first-child { min-width: 0; }
   .shortlistHeader small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
