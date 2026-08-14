@@ -1175,7 +1175,6 @@ h3 {
   font-weight: 800;
 }
 
-.rankAdpDelta,
 .scheduleValue,
 .injuryDot,
 .rookieDot {
@@ -1214,16 +1213,61 @@ h3 {
   white-space: nowrap;
 }
 
-.rankAdpDelta.positive {
-  color: var(--accent-green);
+.adpValueBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.08rem 0.25rem;
+  font-size: 0.48rem;
+  font-weight: 950;
+  letter-spacing: 0.025em;
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
-.rankAdpDelta.negative {
-  color: var(--accent-red);
+.playerStatStack .adpValueBadge {
+  justify-self: end;
+  overflow: visible;
 }
 
-.rankAdpDelta.neutral {
+.adpValueBadge.steal {
+  border-color: rgba(56, 161, 105, 0.9);
+  background: rgba(56, 161, 105, 0.28);
+  color: #c6f6d5;
+}
+
+.adpValueBadge.value {
+  border-color: rgba(56, 161, 105, 0.52);
+  background: rgba(56, 161, 105, 0.14);
+  color: #9ae6b4;
+}
+
+.adpValueBadge.fair,
+.adpValueBadge.unavailable {
+  border-color: rgba(113, 128, 150, 0.45);
+  background: rgba(113, 128, 150, 0.1);
   color: var(--text-secondary);
+}
+
+.adpValueBadge.pricey {
+  border-color: rgba(214, 158, 46, 0.65);
+  background: rgba(214, 158, 46, 0.14);
+  color: #faf089;
+}
+
+.adpValueBadge.fade {
+  border-color: rgba(229, 62, 62, 0.72);
+  background: rgba(229, 62, 62, 0.16);
+  color: #feb2b2;
+}
+
+.adpValueBadge.compact {
+  margin: 0 0.08rem;
+  vertical-align: 0.05rem;
 }
 
 .scheduleValue {
