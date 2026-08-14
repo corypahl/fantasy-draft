@@ -1395,7 +1395,7 @@ function WatchlistComparison({
         { key: 'position-rank', label: 'Position rank', value: (player) => player.posRank || '—', numeric: getPositionRankNumber, best: 'low', samePositionOnly: true },
         { key: 'tier', label: 'Tier', value: (player) => player.tier ? `Tier ${player.tier}` : '—', numeric: (player) => getFiniteComparisonValue(player.tier), best: 'low' },
         { key: 'adp', label: 'ADP', help: 'Round.pick with overall ADP in parentheses', value: (player) => player.adp ? `${formatAdpRoundPick(player.adp, leagueTeams)} (#${player.adp.toFixed(1)})` : '—' },
-        { key: 'adp-value', label: 'Value vs ADP', help: 'Market-value badge based on the gap between ranking and ADP', value: (player) => formatAdpValue(player, leagueTeams), numeric: getAdpValue, best: 'high' },
+        { key: 'adp-value', label: 'Value vs ADP', help: 'Market-value badge based on the rounded pick gap between ranking and ADP', value: formatAdpValue, numeric: getAdpValue, best: 'high' },
       ],
     },
     {
@@ -1572,10 +1572,10 @@ function getAdpValue(player: RankedPlayer) {
   return player.adp ? player.adp - player.rank : undefined
 }
 
-function formatAdpValue(player: RankedPlayer, leagueTeams: number) {
+function formatAdpValue(player: RankedPlayer) {
   const value = getAdpValue(player)
   if (value === undefined) return '—'
-  const band = getAdpValueBand(player, leagueTeams)
+  const band = getAdpValueBand(player)
   return `${band.label} (${formatRoundedAdpPickGap(value)})`
 }
 
@@ -3935,7 +3935,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
   const tierColor = getTierColor(player.tier)
   const positionColor = getPositionColor(player.position)
   const adpLabel = formatAdpRoundPick(player.adp, leagueTeams)
-  const adpValueBand = getAdpValueBand(player, leagueTeams)
+  const adpValueBand = getAdpValueBand(player)
   const projectedPointsPerGame = formatProjectedPointsPerGame(player.projectedPoints)
   const compactScheduleStats = getCompactScheduleStats(player)
   if (variant === 'shortlist') {
@@ -3947,7 +3947,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
         <button className="playerNameButton shortlistName" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
         <span className="shortlistMeta">
           {player.position}{player.posRank ? ` ${player.posRank.replace(player.position, '')}` : ''} | {projectedPointsPerGame} | {adpLabel}
-          {player.adp ? <> | <span className={`adpValueBadge compact ${adpValueBand.tone}`} title={getAdpValueTitle(player, leagueTeams)}>{adpValueBand.label}</span></> : null}
+          {player.adp ? <> | <span className={`adpValueBadge compact ${adpValueBand.tone}`} title={getAdpValueTitle(player)}>{adpValueBand.label}</span></> : null}
           {compactScheduleStats.length ? ` | ${compactScheduleStats.join(' | ')}` : ''}
         </span>
         <span className="playerQuickActions">
@@ -3980,7 +3980,7 @@ const PlayerSummary = React.memo(function PlayerSummary({
           <small>Proj</small>
           <strong style={{ color: tierColor }}>{projectedPointsPerGame}</strong>
         </span>
-        <span title={getAdpValueTitle(player, leagueTeams)}>
+        <span title={getAdpValueTitle(player)}>
           <small>Value</small>
           <strong className={`adpValueBadge ${adpValueBand.tone}`}>{adpValueBand.label}</strong>
         </span>
@@ -4000,23 +4000,21 @@ function formatAdpRoundPick(adp: number | undefined, teams: number) {
   return `${round}.${pick.toString().padStart(2, '0')}`
 }
 
-function getAdpValueBand(player: RankedPlayer, leagueTeams: number) {
+function getAdpValueBand(player: RankedPlayer) {
   const value = getAdpValue(player)
   if (value === undefined) return { label: '—', tone: 'unavailable' as const }
   const pickGap = Math.round(value)
-  const teams = Math.max(2, leagueTeams || 12)
-  const meaningfulGap = Math.max(1, Math.ceil(teams / 3))
-  if (pickGap >= teams) return { label: 'STEAL', tone: 'steal' as const }
-  if (pickGap >= meaningfulGap) return { label: 'VALUE', tone: 'value' as const }
-  if (pickGap <= -teams) return { label: 'FADE', tone: 'fade' as const }
-  if (pickGap <= -meaningfulGap) return { label: 'PRICEY', tone: 'pricey' as const }
+  if (pickGap >= 4) return { label: 'STEAL', tone: 'steal' as const }
+  if (pickGap >= 2) return { label: 'VALUE', tone: 'value' as const }
+  if (pickGap <= -4) return { label: 'FADE', tone: 'fade' as const }
+  if (pickGap <= -2) return { label: 'PRICEY', tone: 'pricey' as const }
   return { label: 'FAIR', tone: 'fair' as const }
 }
 
-function getAdpValueTitle(player: RankedPlayer, leagueTeams: number) {
+function getAdpValueTitle(player: RankedPlayer) {
   if (!player.adp) return 'Rank vs ADP unavailable'
   const value = getAdpValue(player) || 0
-  const band = getAdpValueBand(player, leagueTeams)
+  const band = getAdpValueBand(player)
   const roundedValue = Math.round(value)
   const explanation = roundedValue > 0
     ? `ranked ${roundedValue} ${roundedValue === 1 ? 'pick' : 'picks'} ahead of ADP`
