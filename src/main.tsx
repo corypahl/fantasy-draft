@@ -16,6 +16,7 @@ import {
   Search,
   Settings,
   Star,
+  Table2,
   Trash2,
   X,
 } from 'lucide-react'
@@ -25,6 +26,7 @@ type Position = 'QB' | 'RB' | 'WR' | 'TE' | 'K' | 'DST'
 type ScoringPreset = 'standard' | 'halfPpr' | 'ppr' | 'custom'
 type Platform = 'sleeper' | 'espn'
 type AppTab = 'players' | 'board' | 'consistency' | 'depth' | 'injuries' | 'rookies' | 'leagues'
+type PlayersView = 'columns' | 'table'
 type RecommendationStrategy = 'balanced' | 'upside' | 'safeFloor' | 'zeroRb'
 type DepthChartColumn = 'QB' | 'RB' | 'WR' | 'TE' | 'K'
 type DepthChartTeamRow = Record<DepthChartColumn, DepthChartEntry[]> & { team: string; projectedWinTotal?: number }
@@ -627,6 +629,9 @@ function App() {
   const [query, setQuery] = useState('')
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
   const [showDraftedPlayers, setShowDraftedPlayers] = useState(() => loadLocal('show-drafted-players', false))
+  const [playersView, setPlayersView] = useState<PlayersView>(() => (
+    loadLocal<PlayersView>('players-view', 'columns') === 'table' ? 'table' : 'columns'
+  ))
   const [activeTab, setActiveTab] = useState<AppTab>(() => getTabFromHash())
   const [consistencyPosition, setConsistencyPosition] = useState<Position>('QB')
   const [consistencyQuery, setConsistencyQuery] = useState('')
@@ -686,6 +691,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('draft-wizard:show-drafted-players', JSON.stringify(showDraftedPlayers))
   }, [showDraftedPlayers])
+
+  useEffect(() => {
+    localStorage.setItem('draft-wizard:players-view', JSON.stringify(playersView))
+  }, [playersView])
 
   useEffect(() => {
     fetchSplitData()
@@ -786,21 +795,29 @@ function App() {
     () => buildScheduleMetrics(data.schedules, data.previousYearWeeklyResults, selectedLeague.scoring),
     [data.previousYearWeeklyResults, data.schedules, selectedLeague.scoring],
   )
+  const previousYearSummaryByKey = useMemo(
+    () => buildPreviousYearSummaryIndex(data.previousYearWeeklyResults, selectedLeague.scoring),
+    [data.previousYearWeeklyResults, selectedLeague.scoring],
+  )
 
   const players = useMemo(() => {
     const fromData = data.scoring[selectedLeague.rankingPreset] || data.scoring.halfPpr || []
     return fromData.map((player) => {
       const projectedPoints = calculateProjectedPoints(player, selectedLeague.scoring)
       const team = normalizeDisplayTeam(player.team)
+      const previousYear = player.previousYear
+        || previousYearSummaryByKey.get(playerKey(player.name, team))
+        || previousYearSummaryByKey.get(playerKey(player.name))
       return {
         ...player,
         projectedPoints,
+        previousYear,
         strengthOfSchedule: scheduleMetrics.fullSeason[team]?.[player.position],
         earlySeasonSos: player.position === 'DST' ? scheduleMetrics.earlyDefense[team] : undefined,
         domeRate: player.position === 'K' ? scheduleMetrics.domeRates[team] : undefined,
       }
     })
-  }, [data.scoring, scheduleMetrics, selectedLeague.rankingPreset, selectedLeague.scoring])
+  }, [data.scoring, previousYearSummaryByKey, scheduleMetrics, selectedLeague.rankingPreset, selectedLeague.scoring])
 
   const draftedIds = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerId)), [draft.drafted])
   const draftedPlayerKeys = useMemo(() => new Set(draft.drafted.map((pick) => pick.playerName).filter(Boolean).map((name) => playerKey(name!))), [draft.drafted])
@@ -1127,6 +1144,7 @@ function App() {
           leagueTeams={selectedLeague.lineup.teams}
           playersByPosition={playersByPosition}
           positionTierAvailability={positionTierAvailability}
+          playersView={playersView}
           query={query}
           recommendations={recommendations}
           recommendationRosterLabel={`Pick ${selectedDraftSlot} · ${selectedDraftTeamName} · ${selectedRosterSize} drafted`}
@@ -1138,6 +1156,7 @@ function App() {
           visiblePositions={visiblePositions}
           showDraftedPlayers={showDraftedPlayers}
           onPlayerSelect={setSelectedPlayer}
+          onPlayersViewChange={setPlayersView}
           onQueryChange={setQuery}
           onShowDraftedPlayersChange={setShowDraftedPlayers}
           onStrategyChange={setRecommendationStrategy}
@@ -2524,6 +2543,44 @@ function buildConsistencyRows(
     .map((row, index) => ({ ...row, rank: index + 1 }))
 }
 
+function buildPreviousYearSummaryIndex(
+  weeklyResults: RankingsFile['previousYearWeeklyResults'],
+  scoring: ScoringRules,
+) {
+  const summaries = new Map<string, PreviousYearResult>()
+
+  POSITION_ORDER.forEach((position) => {
+    const players = new Map<string, PreviousYearResult>()
+    ;(weeklyResults?.[position] || []).forEach((row) => {
+      const key = playerKey(row.name, row.team)
+      const current = players.get(key) || {
+        name: row.name,
+        team: row.team,
+        position,
+        games: 0,
+        fpts: 0,
+      }
+      current.games = (current.games || 0) + 1
+      current.fpts = (current.fpts || 0) + calculatePreviousYearWeeklyPoints(row, scoring)
+      players.set(key, current)
+    })
+
+    ;[...players.values()]
+      .sort((a, b) => (b.fpts || 0) - (a.fpts || 0))
+      .forEach((player, index) => {
+        const summary: PreviousYearResult = {
+          ...player,
+          rank: index + 1,
+          fpts_per_game: player.games ? (player.fpts || 0) / player.games : 0,
+        }
+        summaries.set(playerKey(player.name, player.team), summary)
+        if (!summaries.has(playerKey(player.name))) summaries.set(playerKey(player.name), summary)
+      })
+  })
+
+  return summaries
+}
+
 function calculatePreviousYearWeeklyPoints(row: PreviousYearWeeklyResult, scoring: ScoringRules) {
   if (row.position === 'K') {
     return value(row.fg) * scoring.fieldGoal + value(row.xpt) * scoring.extraPoint
@@ -3722,6 +3779,7 @@ function PlayersBoard({
   leagueTeams,
   playersByPosition,
   positionTierAvailability,
+  playersView,
   query,
   recommendations,
   recommendationRosterLabel,
@@ -3733,6 +3791,7 @@ function PlayersBoard({
   visiblePositions,
   showDraftedPlayers,
   onPlayerSelect,
+  onPlayersViewChange,
   onQueryChange,
   onShowDraftedPlayersChange,
   onStrategyChange,
@@ -3747,6 +3806,7 @@ function PlayersBoard({
   leagueTeams: number
   playersByPosition: Record<Position, RankedPlayer[]>
   positionTierAvailability: PositionTierAvailability
+  playersView: PlayersView
   query: string
   recommendations: Recommendation[]
   recommendationRosterLabel: string
@@ -3758,6 +3818,7 @@ function PlayersBoard({
   visiblePositions: Record<Position, boolean>
   showDraftedPlayers: boolean
   onPlayerSelect: (player: RankedPlayer) => void
+  onPlayersViewChange: (view: PlayersView) => void
   onQueryChange: (query: string) => void
   onShowDraftedPlayersChange: (showDrafted: boolean) => void
   onStrategyChange: (strategy: RecommendationStrategy) => void
@@ -3765,6 +3826,9 @@ function PlayersBoard({
   onClearWatchlist: () => void
 }) {
   const activePositions = POSITION_ORDER.filter((position) => visiblePositions[position])
+  const visiblePlayers = activePositions
+    .flatMap((position) => playersByPosition[position])
+    .sort((a, b) => a.rank - b.rank)
 
   return (
     <div className="playersBoard">
@@ -3794,6 +3858,14 @@ function PlayersBoard({
             <input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search players, teams, positions" />
           </label>
           <div className="playerControlActions">
+            <div className="playerViewToggle" aria-label="Players display">
+              <button aria-pressed={playersView === 'columns'} className={playersView === 'columns' ? 'active' : ''} onClick={() => onPlayersViewChange('columns')} type="button">
+                <LayoutGrid size={13} /> Columns
+              </button>
+              <button aria-pressed={playersView === 'table'} className={playersView === 'table' ? 'active' : ''} onClick={() => onPlayersViewChange('table')} type="button">
+                <Table2 size={13} /> Table
+              </button>
+            </div>
             <button
               aria-pressed={showDraftedPlayers}
               className={`draftedVisibilityToggle ${showDraftedPlayers ? 'active' : ''}`}
@@ -3802,7 +3874,7 @@ function PlayersBoard({
             >
               {showDraftedPlayers ? 'Hide drafted' : 'Show drafted'}
             </button>
-            <div className="positionToggles" aria-label="Visible position columns">
+            <div className="positionToggles" aria-label="Visible positions">
               {POSITION_ORDER.map((position) => (
                 <button
                   className={`positionToggle positionToggle${position} ${visiblePositions[position] ? 'active' : ''}`}
@@ -3818,9 +3890,21 @@ function PlayersBoard({
           </div>
         </div>
 
-        <div className="playersContainer">
-          {displayedCount === 0 ? (
-            <div className="noPlayers">{query ? 'No matching players.' : 'All players have been drafted.'}</div>
+        <div className={`playersContainer ${playersView === 'table' ? 'tableView' : ''}`}>
+          {activePositions.length === 0 ? (
+            <div className="noPlayers">Select at least one position.</div>
+          ) : visiblePlayers.length === 0 ? (
+            <div className="noPlayers">{query ? 'No matching players in the selected positions.' : 'All players in the selected positions have been drafted.'}</div>
+          ) : playersView === 'table' ? (
+            <PlayersDataTable
+              draftedIds={draftedIds}
+              draftedPlayerKeys={draftedPlayerKeys}
+              leagueTeams={leagueTeams}
+              players={visiblePlayers}
+              watchlistIdSet={watchlistIdSet}
+              onPlayerSelect={onPlayerSelect}
+              onToggleWatchlist={onToggleWatchlist}
+            />
           ) : (
             <section className="positionColumns">
               {activePositions.map((position) => (
@@ -3897,6 +3981,116 @@ function PlayersBoard({
           {recommendations.length === 0 ? <p className="muted">No matching players.</p> : null}
         </div>
       </aside>
+    </div>
+  )
+}
+
+function PlayersDataTable({
+  draftedIds,
+  draftedPlayerKeys,
+  leagueTeams,
+  players,
+  watchlistIdSet,
+  onPlayerSelect,
+  onToggleWatchlist,
+}: {
+  draftedIds: ReadonlySet<string>
+  draftedPlayerKeys: ReadonlySet<string>
+  leagueTeams: number
+  players: RankedPlayer[]
+  watchlistIdSet: ReadonlySet<string>
+  onPlayerSelect: (player: RankedPlayer) => void
+  onToggleWatchlist: (playerId: string) => void
+}) {
+  return (
+    <div className="playersTableScroller" tabIndex={0}>
+      <table className="playersDataTable">
+        <caption className="srOnly">Players ranked across the selected positions</caption>
+        <thead>
+          <tr>
+            <th aria-label="Watchlist" className="playersTableWatchHead" scope="col"><Star size={12} /></th>
+            <th scope="col">Rank</th>
+            <th scope="col">Player</th>
+            <th scope="col">Pos</th>
+            <th scope="col">Team</th>
+            <th scope="col">Bye</th>
+            <th scope="col">Tier</th>
+            <th scope="col">Proj PPG</th>
+            <th scope="col">Proj total</th>
+            <th scope="col">ADP</th>
+            <th scope="col">SOS</th>
+            <th scope="col">Early / Dome</th>
+            <th scope="col">Last PPG</th>
+            <th scope="col">Last finish</th>
+            <th scope="col">Depth</th>
+            <th scope="col">Injury</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((player) => {
+            const adpValueBand = getAdpValueBand(player)
+            const isDrafted = isDraftedPlayer(player, draftedIds, draftedPlayerKeys)
+            const isWatched = watchlistIdSet.has(player.id)
+            const tierColor = getTierColor(player.tier)
+            const positionColor = getPositionColor(player.position)
+            const specialSchedule = player.position === 'DST'
+              ? `W1-4 ${formatScheduleStrength(player.earlySeasonSos)}`
+              : player.position === 'K'
+                ? formatDomeRate(player.domeRate)
+                : '—'
+            const depthLabel = player.depthChart
+              ? `${player.position}${player.depthChart.order}${player.depthChart.role ? ` · ${player.depthChart.role}` : ''}`
+              : '—'
+            const injuryParts = player.injury
+              ? [...new Set([player.injury.injury, player.injury.status].filter((item): item is string => Boolean(item)))]
+              : []
+            const injuryLabel = injuryParts.length ? injuryParts.join(' · ') : '—'
+
+            return (
+              <tr className={`${isDrafted ? 'draftedPlayerRow ' : ''}${isWatched ? 'watchedPlayerRow' : ''}`} key={player.id}>
+                <td className="playersTableWatch" style={{ boxShadow: `inset 3px 0 0 ${tierColor}` }}>
+                  <button
+                    aria-label={`${isWatched ? 'Remove' : 'Add'} ${player.name} ${isWatched ? 'from' : 'to'} watchlist`}
+                    aria-pressed={isWatched}
+                    className={isWatched ? 'watched' : ''}
+                    onClick={() => onToggleWatchlist(player.id)}
+                    type="button"
+                  >
+                    <Star size={12} />
+                  </button>
+                </td>
+                <td className="playersTableRank">
+                  <strong style={{ color: tierColor }}>#{player.rank}</strong>
+                  <small>{player.posRank || '—'}</small>
+                </td>
+                <td className="playersTablePlayer">
+                  <button className="playerNameButton" onClick={() => onPlayerSelect(player)} style={{ color: positionColor }} type="button">{player.name}</button>
+                  <span>
+                    {isDrafted ? <small className="draftedPlayerBadge">Drafted</small> : null}
+                    {player.rookie ? <small className="rookieTableBadge">Rookie</small> : null}
+                  </span>
+                </td>
+                <td><span className={`position playersTablePosition position${player.position}`}>{player.position}</span></td>
+                <td>{player.team || 'FA'}</td>
+                <td>{player.bye || '—'}</td>
+                <td><strong style={{ color: tierColor }}>{player.tier ? `T${player.tier}` : '—'}</strong></td>
+                <td><strong style={{ color: tierColor }}>{formatProjectedPointsPerGame(player.projectedPoints)}</strong></td>
+                <td>{player.projectedPoints > 0 ? player.projectedPoints.toFixed(1) : '—'}</td>
+                <td className="playersTableAdp" title={getAdpValueTitle(player)}>
+                  <strong className={`adpValueText ${adpValueBand.tone}`}>{formatAdpRoundPick(player.adp, leagueTeams)}</strong>
+                  <small>{player.adp ? `#${player.adp.toFixed(1)}` : '—'}</small>
+                </td>
+                <td title={player.strengthOfSchedule ? `${player.strengthOfSchedule.games} schedule games evaluated` : undefined}>{formatScheduleStrength(player.strengthOfSchedule)}</td>
+                <td>{specialSchedule}</td>
+                <td>{formatPreviousYearPointsPerGame(player.previousYear)}</td>
+                <td>{player.previousYear?.rank ? `${player.position}${player.previousYear.rank}` : '—'}</td>
+                <td title={player.depthChart?.source}>{depthLabel}</td>
+                <td className={player.injury ? 'playersTableInjury' : ''} title={player.injury?.detail}>{injuryLabel}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

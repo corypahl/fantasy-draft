@@ -704,6 +704,39 @@ h3 {
   min-width: 0;
 }
 
+.playerViewToggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.2rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-secondary);
+  padding: 0.25rem;
+}
+
+.playerViewToggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.playerViewToggle button:hover,
+.playerViewToggle button:focus-visible,
+.playerViewToggle button.active {
+  border-color: rgba(49, 130, 206, 0.55);
+  background: rgba(49, 130, 206, 0.16);
+  color: #bee3f8;
+}
+
 .draftedVisibilityToggle {
   min-height: 40px;
   border: 1px solid var(--border-color);
@@ -1076,6 +1109,242 @@ h3 {
   border-radius: 8px;
   background: var(--bg-secondary);
   contain: layout paint;
+}
+
+.playersContainer.tableView {
+  contain: layout;
+}
+
+.playersTableScroller {
+  width: 100%;
+  max-height: calc(100vh - 280px);
+  overflow: auto;
+  scrollbar-color: rgba(99, 179, 237, 0.48) rgba(15, 23, 42, 0.72);
+  scrollbar-width: thin;
+}
+
+.playersTableScroller:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+
+.playersDataTable {
+  width: 100%;
+  min-width: 1480px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  table-layout: fixed;
+}
+
+.playersDataTable th,
+.playersDataTable td {
+  overflow: hidden;
+  border-right: 1px solid rgba(74, 85, 104, 0.28);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.52rem 0.6rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playersDataTable th:last-child,
+.playersDataTable td:last-child {
+  border-right: 0;
+}
+
+.playersDataTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #182136;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.playersDataTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.playersDataTable tbody tr:hover td {
+  background: #1d273b;
+}
+
+.playersDataTable tbody tr.draftedPlayerRow {
+  opacity: 0.55;
+}
+
+.playersDataTable tbody tr.draftedPlayerRow:hover,
+.playersDataTable tbody tr.draftedPlayerRow:focus-within {
+  opacity: 0.82;
+}
+
+.playersDataTable tbody tr.watchedPlayerRow td {
+  background: rgba(246, 196, 83, 0.08);
+}
+
+.playersDataTable th:nth-child(1),
+.playersDataTable td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  background: #151e31;
+  padding-right: 0.35rem;
+  padding-left: 0.35rem;
+  text-align: center;
+}
+
+.playersDataTable th:nth-child(2),
+.playersDataTable td:nth-child(2) {
+  position: sticky;
+  left: 42px;
+  z-index: 3;
+  width: 66px;
+  min-width: 66px;
+  max-width: 66px;
+  background: #151e31;
+}
+
+.playersDataTable th:nth-child(3),
+.playersDataTable td:nth-child(3) {
+  position: sticky;
+  left: 108px;
+  z-index: 3;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
+  background: #151e31;
+  box-shadow: 8px 0 14px rgba(0, 0, 0, 0.18);
+}
+
+.playersDataTable thead th:nth-child(-n + 3) {
+  z-index: 7;
+  background: #182136;
+}
+
+.playersDataTable tbody tr:hover td:nth-child(-n + 3) {
+  background: #1d273b;
+}
+
+.playersDataTable tbody tr.watchedPlayerRow td:nth-child(-n + 3) {
+  background: #25283a;
+}
+
+.playersDataTable th:nth-child(4),
+.playersDataTable td:nth-child(4) { width: 58px; }
+.playersDataTable th:nth-child(5),
+.playersDataTable td:nth-child(5) { width: 58px; }
+.playersDataTable th:nth-child(6),
+.playersDataTable td:nth-child(6) { width: 48px; text-align: center; }
+.playersDataTable th:nth-child(7),
+.playersDataTable td:nth-child(7) { width: 52px; text-align: center; }
+.playersDataTable th:nth-child(8),
+.playersDataTable td:nth-child(8) { width: 78px; text-align: right; }
+.playersDataTable th:nth-child(9),
+.playersDataTable td:nth-child(9) { width: 86px; text-align: right; }
+.playersDataTable th:nth-child(10),
+.playersDataTable td:nth-child(10) { width: 76px; text-align: right; }
+.playersDataTable th:nth-child(11),
+.playersDataTable td:nth-child(11) { width: 96px; }
+.playersDataTable th:nth-child(12),
+.playersDataTable td:nth-child(12) { width: 110px; }
+.playersDataTable th:nth-child(13),
+.playersDataTable td:nth-child(13) { width: 76px; text-align: right; }
+.playersDataTable th:nth-child(14),
+.playersDataTable td:nth-child(14) { width: 82px; }
+.playersDataTable th:nth-child(15),
+.playersDataTable td:nth-child(15) { width: 118px; }
+.playersDataTable th:nth-child(16),
+.playersDataTable td:nth-child(16) { width: 170px; }
+
+.playersTableWatch button {
+  display: inline-grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  padding: 0;
+}
+
+.playersTableWatch button:hover,
+.playersTableWatch button:focus-visible,
+.playersTableWatch button.watched {
+  border-color: var(--accent-yellow);
+  color: #f6c453;
+}
+
+.playersTableRank,
+.playersTableAdp {
+  display: grid;
+  gap: 0.12rem;
+}
+
+.playersTableRank strong,
+.playersTableAdp strong {
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.playersTableRank small,
+.playersTableAdp small {
+  color: var(--text-muted);
+  font-size: 0.53rem;
+  font-weight: 850;
+}
+
+.playersTablePlayer {
+  font-weight: 900;
+}
+
+.playersTablePlayer .playerNameButton {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playersTablePlayer > span {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 14px;
+  margin-top: 0.12rem;
+}
+
+.rookieTableBadge {
+  border-radius: 999px;
+  background: rgba(128, 90, 213, 0.16);
+  color: #d6bcfa;
+  padding: 0.08rem 0.28rem;
+  font-size: 0.47rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.playersTablePosition.position {
+  min-width: 38px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.58rem;
+}
+
+.playersTableInjury {
+  color: #feb2b2;
+  font-weight: 800;
 }
 
 .positionColumns {
@@ -2244,6 +2513,7 @@ h3 {
   }
 
   .playerControlActions {
+    flex-wrap: wrap;
     justify-content: space-between;
   }
 
@@ -2321,8 +2591,20 @@ h3 {
     flex-direction: column;
   }
 
+  .playerViewToggle {
+    width: 100%;
+  }
+
+  .playerViewToggle button {
+    flex: 1;
+  }
+
   .draftedVisibilityToggle {
     width: 100%;
+  }
+
+  .playersTableScroller {
+    max-height: 65vh;
   }
 
   .playerListHeader,
