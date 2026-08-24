@@ -8,7 +8,8 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Validate scoring anomalies before they affect projections or recommendations.
 - Connect any league profile to a Sleeper mock draft ID, update picks on demand or every 15 seconds, and reset back to the full player pool between mocks.
 - Keep the existing Sleeper and managed ESPN live-draft sync available as a separate Board action.
-- Forecast every owner's next two selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players also appear as dashed picks directly on the live board.
+- Forecast upcoming selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players appear as dashed picks directly on the live board.
+- Compare the top three roster-aware recommendations at every position from the Draft Board.
 - Monitor personalized positional-run alerts and live roster health, including starter and flex coverage, projected starting PPG, bye conflicts, and prioritized remaining needs.
 - Switch between position columns and an expanded all-player table while retaining position filters, drafted-player controls, and live available/total counts for each tier-color band.
 - Compare league-adjusted positional strength of schedule, Weeks 1-4 defense SOS, and kicker dome rate from current and prior-season schedule data.

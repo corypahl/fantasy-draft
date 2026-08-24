@@ -1171,7 +1171,7 @@ function App() {
           league={selectedLeague}
           positionRunAlerts={positionRunAlerts}
           predictions={draftPredictions}
-          recommendations={recommendations}
+          recommendations={rankedRecommendations}
           rosterHealth={rosterHealth}
           strategy={recommendationStrategy}
           draftInput={draftInput}
@@ -2103,11 +2103,11 @@ function DraftBoardPage({
     return picks
   }, [draft.drafted])
   const predictionsByPick = useMemo(() => new Map(predictions.map((prediction) => [prediction.pick, prediction])), [predictions])
-  const predictionsBySlot = useMemo(() => {
-    const grouped = new Map<number, DraftPrediction[]>()
-    predictions.forEach((prediction) => grouped.set(prediction.slot, [...(grouped.get(prediction.slot) || []), prediction]))
-    return grouped
-  }, [predictions])
+  const positionRecommendations = useMemo(() => POSITION_ORDER.map((position) => ({
+    position,
+    recommendations: recommendations.filter((item) => item.player.position === position).slice(0, 3),
+  })), [recommendations])
+  const recommendationOptionCount = positionRecommendations.reduce((total, group) => total + group.recommendations.length, 0)
   const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
   const currentTeam = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
   const userSlot = clampLeagueDraftSlot(league, totalTeams)
@@ -2172,59 +2172,33 @@ function DraftBoardPage({
       </div>
       {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
       <PositionRunAlerts alerts={positionRunAlerts} onPlayerSelect={onPlayerSelect} />
-      <section className="predictionPanel" aria-labelledby="prediction-title">
-        <div className="predictionHeader">
-          <div>
-            <span className="eyebrow">Live forecast</span>
-            <h3 id="prediction-title">Next two picks by owner</h3>
-            <p>Simulated in pick order using ADP, roster needs, tier scarcity, position runs and each owner's draft tendencies.</p>
-          </div>
-          <span className="predictionWindow">{predictions.length ? `Picks ${predictions[0].pick}-${predictions[predictions.length - 1].pick}` : 'Draft complete'}</span>
-        </div>
-        {predictions.length ? (
-          <div className="predictionOwnerGrid">
-            {draft.teamNames.map((teamName, slotIndex) => {
-              const slot = slotIndex + 1
-              const ownerPredictions = predictionsBySlot.get(slot) || []
-              return (
-                <article className={slot === userSlot ? 'predictionOwner userTeam' : 'predictionOwner'} key={`${teamName}-${slot}`}>
-                  <div className="predictionOwnerHeader">
-                    <strong>{teamName}</strong>
-                    <span>Slot {slot}</span>
-                  </div>
-                  <div className="predictionOwnerPicks">
-                    {ownerPredictions.map((prediction, index) => (
-                      <button className="predictionPick" key={prediction.pick} onClick={() => onPlayerSelect(prediction.player)} type="button">
-                        <span className="predictionPickWhen">{index === 0 ? 'Next' : 'Then'} · #{prediction.pick} · R{prediction.round}</span>
-                        <strong style={{ color: getPositionColor(prediction.player.position) }}>{prediction.player.name}</strong>
-                        <span>{prediction.player.position} · {prediction.player.team} · Confidence {prediction.confidence}/100</span>
-                        <small>{prediction.reason}</small>
-                      </button>
-                    ))}
-                    {ownerPredictions.length === 0 ? <span className="predictionUnavailable">No picks remain</span> : null}
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        ) : <p className="predictionEmpty">No future picks remain to predict.</p>}
-      </section>
       <div className="draftCommandGrid">
         <section className="commandCard">
           <div className="commandCardHeader recommendationCommandHeader">
             <div><h3>Top recommendations</h3><small>{RECOMMENDATION_STRATEGIES[strategy].description}</small><small className="rosterBasis">Based on {userRoster.length} drafted player{userRoster.length === 1 ? '' : 's'} at Pick {userSlot}.</small></div>
-            <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><span>{recommendations.length} options</span></div>
+            <div className="recommendationHeaderControls"><StrategySelector value={strategy} onChange={onStrategyChange} /><span>{recommendationOptionCount} options · 3 per position</span></div>
           </div>
-          <div className="recommendationStrip">
-            {recommendations.slice(0, 4).map((item, index) => (
-              <article className="recommendationCard" key={item.player.id}>
-                <span className="recommendationNumber">{index + 1}</span>
-                <div className="recommendationCardBody">
-                  <strong>{item.player.name}</strong>
-                  <small>{item.player.position} · {item.player.team} · {item.reason}</small>
-                  <RecommendationSignals recommendation={item} compact />
+          <div className="positionRecommendationGrid">
+            {positionRecommendations.map(({ position, recommendations: positionOptions }) => (
+              <section className="positionRecommendationGroup" key={position}>
+                <div className="positionRecommendationHeader">
+                  <span className={`position position${position}`}>{position}</span>
+                  <small>{positionOptions.length}/3 available</small>
                 </div>
-              </article>
+                <div className="positionRecommendationList">
+                  {positionOptions.map((item, index) => (
+                    <button className="recommendationCard positionRecommendationCard" key={item.player.id} onClick={() => onPlayerSelect(item.player)} type="button">
+                      <span className="recommendationNumber">{index + 1}</span>
+                      <div className="recommendationCardBody">
+                        <strong>{item.player.name}</strong>
+                        <small>{item.player.team} · {item.reason}</small>
+                        <RecommendationSignals recommendation={item} compact />
+                      </div>
+                    </button>
+                  ))}
+                  {positionOptions.length === 0 ? <span className="positionRecommendationEmpty">No available players</span> : null}
+                </div>
+              </section>
             ))}
           </div>
         </section>
