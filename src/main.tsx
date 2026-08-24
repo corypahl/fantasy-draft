@@ -2107,6 +2107,9 @@ function DraftBoardPage({
     position,
     recommendations: recommendations.filter((item) => item.player.position === position).slice(0, 3),
   })), [recommendations])
+  const recommendationRankByPlayerId = useMemo(() => new Map(
+    recommendations.map((item, index) => [item.player.id, index + 1]),
+  ), [recommendations])
   const recommendationOptionCount = positionRecommendations.reduce((total, group) => total + group.recommendations.length, 0)
   const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
   const currentTeam = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
@@ -2186,9 +2189,9 @@ function DraftBoardPage({
                   <small>{positionOptions.length}/3 available</small>
                 </div>
                 <div className="positionRecommendationList">
-                  {positionOptions.map((item, index) => (
+                  {positionOptions.map((item) => (
                     <button className="recommendationCard positionRecommendationCard" key={item.player.id} onClick={() => onPlayerSelect(item.player)} type="button">
-                      <span className="recommendationNumber">{index + 1}</span>
+                      <span className="recommendationNumber">{recommendationRankByPlayerId.get(item.player.id)}</span>
                       <div className="recommendationCardBody">
                         <strong>{item.player.name}</strong>
                         <small>{item.player.team} · {item.reason}</small>

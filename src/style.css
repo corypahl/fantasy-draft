@@ -2748,7 +2748,7 @@ h3 {
 .recommendationCommandHeader > div:first-child { min-width: 0; }
 .recommendationCommandHeader small { display: block; margin-top: 0.12rem; color: var(--text-muted); font-size: 0.62rem; }
 .recommendationCard { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.45rem; min-width: 0; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-card); padding: 0.5rem; }
-.recommendationNumber { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(49, 130, 206, 0.18); color: #90cdf4; font-size: 0.68rem; font-weight: 900; }
+.recommendationNumber { display: grid; place-items: center; min-width: 22px; height: 22px; border-radius: 999px; background: rgba(49, 130, 206, 0.18); color: #90cdf4; padding: 0 0.28rem; font-size: 0.68rem; font-weight: 900; }
 .recommendationCard div { min-width: 0; }
 .recommendationCard strong,
 .recommendationCard small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
