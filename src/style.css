@@ -1876,6 +1876,26 @@ h3 {
   font-weight: 700;
 }
 
+.espnBridgeBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(214, 158, 46, 0.45);
+  border-radius: 8px;
+  background: rgba(214, 158, 46, 0.09);
+  padding: 0.62rem 0.75rem;
+}
+
+.espnBridgeBanner.connected {
+  border-color: rgba(56, 161, 105, 0.55);
+  background: rgba(56, 161, 105, 0.1);
+}
+
+.espnBridgeBanner > div { display: grid; gap: 0.08rem; }
+.espnBridgeBanner strong { color: var(--text-primary); font-size: 0.76rem; }
+.espnBridgeBanner > span { color: var(--text-secondary); font-size: 0.66rem; font-weight: 800; text-align: right; }
+
 .runAlertsPanel {
   min-width: 0;
   overflow: hidden;
@@ -2978,6 +2998,8 @@ h3 {
   .draftActions { align-items: flex-end; width: 100%; justify-content: space-between; }
   .draftSlotSelector { min-width: 0; }
   .draftSlotSelector select { max-width: min(220px, 62vw); }
+  .espnBridgeBanner { align-items: flex-start; flex-direction: column; gap: 0.25rem; }
+  .espnBridgeBanner > span { text-align: left; }
   .positionRecommendationGrid { grid-template-columns: 1fr; }
   .runAlertsHeader { align-items: flex-start; flex-direction: column; gap: 0.2rem; }
   .runAlertGrid { grid-template-columns: 1fr; }

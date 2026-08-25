@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Fantasy Draft Wizard - ESPN Bridge",
+  "version": "0.1.0",
+  "description": "Watches an ESPN fantasy draft and keeps Fantasy Draft Wizard picks current.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://fantasy.espn.com/*",
+    "https://corypahl.github.io/fantasy-draft/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://dqen8hccb0.execute-api.us-east-1.amazonaws.com/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ESPN Draft Bridge"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/*"],
+      "js": ["espn-parser.js", "espn-content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://corypahl.github.io/fantasy-draft/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+      ],
+      "js": ["app-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

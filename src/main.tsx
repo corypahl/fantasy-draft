@@ -419,6 +419,13 @@ type DraftState = {
   lastSyncedAt?: string
 }
 
+type EspnBridgeStatus = {
+  lastSeenAt: string
+  pickCount: number
+  state?: string
+  message?: string
+}
+
 const DEFAULT_DATA_BASE_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amazonaws.com/data'
 const DEFAULT_RANKINGS_URL = `${DEFAULT_DATA_BASE_URL}/fantasy-data.json`
 const DEFAULT_DRAFT_API_URL = 'https://dqen8hccb0.execute-api.us-east-1.amazonaws.com'
@@ -644,6 +651,7 @@ function App() {
   const [persistenceStatus, setPersistenceStatus] = useState<'Saving' | 'Saved locally' | 'Synced'>('Saving')
   const [leagueImportStatus, setLeagueImportStatus] = useState('')
   const [isImportingLeague, setIsImportingLeague] = useState(false)
+  const [espnBridgeStatusByLeague, setEspnBridgeStatusByLeague] = useState<Record<string, EspnBridgeStatus>>({})
   const autoConnectedLiveDrafts = useRef(new Set<string>())
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
@@ -738,6 +746,40 @@ function App() {
       setSelectedLeagueId(profiles[0].id)
     }
   }, [profiles, selectedLeagueId])
+
+  useEffect(() => {
+    function receiveEspnBridgeDraft(event: MessageEvent) {
+      if (event.source !== window || event.origin !== window.location.origin) return
+      const message = event.data as { type?: string; version?: number; draft?: DraftState; status?: { state?: string; message?: string } }
+      if (message?.type !== 'FANTASY_DRAFT_ESPN_BRIDGE' || message.version !== 1 || !message.draft) return
+      const incomingDraft = message.draft
+      const leagueId = incomingDraft.leagueId
+      const league = profiles.find((profile) => profile.id === leagueId && profile.platform === 'espn')
+      if (!league) return
+      setDraftsByLeague((current) => {
+        const currentDraft = current[leagueId] || createDraftState(league)
+        const nextDraft = normalizeEspnBridgeDraft(incomingDraft, currentDraft, league)
+        return nextDraft ? { ...current, [leagueId]: nextDraft } : current
+      })
+      const lastSeenAt = new Date().toISOString()
+      setEspnBridgeStatusByLeague((current) => ({
+        ...current,
+        [leagueId]: {
+          lastSeenAt,
+          pickCount: incomingDraft.drafted.length,
+          state: message.status?.state,
+          message: message.status?.message,
+        },
+      }))
+      if (selectedLeague.id === leagueId) {
+        setAutoSync(false)
+        setSyncStatus(`ESPN Draft Bridge updated ${incomingDraft.drafted.length} picks at ${new Date(lastSeenAt).toLocaleTimeString()}.`)
+      }
+    }
+    window.addEventListener('message', receiveEspnBridgeDraft)
+    window.postMessage({ type: 'FANTASY_DRAFT_ESPN_BRIDGE_REQUEST', version: 1 }, window.location.origin)
+    return () => window.removeEventListener('message', receiveEspnBridgeDraft)
+  }, [profiles, selectedLeague.id])
 
   useEffect(() => {
     if (!API_URL) return
@@ -1174,6 +1216,7 @@ function App() {
       {activeTab === 'board' ? (
         <DraftBoardPage
           draft={draft}
+          espnBridgeStatus={espnBridgeStatusByLeague[selectedLeague.id]}
           league={selectedLeague}
           positionRunAlerts={positionRunAlerts}
           predictions={draftPredictions}
@@ -2062,6 +2105,7 @@ function DepthChartsPage({
 
 function DraftBoardPage({
   draft,
+  espnBridgeStatus,
   league,
   positionRunAlerts,
   predictions,
@@ -2082,6 +2126,7 @@ function DraftBoardPage({
   onSyncDraft,
 }: {
   draft: DraftState
+  espnBridgeStatus?: EspnBridgeStatus
   league: LeagueProfile
   positionRunAlerts: PositionRunAlert[]
   predictions: DraftPrediction[]
@@ -2179,6 +2224,17 @@ function DraftBoardPage({
           </label>
         </div>
       </div>
+      {league.platform === 'espn' ? (
+        <div className={espnBridgeStatus ? 'espnBridgeBanner connected' : 'espnBridgeBanner'} role="status">
+          <div>
+            <span className="eyebrow">ESPN Draft Bridge</span>
+            <strong>{espnBridgeStatus ? 'Chrome extension connected' : 'Waiting for the Chrome extension'}</strong>
+          </div>
+          <span>{espnBridgeStatus
+            ? `${espnBridgeStatus.pickCount} picks · received ${new Date(espnBridgeStatus.lastSeenAt).toLocaleTimeString()}`
+            : 'Open the ESPN draft room and enable the bridge to begin live updates.'}</span>
+        </div>
+      ) : null}
       {syncStatus ? <div className="syncStatus" role="status">{syncStatus}</div> : null}
       <PositionRunAlerts alerts={positionRunAlerts} onPlayerSelect={onPlayerSelect} />
       <div className="draftCommandGrid">
@@ -2796,6 +2852,57 @@ function mergeLeagueProfiles(remote: LeagueProfile[], local: LeagueProfile[]) {
   const merged = new Map(remote.map((profile) => [profile.id, profile]))
   local.forEach((profile) => merged.set(profile.id, { ...(merged.get(profile.id) || {}), ...profile }))
   return sanitizeLeagueProfiles([...merged.values()])
+}
+
+function normalizeEspnBridgeDraft(incoming: DraftState, current: DraftState, league: LeagueProfile): DraftState | undefined {
+  if (incoming.leagueId !== league.id || !Array.isArray(incoming.drafted)) return undefined
+  const totalTeams = league.lineup.teams
+  const incomingTeamNames = Array.isArray(incoming.teamNames) ? incoming.teamNames.map((name) => String(name).trim()) : []
+  const incomingNamesAreGeneric = incomingTeamNames.length === totalTeams
+    && incomingTeamNames.every((name, index) => name === `Team ${index + 1}`)
+  const currentHasNamedTeams = current.teamNames.length === totalTeams
+    && current.teamNames.some((name, index) => name !== `Team ${index + 1}`)
+  const teamNames = incomingTeamNames.length === totalTeams && !(incomingNamesAreGeneric && currentHasNamedTeams)
+    ? incomingTeamNames
+    : current.teamNames.length === totalTeams
+      ? current.teamNames
+      : Array.from({ length: totalTeams }, (_, index) => `Team ${index + 1}`)
+  const drafted = incoming.drafted
+    .reduce<DraftPick[]>((normalizedPicks, pick) => {
+      const pickNumber = Number(pick.pick)
+      const round = Number(pick.round)
+      const slot = Number(pick.slot)
+      const playerName = String(pick.playerName || '').trim()
+      const position = normalizeSleeperPosition(pick.position)
+      if (!Number.isInteger(pickNumber) || pickNumber < 1 || !Number.isInteger(round) || round < 1 || !Number.isInteger(slot) || slot < 1 || slot > totalTeams || !playerName) return normalizedPicks
+      normalizedPicks.push({
+        ...pick,
+        pick: pickNumber,
+        round,
+        slot,
+        playerName,
+        playerId: pick.playerId || playerKey(playerName, pick.team),
+        position,
+        teamName: teamNames[slot - 1] || `Team ${slot}`,
+      })
+      return normalizedPicks
+    }, [])
+    .sort((a, b) => a.pick - b.pick)
+  const latestPick = drafted.reduce((maximum, pick) => Math.max(maximum, pick.pick), 0)
+  return {
+    ...current,
+    ...incoming,
+    id: incoming.id || current.id,
+    leagueId: league.id,
+    currentPick: latestPick + 1,
+    drafted,
+    teamNames,
+    source: 'espn',
+    sessionType: 'live',
+    totalRounds: incoming.totalRounds || league.lineup.rosterSpots,
+    leagueName: incoming.leagueName || league.name,
+    lastSyncedAt: incoming.lastSyncedAt || new Date().toISOString(),
+  }
 }
 
 function getScoringWarnings(league: LeagueProfile) {
@@ -3561,8 +3668,8 @@ async function fetchManagedDraftState(currentDraft: DraftState, league: LeaguePr
   const response = await fetch(`${API_URL}/drafts/${currentDraft.id}`, { cache: 'no-store' })
   if (!response.ok) throw new Error(`ESPN draft sync failed (${response.status}). Keep drafting in ESPN and retry sync here.`)
   const payload: { draft?: DraftState } = await response.json()
-  if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Recommendations will update when the managed feed starts.')
-  return { ...payload.draft, leagueId: league.id, source: 'espn', sessionType: 'live', lastSyncedAt: new Date().toISOString() }
+  if (!payload.draft) throw new Error('No ESPN draft feed is published yet. Enable the ESPN Draft Bridge extension in the draft room, then retry.')
+  return { ...payload.draft, leagueId: league.id, source: 'espn', sessionType: 'live', lastSyncedAt: payload.draft.lastSyncedAt || new Date().toISOString() }
 }
 
 async function fetchSleeperDraftState(sourceId: string, league: LeagueProfile, currentDraft: DraftState, sessionType: 'live' | 'mock' = 'live'): Promise<DraftState> {
@@ -4476,6 +4583,7 @@ function loadLocal<T>(key: string, fallback: T): T {
 async function persistState(profiles: LeagueProfile[], draftsByLeague: Record<string, DraftState>, draft: DraftState, remoteDraftReady: boolean) {
   localStorage.setItem('draft-wizard:league-profiles', JSON.stringify(profiles))
   localStorage.setItem('draft-wizard:drafts-by-league', JSON.stringify(draftsByLeague))
+  if (draft.source === 'espn') return 'Local'
   if (!API_URL || !remoteDraftReady) return 'Local'
   try {
     const response = await fetch(`${API_URL}/drafts/${draft.id}`, {

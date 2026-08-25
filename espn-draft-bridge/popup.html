@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESPN Draft Bridge</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span>Fantasy Draft Wizard</span>
+        <h1>ESPN Draft Bridge</h1>
+      </header>
+
+      <section class="statusCard" aria-live="polite">
+        <div><span id="statusDot"></span><strong id="statusTitle">Checking ESPN…</strong></div>
+        <p id="statusMessage">Open the ESPN draft room to preview its picks.</p>
+        <dl>
+          <div><dt>Picks</dt><dd id="pickCount">0</dd></div>
+          <div><dt>Candidates</dt><dd id="candidateCount">0</dd></div>
+          <div><dt>Last scan</dt><dd id="lastScan">Never</dd></div>
+        </dl>
+      </section>
+
+      <label class="toggleRow">
+        <input id="enabled" type="checkbox" />
+        <span><strong>Enable live bridge</strong><small>Updates open Draft Wizard tabs automatically.</small></span>
+      </label>
+
+      <details>
+        <summary>Draft settings</summary>
+        <div class="settingsGrid">
+          <label>Draft state ID<input id="draftId" type="text" /></label>
+          <label>League profile ID<input id="leagueId" type="text" /></label>
+          <label>League name<input id="leagueName" type="text" /></label>
+          <label>Teams<input id="totalTeams" min="2" max="32" type="number" /></label>
+          <label>Rounds<input id="totalRounds" min="1" max="40" type="number" /></label>
+          <label class="wide">Owners, one per draft slot<textarea id="teamNames" rows="5" placeholder="Team 1&#10;Team 2"></textarea></label>
+        </div>
+      </details>
+
+      <details>
+        <summary>Optional cloud publishing</summary>
+        <label class="toggleRow compact">
+          <input id="publishToApi" type="checkbox" />
+          <span><strong>Publish through AWS</strong><small>Keeps other devices current.</small></span>
+        </label>
+        <div class="settingsGrid">
+          <label class="wide">Draft API URL<input id="apiUrl" type="url" /></label>
+          <label class="wide">Ingestion token<input id="ingestToken" autocomplete="off" type="password" /></label>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button id="saveButton" class="primary" type="button">Save & scan</button>
+        <button id="scanButton" type="button">Rescan</button>
+        <button id="diagnosticsButton" type="button">Copy diagnostics</button>
+      </div>
+      <p class="footnote">Keep the ESPN draft room open. No ESPN cookies or credentials are read.</p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

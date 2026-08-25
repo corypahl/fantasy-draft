@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:extension": "node --test espn-draft-bridge/tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

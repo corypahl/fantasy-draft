@@ -14,6 +14,11 @@ Parameters:
     Type: String
     Default: "*"
     Description: GitHub Pages origin allowed to call the draft API.
+  DraftIngestToken:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Shared token used only by the private ESPN Draft Bridge ingestion route.
   GitHubOrg:
     Type: String
     Default: corypahl
@@ -79,6 +84,7 @@ Resources:
           TABLE_NAME: !Ref DraftStateTable
           LEAGUE_TABLE_NAME: !Ref LeagueTableName
           ALLOWED_ORIGIN: !Ref AllowedOrigin
+          DRAFT_INGEST_TOKEN: !Ref DraftIngestToken
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DraftStateTable
@@ -115,6 +121,12 @@ Resources:
             ApiId: !Ref DraftHttpApi
             Path: /drafts/{draftId}
             Method: PUT
+        IngestDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DraftHttpApi
+            Path: /drafts/{draftId}/ingest
+            Method: PUT
         ListLeagueDrafts:
           Type: HttpApi
           Properties:
@@ -134,6 +146,7 @@ Resources:
           - OPTIONS
         AllowHeaders:
           - content-type
+          - x-draft-token
 
   GitHubActionsOidcProvider:
     Type: AWS::IAM::OIDCProvider

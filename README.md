@@ -8,6 +8,7 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Validate scoring anomalies before they affect projections or recommendations.
 - Connect any league profile to a Sleeper mock draft ID, update picks on demand or every 15 seconds, and reset back to the full player pool between mocks.
 - Keep the existing Sleeper and managed ESPN live-draft sync available as a separate Board action.
+- Bridge ESPN draft-room picks into the GVSU Board with a private Chrome extension, including parser diagnostics, manual rescans, and optional authenticated cloud publishing.
 - Forecast upcoming selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players appear as dashed picks directly on the live board.
 - Compare the top three roster-aware recommendations at every position from the Draft Board.
 - Monitor personalized positional-run alerts and live roster health, including starter and flex coverage, projected starting PPG, bye conflicts, and prioritized remaining needs.
@@ -74,7 +75,8 @@ sam deploy \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
     RankingsBucketName=your-unique-rankings-bucket \
-    AllowedOrigin=https://corypahl.github.io
+    AllowedOrigin=https://corypahl.github.io \
+    DraftIngestToken=your-private-random-token
 ```
 
 Record the stack outputs:
@@ -103,6 +105,30 @@ Repository variables:
 - `VITE_DRAFT_API_URL`: stack output `DraftApiUrl`.
 
 Enable GitHub Pages with source set to GitHub Actions.
+
+## ESPN Draft Bridge
+
+The private Manifest V3 extension in `espn-draft-bridge/` watches the ESPN draft room and sends complete draft snapshots to open Draft Wizard tabs. It does not request cookie access or read ESPN credentials.
+
+Install it locally:
+
+1. Pull the latest repository version.
+2. Open `chrome://extensions` in Chrome and enable **Developer mode**.
+3. Select **Load unpacked** and choose the repository's `espn-draft-bridge` folder.
+4. Open the ESPN draft room and reload it once after installation.
+5. Open the extension, confirm `gvsu-draft`, `gvsu`, the team/round counts, and optionally enter owner names one per draft slot.
+6. Enable **Live bridge**, then select **Save & scan**.
+7. Open the GVSU Draft Board. Its ESPN Draft Bridge banner turns green when snapshots arrive.
+
+The popup remains useful during the draft:
+
+- **Rescan** rebuilds the entire pick history instead of relying on a possibly missed incremental event.
+- **Copy diagnostics** copies locally captured selector samples and parsed picks for quick parser adjustments if ESPN changes its markup.
+- The status card shows detected candidates, parsed picks, the last scan, and publishing errors.
+
+By default, the bridge works locally between Chrome tabs and stores its latest snapshot in extension storage. The Draft Wizard tab can be opened after the ESPN draft starts and will immediately request the latest stored snapshot.
+
+Optional cloud publishing keeps other devices current. Deploy the SAM stack with a private `DraftIngestToken`, enable **Publish through AWS** in the extension, and enter the same token there. Never commit that token. The authenticated route is `PUT /drafts/{draftId}/ingest`; it rejects older snapshots, and normal site writes cannot overwrite an extension-managed draft.
 
 ## Data refresh
 
@@ -149,5 +175,5 @@ Player rows are enriched when matching data is available:
 
 ## Next integration points
 
-- Publish ESPN draft picks through the existing managed draft endpoint during live drafts.
+- Calibrate ESPN selector adapters against the live draft-room diagnostics before the real draft begins.
 - Move scraper source adapters toward the `fantasy-core` package layout as more sources are added.
