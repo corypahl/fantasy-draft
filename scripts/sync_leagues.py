@@ -30,16 +30,10 @@ GVSU_SCORING = {
 
 LEAGUES = [
     {
-        "id": "fanduel",
-        "name": "FanDuel",
-        "platform": "sleeper",
-        "externalLeagueId": "1257088161859772416",
-    },
-    {
         "id": "jackson",
         "name": "Jackson",
         "platform": "sleeper",
-        "externalLeagueId": "1257138560092348416",
+        "externalLeagueId": "1389737302812553216",
     },
     {
         "id": "gvsu",
@@ -54,6 +48,8 @@ LEAGUES = [
     },
 ]
 
+RETIRED_LEAGUE_IDS = ["fanduel"]
+
 SLEEPER_API = "https://api.sleeper.app/v1"
 ESPN_API = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl"
 
@@ -62,6 +58,9 @@ def main() -> None:
     table_name = os.environ.get("LEAGUE_TABLE_NAME", "fantasy-leagues")
     season = int(os.environ.get("NFL_SEASON", datetime.now(timezone.utc).year))
     table = boto3.resource("dynamodb").Table(table_name)
+
+    for league_id in RETIRED_LEAGUE_IDS:
+        table.delete_item(Key={"leagueId": league_id})
 
     synced = []
     for league in LEAGUES:

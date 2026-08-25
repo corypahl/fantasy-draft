@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   Activity,
@@ -423,6 +423,11 @@ const DEFAULT_DATA_BASE_URL = 'https://corypahl-fantasy-bucket.s3.us-east-1.amaz
 const DEFAULT_RANKINGS_URL = `${DEFAULT_DATA_BASE_URL}/fantasy-data.json`
 const DEFAULT_DRAFT_API_URL = 'https://dqen8hccb0.execute-api.us-east-1.amazonaws.com'
 const SLEEPER_API_BASE = 'https://api.sleeper.app/v1'
+const JACKSON_LEAGUE_ID = '1389737302812553216'
+const ACTIVE_SLEEPER_DRAFTS: Partial<Record<string, string>> = {
+  jackson: '1389737302812553217',
+}
+const RETIRED_LEAGUE_IDS = new Set(['fanduel'])
 const DATA_BASE_URL = import.meta.env.VITE_DATA_BASE_URL || (import.meta.env.PROD ? DEFAULT_DATA_BASE_URL : '/data')
 const DATA_URL = import.meta.env.VITE_RANKINGS_URL || (import.meta.env.PROD ? DEFAULT_RANKINGS_URL : '/data/fantasy-data.json')
 const API_URL = import.meta.env.VITE_DRAFT_API_URL || (import.meta.env.PROD ? DEFAULT_DRAFT_API_URL : '')
@@ -459,37 +464,12 @@ const halfPprScoring: ScoringRules = {
   dstSafety: 2,
 }
 
-const pprScoring: ScoringRules = {
-  ...halfPprScoring,
-  reception: 1,
-}
-
 const leagueProfiles: LeagueProfile[] = [
-  {
-    id: 'fanduel',
-    name: 'FanDuel',
-    platform: 'sleeper',
-    externalLeagueId: '1257088161859772416',
-    scoringPreset: 'ppr',
-    rankingPreset: 'ppr',
-    lineup: {
-      ...defaultLineup,
-      teams: 16,
-      rosterSpots: 12,
-      rb: 1,
-      flex: 2,
-      bench: 3,
-    },
-    scoring: {
-      ...pprScoring,
-      interception: -1,
-    },
-  },
   {
     id: 'jackson',
     name: 'Jackson',
     platform: 'sleeper',
-    externalLeagueId: '1257138560092348416',
+    externalLeagueId: JACKSON_LEAGUE_ID,
     scoringPreset: 'halfPpr',
     rankingPreset: 'halfPpr',
     lineup: {
@@ -603,6 +583,7 @@ function createDraftState(profile: LeagueProfile): DraftState {
 }
 
 function normalizeLeagueProfile(profile: LeagueProfile): LeagueProfile {
+  if (profile.id === 'jackson') return { ...profile, externalLeagueId: JACKSON_LEAGUE_ID }
   if (profile.id !== 'gvsu' && profile.externalLeagueId !== '509557') return profile
   return {
     ...profile,
@@ -612,20 +593,31 @@ function normalizeLeagueProfile(profile: LeagueProfile): LeagueProfile {
   }
 }
 
+function sanitizeLeagueProfiles(profiles: LeagueProfile[]) {
+  const activeProfiles = profiles
+    .filter((profile) => !RETIRED_LEAGUE_IDS.has(profile.id))
+    .map(normalizeLeagueProfile)
+  return activeProfiles.length ? activeProfiles : leagueProfiles
+}
+
+function sanitizeDraftsByLeague(drafts: Record<string, DraftState>) {
+  return Object.fromEntries(Object.entries(drafts).filter(([leagueId]) => !RETIRED_LEAGUE_IDS.has(leagueId)))
+}
+
 function getDraftSessionType(draft: DraftState) {
   return draft.sessionType || (draft.source === 'sleeper' || draft.source === 'espn' ? 'live' : undefined)
 }
 
 function App() {
   const [data, setData] = useState<RankingsFile>(seedData)
-  const [profiles, setProfiles] = useState<LeagueProfile[]>(() => loadLocal<LeagueProfile[]>('league-profiles', leagueProfiles).map(normalizeLeagueProfile))
+  const [profiles, setProfiles] = useState<LeagueProfile[]>(() => sanitizeLeagueProfiles(loadLocal<LeagueProfile[]>('league-profiles', leagueProfiles)))
   const [selectedLeagueId, setSelectedLeagueId] = useState(loadLocal('selected-league-id', leagueProfiles[0].id))
-  const [draftsByLeague, setDraftsByLeague] = useState<Record<string, DraftState>>(
-    loadLocal(
+  const [draftsByLeague, setDraftsByLeague] = useState<Record<string, DraftState>>(() => (
+    sanitizeDraftsByLeague(loadLocal(
       'drafts-by-league',
       Object.fromEntries(leagueProfiles.map((profile) => [profile.id, createDraftState(profile)])),
-    ),
-  )
+    ))
+  ))
   const [query, setQuery] = useState('')
   const [visiblePositions, setVisiblePositions] = useState<Record<Position, boolean>>(DEFAULT_VISIBLE_POSITIONS)
   const [showDraftedPlayers, setShowDraftedPlayers] = useState(() => loadLocal('show-drafted-players', false))
@@ -651,6 +643,7 @@ function App() {
   const [persistenceStatus, setPersistenceStatus] = useState<'Saving' | 'Saved locally' | 'Synced'>('Saving')
   const [leagueImportStatus, setLeagueImportStatus] = useState('')
   const [isImportingLeague, setIsImportingLeague] = useState(false)
+  const autoConnectedLiveDrafts = useRef(new Set<string>())
 
   const selectedLeague = profiles.find((profile) => profile.id === selectedLeagueId) || profiles[0]
   const draft = draftsByLeague[selectedLeague.id] || createDraftState(selectedLeague)
@@ -991,11 +984,11 @@ function App() {
     }
   }, [draft, draftInput, selectedLeague])
 
-  const syncLeagueDraftState = useCallback(async (quiet = false) => {
-    const sourceId = selectedLeague.externalLeagueId.trim()
+  const syncLeagueDraftState = useCallback(async (quiet = false, sourceOverride?: string) => {
+    const sourceId = sourceOverride?.trim() || selectedLeague.externalLeagueId.trim()
     if (!sourceId) {
       setSyncStatus(`Enter the ${selectedLeague.platform.toUpperCase()} league ID on the Leagues page first.`)
-      return
+      return false
     }
     if (!quiet) setSyncStatus(`Loading ${selectedLeague.platform.toUpperCase()} live draft...`)
     setIsSyncing(true)
@@ -1008,12 +1001,24 @@ function App() {
       setRemoteDraftReadyByLeague((current) => ({ ...current, [selectedLeague.id]: true }))
       setDraftInput('')
       setSyncStatus(`Synced ${nextDraft.drafted.length} live picks at ${new Date().toLocaleTimeString()}.`)
+      return true
     } catch (error) {
       setSyncStatus(error instanceof Error ? error.message : `Unable to load ${selectedLeague.platform.toUpperCase()} live draft.`)
+      return false
     } finally {
       setIsSyncing(false)
     }
   }, [draft, draftSessionType, selectedLeague])
+
+  useEffect(() => {
+    const activeDraftId = ACTIVE_SLEEPER_DRAFTS[selectedLeague.id]
+    if (activeTab !== 'board' || !activeDraftId || autoConnectedLiveDrafts.current.has(activeDraftId)) return
+    autoConnectedLiveDrafts.current.add(activeDraftId)
+    void syncLeagueDraftState(false, activeDraftId).then((synced) => {
+      if (synced) setAutoSync(true)
+      else autoConnectedLiveDrafts.current.delete(activeDraftId)
+    })
+  }, [activeTab, selectedLeague.id, syncLeagueDraftState])
 
   function resetMockDraft() {
     if (draft.drafted.length && !window.confirm(`Reset ${selectedLeague.name}'s draft session and restore every player?`)) return
@@ -2789,7 +2794,7 @@ function getTabFromHash(): AppTab {
 function mergeLeagueProfiles(remote: LeagueProfile[], local: LeagueProfile[]) {
   const merged = new Map(remote.map((profile) => [profile.id, profile]))
   local.forEach((profile) => merged.set(profile.id, { ...(merged.get(profile.id) || {}), ...profile }))
-  return [...merged.values()].map(normalizeLeagueProfile)
+  return sanitizeLeagueProfiles([...merged.values()])
 }
 
 function getScoringWarnings(league: LeagueProfile) {

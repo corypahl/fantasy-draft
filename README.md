@@ -48,15 +48,16 @@ Without those variables, the app uses `public/data/fantasy-data.json` and saves 
 
 ## League profiles
 
-The app is set up for three draft companion profiles:
+The app is set up for two draft companion profiles:
 
-- `FanDuel`: Sleeper league `1257088161859772416`
-- `Jackson`: Sleeper league `1257138560092348416`
+- `Jackson`: Sleeper league `1389737302812553216`; its active slow draft is `1389737302812553217`
 - `GVSU`: ESPN league `509557`
 
 Each profile has its own platform, league/team IDs, lineup rules, scoring rules, and ranking set. The scraper pulls one common projection dataset, and the browser recalculates projected fantasy points per selected league. Ranking context can still differ by league through the selected `standard`, `halfPpr`, or `ppr` ranking set.
 
 League settings are synced into the `fantasy-leagues` DynamoDB table by `scripts/sync_leagues.py`. Sleeper settings come from public league endpoints. ESPN settings use repository secrets for the private ESPN cookies.
+
+Opening the Jackson Draft Board connects to the active Sleeper slow draft automatically and enables 15-second auto-sync after the first successful refresh.
 
 ## Mock drafts
 
