@@ -51,7 +51,7 @@ test('prefers structured ESPN data attributes', () => {
 })
 
 test('parses the 2026 ESPN practice-draft pick card format', () => {
-  const pick = parser.parsePickText("Amon-Ra St. Brown / DET WR R1, P1 - Brent's Daddy", {}, 10, [])
+  const pick = parser.parsePickText("Amon-Ra St. Brown / DET WRR1, P1 - Brent's Daddy", {}, 10, [])
 
   assert.equal(pick.pick, 1)
   assert.equal(pick.round, 1)
@@ -59,6 +59,52 @@ test('parses the 2026 ESPN practice-draft pick card format', () => {
   assert.equal(pick.playerName, 'Amon-Ra St. Brown')
   assert.equal(pick.position, 'WR')
   assert.equal(pick.team, 'DET')
+})
+
+test('reads the live semantic pick fields and detects the ESPN room structure', () => {
+  const fields = {
+    '.playerinfo__playername': 'Jahmyr Gibbs',
+    '.playerinfo__playerteam': 'DET',
+    '.playerinfo__playerpos': 'RB',
+    '.pick-info': 'R1, P1 - Team Choo Choo',
+  }
+  const pickCard = {
+    className: 'jsx-2093861861 pick-message__container',
+    dataset: {},
+    getAttribute() { return '' },
+    id: '',
+    parentElement: { className: '' },
+    querySelector(selector) {
+      return fields[selector] ? { textContent: fields[selector] } : undefined
+    },
+    tagName: 'LI',
+    textContent: 'Jahmyr Gibbs / DET RBR1, P1 - Team Choo Choo',
+  }
+  const ownerNames = [
+    'Team Choo Choo', 'Team Mack', "Hubba Hubba CD's Nutz 🥜", 'Team Jordan',
+    'Team Godfather', 'Team koyn', 'Bijan Mustard', 'Team Megatronless',
+    'Team Pahl', 'Team Camouflage Cndm', 'Metcalf Hurts', "Brent's Daddy",
+  ]
+  const ownerSelect = { options: ownerNames.map((textContent) => ({ textContent })) }
+  const documentRef = {
+    body: { textContent: 'RND 1 of 13 On the Clock: Pick 9' },
+    querySelectorAll(selector) {
+      if (selector === 'select') return [ownerSelect]
+      if (selector === '.pick-message__container') return [pickCard]
+      return []
+    },
+  }
+  const snapshot = parser.scanDocument(
+    documentRef,
+    'https://fantasy.espn.com/football/draft?leagueId=1525487677&seasonId=2026',
+    { totalTeams: 10, totalRounds: 16 },
+  )
+
+  assert.equal(snapshot.totalTeams, 12)
+  assert.equal(snapshot.totalRounds, 13)
+  assert.deepEqual([...snapshot.teamNames], ownerNames)
+  assert.equal(snapshot.picks.length, 1)
+  assert.equal(snapshot.picks[0].teamName, 'Team Choo Choo')
 })
 
 test('finds generic div pick cards without ESPN class names', () => {

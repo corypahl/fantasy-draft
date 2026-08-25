@@ -116,7 +116,7 @@ Install it locally:
 2. Open `chrome://extensions` in Chrome and enable **Developer mode**.
 3. Select **Load unpacked** and choose the repository's `espn-draft-bridge` folder.
 4. Open the ESPN draft room and reload it once after installation.
-5. Open the extension, confirm `gvsu-draft`, `gvsu`, the team/round counts, and optionally enter owner names one per draft slot.
+5. Open the extension and confirm `gvsu-draft` and `gvsu`. The bridge detects the owner order, team count, and round count from the active ESPN room; the saved team/round settings and optional owner names are used only as fallbacks.
 6. Enable **Live bridge**, then select **Save & scan**.
 7. Open the GVSU Draft Board. Its ESPN Draft Bridge banner turns green when snapshots arrive.
 

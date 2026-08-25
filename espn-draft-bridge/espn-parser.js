@@ -2,6 +2,7 @@
   const POSITION_PATTERN = '(QB|RB|WR|TE|K|D\\/?ST|DST|DEF)'
   const TEAM_PATTERN = '([A-Z]{2,3})'
   const PICK_ROW_SELECTORS = [
+    '.pick-message__container',
     '[data-testid*="draft-pick"]',
     '[data-testid*="draft-result"]',
     '[data-testid*="pick-history"] [role="row"]',
@@ -99,7 +100,7 @@
     const roundSlot = readNumericDataset(dataset, ['roundPick', 'pickInRound', 'roundSlot'])
     if (round && roundSlot) return pickFromRoundSlot(round, roundSlot, totalTeams)
 
-    const labeledRoundPickMatch = text.match(/\b(?:R|RD|ROUND)\s*(\d{1,2})\s*[,./-]\s*(?:P|PICK)\s*(\d{1,2})\b/i)
+    const labeledRoundPickMatch = text.match(/(?:R|RD|ROUND)\s*(\d{1,2})\s*[,./-]\s*(?:P|PICK)\s*(\d{1,2})\b/i)
     if (labeledRoundPickMatch) return pickFromRoundSlot(Number(labeledRoundPickMatch[1]), Number(labeledRoundPickMatch[2]), totalTeams)
 
     const roundSlotMatch = text.match(/(?:^|\s)(\d{1,2})\s*[.\-]\s*(\d{1,2})(?=\s|$)/)
@@ -119,10 +120,10 @@
     const datasetTeam = normalizeTeam(dataset?.team || dataset?.proTeam || dataset?.nflTeam)
     if (datasetPosition && datasetTeam) return { position: datasetPosition, team: datasetTeam }
 
-    const positionThenTeam = text.match(new RegExp(`${POSITION_PATTERN}\\s*(?:[-·,]|\\s)\\s*${TEAM_PATTERN}\\b`, 'i'))
+    const positionThenTeam = text.match(new RegExp(`${POSITION_PATTERN}\\s*(?:[-·,]|\\s)\\s*${TEAM_PATTERN}(?=\\s|(?:R|RD|ROUND)\\s*\\d|$)`, 'i'))
     if (positionThenTeam) return { position: normalizePosition(positionThenTeam[1]), team: normalizeTeam(positionThenTeam[2]) }
 
-    const teamThenPosition = text.match(new RegExp(`\\b${TEAM_PATTERN}\\s*(?:[-·,]|\\s)\\s*${POSITION_PATTERN}\\b`, 'i'))
+    const teamThenPosition = text.match(new RegExp(`\\b${TEAM_PATTERN}\\s*(?:[-·,]|\\s)\\s*${POSITION_PATTERN}(?=\\s|(?:R|RD|ROUND)\\s*\\d|$)`, 'i'))
     if (teamThenPosition) return { position: normalizePosition(teamThenPosition[2]), team: normalizeTeam(teamThenPosition[1]) }
 
     return { position: datasetPosition, team: datasetTeam }
@@ -143,8 +144,8 @@
     let candidate = stripPickPrefix(text)
     if (position && team) {
       const positionPattern = position === 'DST' ? '(?:D\\/?ST|DST|DEF)' : position
-      const positionThenTeam = new RegExp(`\\s+${positionPattern}\\s*(?:[-·,]|\\s)\\s*${team}\\b.*$`, 'i')
-      const teamThenPosition = new RegExp(`\\s+${team}\\s*(?:[-·,]|\\s)\\s*${positionPattern}\\b.*$`, 'i')
+      const positionThenTeam = new RegExp(`\\s+${positionPattern}\\s*(?:[-·,]|\\s)\\s*${team}(?=\\s|(?:R|RD|ROUND)\\s*\\d|$).*$`, 'i')
+      const teamThenPosition = new RegExp(`\\s+${team}\\s*(?:[-·,]|\\s)\\s*${positionPattern}(?=\\s|(?:R|RD|ROUND)\\s*\\d|$).*$`, 'i')
       candidate = candidate.replace(positionThenTeam, '').replace(teamThenPosition, '')
     }
     candidate = candidate.replace(/\s+\b(?:selected|drafted)\s+by\b.*$/i, '').trim()
@@ -179,6 +180,29 @@
     }
   }
 
+  function parsePickElement(element, totalTeams, teamNames) {
+    const playerName = normalizeText(element.querySelector?.('.playerinfo__playername')?.textContent)
+    const team = normalizeTeam(element.querySelector?.('.playerinfo__playerteam')?.textContent)
+    const position = normalizePosition(element.querySelector?.('.playerinfo__playerpos')?.textContent)
+    const pickInfo = normalizeText(element.querySelector?.('.pick-info')?.textContent)
+    const pick = parsePickNumber(pickInfo, element.dataset || {}, totalTeams)
+    if (!playerName || !team || !position || !pick) {
+      return parsePickText(element.textContent, element.dataset || {}, totalTeams, teamNames)
+    }
+    const location = getPickLocation(pick, totalTeams)
+    const ownerName = normalizeText(pickInfo.match(/-\s*(.+)$/)?.[1])
+    return {
+      pick,
+      round: location.round,
+      slot: location.slot,
+      teamName: teamNames?.[location.slot - 1] || ownerName || `Team ${location.slot}`,
+      playerId: slugify(`${playerName}-${team}-${position}`),
+      playerName,
+      position,
+      team
+    }
+  }
+
   function uniqueElements(elements) {
     return [...new Set(elements)]
   }
@@ -196,8 +220,8 @@
     const visiblePickCards = [...documentRef.querySelectorAll(PICK_CARD_SELECTOR)].filter((element) => {
       const text = normalizeText(element.textContent)
       if (text.length < 8 || text.length > 260) return false
-      const hasRoundPick = /\b(?:R|RD|ROUND)\s*\d{1,2}\s*[,./-]\s*(?:P|PICK)\s*\d{1,2}\b/i.test(text)
-      const hasPlayerTeamPosition = new RegExp(`(?:${TEAM_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${POSITION_PATTERN}|${POSITION_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${TEAM_PATTERN})\\b`, 'i').test(text)
+      const hasRoundPick = /(?:R|RD|ROUND)\s*\d{1,2}\s*[,./-]\s*(?:P|PICK)\s*\d{1,2}\b/i.test(text)
+      const hasPlayerTeamPosition = new RegExp(`(?:${TEAM_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${POSITION_PATTERN}|${POSITION_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${TEAM_PATTERN})(?=\\s|(?:R|RD|ROUND)\\s*\\d|$)`, 'i').test(text)
       return hasRoundPick && hasPlayerTeamPosition
     })
     return uniqueElements([...primary, ...contextual, ...visiblePickCards])
@@ -212,6 +236,21 @@
       if (unique.length === Number(totalTeams)) return unique
     }
     return []
+  }
+
+  function collectRosterTeamNames(documentRef) {
+    const excludedOption = /^(?:all\b|round\b|\d{4}\s+(?:projected|season)|QB$|RB$|WR$|TE$|FLEX$|D\/?ST$|\d+\s+(?:seconds?|minutes?|hours?))|free agents$/i
+    for (const select of documentRef.querySelectorAll('select')) {
+      const values = [...(select.options || [])].map((option) => normalizeText(option.textContent)).filter(Boolean)
+      if (values.length >= 2 && values.length <= 32 && values.every((value) => !excludedOption.test(value))) return values
+    }
+    return []
+  }
+
+  function detectTotalRounds(documentRef, fallback) {
+    const pageText = normalizeText(documentRef.body?.textContent || documentRef.querySelector?.('main')?.textContent)
+    const match = pageText.match(/\bRND\s+\d+\s+of\s+(\d{1,2})\b/i)
+    return match ? Math.max(1, Number(match[1])) : fallback
   }
 
   function getEspnTeamName(team) {
@@ -282,6 +321,8 @@
       picks,
       status,
       teamNames,
+      totalRounds,
+      totalTeams,
       diagnostics: {
         source: 'espn-api',
         candidateCount: rawPicks.length,
@@ -297,16 +338,17 @@
   }
 
   function scanDocument(documentRef, pageUrl, config) {
-    const totalTeams = Math.max(2, Number(config?.totalTeams) || 10)
-    const totalRounds = Math.max(1, Number(config?.totalRounds) || 16)
-    const detectedTeamNames = collectTeamNames(documentRef, totalTeams)
+    const rosterTeamNames = collectRosterTeamNames(documentRef)
+    const totalTeams = rosterTeamNames.length >= 2 ? rosterTeamNames.length : Math.max(2, Number(config?.totalTeams) || 10)
+    const totalRounds = detectTotalRounds(documentRef, Math.max(1, Number(config?.totalRounds) || 16))
+    const detectedTeamNames = rosterTeamNames.length === totalTeams ? rosterTeamNames : collectTeamNames(documentRef, totalTeams)
     const configuredTeamNames = Array.isArray(config?.teamNames) ? config.teamNames.map(normalizeText).filter(Boolean) : []
     const teamNames = detectedTeamNames.length === totalTeams
       ? detectedTeamNames
       : configuredTeamNames.length === totalTeams ? configuredTeamNames : []
     const rows = collectCandidateRows(documentRef)
     const parsed = rows
-      .map((element) => parsePickText(element.textContent, element.dataset || {}, totalTeams, teamNames))
+      .map((element) => parsePickElement(element, totalTeams, teamNames))
       .filter(Boolean)
     const byPick = new Map()
     parsed.forEach((pick) => {
@@ -323,6 +365,8 @@
       picks,
       status,
       teamNames,
+      totalRounds,
+      totalTeams,
       diagnostics: {
         source: 'dom',
         candidateCount: rows.length,
@@ -341,6 +385,7 @@
     getPickLocation,
     normalizePosition,
     parseApiSnapshot,
+    parsePickElement,
     parsePickText,
     scanDocument,
     slugify

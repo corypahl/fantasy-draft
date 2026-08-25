@@ -24,14 +24,16 @@ async function getConfig() {
   return { ...DEFAULT_CONFIG, ...(stored.bridgeConfig || {}) }
 }
 
-function normalizedTeamNames(snapshot, config) {
-  if (Array.isArray(snapshot.teamNames) && snapshot.teamNames.length === config.totalTeams) return snapshot.teamNames
-  if (Array.isArray(config.teamNames) && config.teamNames.length === config.totalTeams) return config.teamNames
-  return Array.from({ length: config.totalTeams }, (_, index) => `Team ${index + 1}`)
+function normalizedTeamNames(snapshot, config, totalTeams) {
+  if (Array.isArray(snapshot.teamNames) && snapshot.teamNames.length === totalTeams) return snapshot.teamNames
+  if (Array.isArray(config.teamNames) && config.teamNames.length === totalTeams) return config.teamNames
+  return Array.from({ length: totalTeams }, (_, index) => `Team ${index + 1}`)
 }
 
 function buildDraft(snapshot, config) {
-  const teamNames = normalizedTeamNames(snapshot, config)
+  const totalTeams = Math.max(2, Number(snapshot.totalTeams) || snapshot.teamNames?.length || Number(config.totalTeams) || 10)
+  const totalRounds = Math.max(1, Number(snapshot.totalRounds) || Number(config.totalRounds) || 16)
+  const teamNames = normalizedTeamNames(snapshot, config, totalTeams)
   const drafted = snapshot.picks.map((pick) => ({
     ...pick,
     teamName: teamNames[pick.slot - 1] || pick.teamName || `Team ${pick.slot}`
@@ -46,7 +48,7 @@ function buildDraft(snapshot, config) {
     source: 'espn',
     sessionType: 'live',
     status: snapshot.status,
-    totalRounds: config.totalRounds,
+    totalRounds,
     leagueName: config.leagueName,
     lastSyncedAt: snapshot.capturedAt
   }
