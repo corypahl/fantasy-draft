@@ -30,6 +30,20 @@
     '[class*="DraftBoard"] [class*="teamName"]',
     '[class*="draftBoard"] [class*="teamName"]'
   ]
+  const ESPN_POSITION_BY_ID = {
+    1: 'QB',
+    2: 'RB',
+    3: 'WR',
+    4: 'TE',
+    5: 'K',
+    16: 'DST'
+  }
+  const ESPN_TEAM_BY_ID = {
+    0: 'FA', 1: 'ATL', 2: 'BUF', 3: 'CHI', 4: 'CIN', 5: 'CLE', 6: 'DAL', 7: 'DEN', 8: 'DET',
+    9: 'GB', 10: 'TEN', 11: 'IND', 12: 'KC', 13: 'LV', 14: 'LAR', 15: 'MIA', 16: 'MIN', 17: 'NE',
+    18: 'NO', 19: 'NYG', 20: 'NYJ', 21: 'PHI', 22: 'ARI', 23: 'PIT', 24: 'LAC', 25: 'SF', 26: 'SEA',
+    27: 'TB', 28: 'WAS', 29: 'CAR', 30: 'JAX', 33: 'BAL', 34: 'HOU'
+  }
 
   function normalizeText(value) {
     return String(value || '').replace(/\s+/g, ' ').trim()
@@ -188,6 +202,88 @@
     return []
   }
 
+  function getEspnTeamName(team) {
+    if (!team || typeof team !== 'object') return undefined
+    const explicitName = normalizeText(team.name)
+    if (explicitName) return explicitName
+    const combinedName = normalizeText(`${team.location || ''} ${team.nickname || ''}`)
+    return combinedName || normalizeText(team.abbrev) || undefined
+  }
+
+  function parseApiSnapshot(apiPayload, pageUrl, config) {
+    const league = apiPayload?.league
+    const rawPicks = Array.isArray(league?.draftDetail?.picks) ? league.draftDetail.picks : []
+    if (!league || !Array.isArray(league.teams) || !rawPicks.length) return undefined
+    const configuredTeams = Math.max(2, Number(config?.totalTeams) || 10)
+    const totalTeams = Math.max(2, Number(league.settings?.size) || league.teams.length || configuredTeams)
+    const totalRounds = Math.max(1, Number(config?.totalRounds) || 16)
+    const teamById = new Map(league.teams.map((team) => [Number(team.id), team]))
+    const playerById = new Map((apiPayload.players || []).map((entry) => {
+      const player = entry?.player || entry
+      return [Number(entry?.id || player?.id), player]
+    }))
+    const chronologicalPicks = [...rawPicks].sort((a, b) => Number(a.overallPickNumber) - Number(b.overallPickNumber))
+    const slotByTeamId = new Map()
+    chronologicalPicks
+      .filter((pick) => Number(pick.roundId) === 1)
+      .forEach((pick) => {
+        const teamId = Number(pick.teamId)
+        const slot = Number(pick.roundPickNumber)
+        if (teamId > 0 && slot >= 1 && slot <= totalTeams) slotByTeamId.set(teamId, slot)
+      })
+    const teamNames = Array.from({ length: totalTeams }, (_, index) => `Team ${index + 1}`)
+    slotByTeamId.forEach((slot, teamId) => {
+      teamNames[slot - 1] = getEspnTeamName(teamById.get(teamId)) || teamNames[slot - 1]
+    })
+    const picks = chronologicalPicks.map((rawPick) => {
+      const pick = Number(rawPick.overallPickNumber)
+      const round = Number(rawPick.roundId)
+      const teamId = Number(rawPick.teamId)
+      const playerId = Number(rawPick.playerId)
+      const player = playerById.get(playerId)
+      const playerName = normalizeText(player?.fullName)
+      const position = ESPN_POSITION_BY_ID[Number(player?.defaultPositionId)]
+      const team = ESPN_TEAM_BY_ID[Number(player?.proTeamId)]
+      const inferredSlot = getPickLocation(pick, totalTeams).slot
+      const slot = slotByTeamId.get(teamId) || inferredSlot
+      if (!Number.isInteger(pick) || pick < 1 || !Number.isInteger(round) || round < 1 || !playerName || !position) return undefined
+      return {
+        pick,
+        round,
+        slot,
+        teamName: teamNames[slot - 1] || `Team ${slot}`,
+        playerId: slugify(`${playerName}-${team || 'FA'}-${position}`),
+        playerName,
+        position,
+        team
+      }
+    }).filter(Boolean)
+    if (!picks.length) return undefined
+    const totalPicks = totalTeams * totalRounds
+    const status = league.draftDetail?.inProgress
+      ? 'drafting'
+      : picks.length >= totalPicks || league.draftDetail?.drafted ? 'complete' : 'pre_draft'
+    return {
+      capturedAt: new Date().toISOString(),
+      detectedLeagueId: String(league.id || new URL(pageUrl).searchParams.get('leagueId') || ''),
+      pageUrl,
+      picks,
+      status,
+      teamNames,
+      diagnostics: {
+        source: 'espn-api',
+        candidateCount: rawPicks.length,
+        parsedCount: picks.length,
+        samples: chronologicalPicks.slice(-5).map((pick) => ({
+          overallPickNumber: pick.overallPickNumber,
+          playerId: pick.playerId,
+          roundId: pick.roundId,
+          teamId: pick.teamId
+        }))
+      }
+    }
+  }
+
   function scanDocument(documentRef, pageUrl, config) {
     const totalTeams = Math.max(2, Number(config?.totalTeams) || 10)
     const totalRounds = Math.max(1, Number(config?.totalRounds) || 16)
@@ -231,6 +327,7 @@
   globalScope.EspnDraftParser = {
     getPickLocation,
     normalizePosition,
+    parseApiSnapshot,
     parsePickText,
     scanDocument,
     slugify

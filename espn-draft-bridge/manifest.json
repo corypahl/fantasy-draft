@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fantasy Draft Wizard - ESPN Bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Watches an ESPN fantasy draft and keeps Fantasy Draft Wizard picks current.",
   "permissions": [
     "activeTab",
@@ -22,6 +22,12 @@
     "default_title": "ESPN Draft Bridge"
   },
   "content_scripts": [
+    {
+      "matches": ["https://fantasy.espn.com/*"],
+      "js": ["espn-page-api.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": ["https://fantasy.espn.com/*"],
       "js": ["espn-parser.js", "espn-content.js"],

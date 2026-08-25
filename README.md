@@ -108,7 +108,7 @@ Enable GitHub Pages with source set to GitHub Actions.
 
 ## ESPN Draft Bridge
 
-The private Manifest V3 extension in `espn-draft-bridge/` watches the ESPN draft room and sends complete draft snapshots to open Draft Wizard tabs. It does not request cookie access or read ESPN credentials.
+The private Manifest V3 extension in `espn-draft-bridge/` watches the ESPN draft room and sends complete draft snapshots to open Draft Wizard tabs. It reads ESPN's structured draft payload through the already signed-in draft page, with a markup parser as a fallback. It does not request cookie access or read ESPN credentials.
 
 Install it locally:
 
