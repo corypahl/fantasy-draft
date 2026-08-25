@@ -22,6 +22,7 @@
     '[class*="RecentPicks"] > *'
   ]
   const FALLBACK_ROW_SELECTOR = 'tr, li, [role="row"], [class*="pick"], [class*="Pick"]'
+  const PICK_CARD_SELECTOR = 'div, li, tr, [role="row"]'
   const TEAM_NAME_SELECTORS = [
     '[data-testid*="draft-order"] [data-testid*="team"]',
     '[data-testid*="draft-board"] [data-testid*="team-name"]',
@@ -98,6 +99,9 @@
     const roundSlot = readNumericDataset(dataset, ['roundPick', 'pickInRound', 'roundSlot'])
     if (round && roundSlot) return pickFromRoundSlot(round, roundSlot, totalTeams)
 
+    const labeledRoundPickMatch = text.match(/\b(?:R|RD|ROUND)\s*(\d{1,2})\s*[,./-]\s*(?:P|PICK)\s*(\d{1,2})\b/i)
+    if (labeledRoundPickMatch) return pickFromRoundSlot(Number(labeledRoundPickMatch[1]), Number(labeledRoundPickMatch[2]), totalTeams)
+
     const roundSlotMatch = text.match(/(?:^|\s)(\d{1,2})\s*[.\-]\s*(\d{1,2})(?=\s|$)/)
     if (roundSlotMatch) return pickFromRoundSlot(Number(roundSlotMatch[1]), Number(roundSlotMatch[2]), totalTeams)
 
@@ -144,6 +148,7 @@
       candidate = candidate.replace(positionThenTeam, '').replace(teamThenPosition, '')
     }
     candidate = candidate.replace(/\s+\b(?:selected|drafted)\s+by\b.*$/i, '').trim()
+    candidate = candidate.replace(/[\s/·,–—-]+$/, '').trim()
     if (!candidate || candidate.length > 80 || /^(pick|round|team)\b/i.test(candidate)) return undefined
     return candidate
   }
@@ -180,8 +185,7 @@
 
   function collectCandidateRows(documentRef) {
     const primary = uniqueElements(PICK_ROW_SELECTORS.flatMap((selector) => [...documentRef.querySelectorAll(selector)]))
-    if (primary.length) return primary
-    return [...documentRef.querySelectorAll(FALLBACK_ROW_SELECTOR)].filter((element) => {
+    const contextual = [...documentRef.querySelectorAll(FALLBACK_ROW_SELECTOR)].filter((element) => {
       const context = normalizeText(`${element.className || ''} ${element.id || ''} ${element.getAttribute?.('data-testid') || ''} ${element.parentElement?.className || ''}`)
       const text = normalizeText(element.textContent)
       return /draft|pick|history|result|selection/i.test(context)
@@ -189,6 +193,14 @@
         && text.length <= 320
         && new RegExp(`\\b${POSITION_PATTERN}\\b`, 'i').test(text)
     })
+    const visiblePickCards = [...documentRef.querySelectorAll(PICK_CARD_SELECTOR)].filter((element) => {
+      const text = normalizeText(element.textContent)
+      if (text.length < 8 || text.length > 260) return false
+      const hasRoundPick = /\b(?:R|RD|ROUND)\s*\d{1,2}\s*[,./-]\s*(?:P|PICK)\s*\d{1,2}\b/i.test(text)
+      const hasPlayerTeamPosition = new RegExp(`(?:${TEAM_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${POSITION_PATTERN}|${POSITION_PATTERN}\\s*(?:[-·,/]|\\s)\\s*${TEAM_PATTERN})\\b`, 'i').test(text)
+      return hasRoundPick && hasPlayerTeamPosition
+    })
+    return uniqueElements([...primary, ...contextual, ...visiblePickCards])
   }
 
   function collectTeamNames(documentRef, totalTeams) {
@@ -312,6 +324,7 @@
       status,
       teamNames,
       diagnostics: {
+        source: 'dom',
         candidateCount: rows.length,
         parsedCount: picks.length,
         samples: rows.slice(0, 12).map((element) => ({

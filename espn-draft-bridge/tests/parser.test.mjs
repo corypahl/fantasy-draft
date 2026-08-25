@@ -50,6 +50,45 @@ test('prefers structured ESPN data attributes', () => {
   assert.equal(pick.playerName, 'Puka Nacua')
 })
 
+test('parses the 2026 ESPN practice-draft pick card format', () => {
+  const pick = parser.parsePickText("Amon-Ra St. Brown / DET WR R1, P1 - Brent's Daddy", {}, 10, [])
+
+  assert.equal(pick.pick, 1)
+  assert.equal(pick.round, 1)
+  assert.equal(pick.slot, 1)
+  assert.equal(pick.playerName, 'Amon-Ra St. Brown')
+  assert.equal(pick.position, 'WR')
+  assert.equal(pick.team, 'DET')
+})
+
+test('finds generic div pick cards without ESPN class names', () => {
+  const pickCard = {
+    className: 'css-1dbjc4n',
+    dataset: {},
+    getAttribute() { return '' },
+    id: '',
+    parentElement: { className: 'css-1dbjc4n' },
+    tagName: 'DIV',
+    textContent: "Ja'Marr Chase / CIN WR R1, P2 - Team Mack",
+  }
+  const documentRef = {
+    querySelectorAll(selector) {
+      return selector === 'div, li, tr, [role="row"]' ? [pickCard] : []
+    },
+  }
+  const snapshot = parser.scanDocument(
+    documentRef,
+    'https://fantasy.espn.com/football/draft?leagueId=503883311&seasonId=2026',
+    { totalTeams: 10, totalRounds: 13 },
+  )
+
+  assert.equal(snapshot.diagnostics.candidateCount, 1)
+  assert.equal(snapshot.diagnostics.source, 'dom')
+  assert.equal(snapshot.picks.length, 1)
+  assert.equal(snapshot.picks[0].pick, 2)
+  assert.equal(snapshot.picks[0].playerName, "Ja'Marr Chase")
+})
+
 test('parses authenticated ESPN draft data with snake-draft slots', () => {
   const snapshot = parser.parseApiSnapshot({
     league: {

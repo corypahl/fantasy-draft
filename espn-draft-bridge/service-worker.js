@@ -110,7 +110,9 @@ async function handleSnapshot(snapshot) {
       ...baseStatus,
       ...published,
       lastSentAt: new Date().toISOString(),
-      message: config.publishToApi ? published.message : `Updated ${tabCount} open Draft Wizard tab${tabCount === 1 ? '' : 's'}`
+      message: draft.drafted.length === 0 && snapshot.diagnostics?.apiError
+        ? snapshot.diagnostics.apiError
+        : config.publishToApi ? published.message : `Updated ${tabCount} open Draft Wizard tab${tabCount === 1 ? '' : 's'}`
     }
     await chrome.storage.local.set({ bridgeStatus: status, latestEspnDraft: draft })
     return status

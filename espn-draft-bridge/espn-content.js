@@ -50,6 +50,7 @@
           const apiPayload = await requestApiPayload()
           lastApiSnapshot = parser.parseApiSnapshot(apiPayload, location.href, config)
           lastApiFetchAt = Date.now()
+          if (!lastApiSnapshot) apiError = 'ESPN structured draft data contained no usable picks'
         } catch (error) {
           apiError = error instanceof Error ? error.message : String(error)
         }
