@@ -470,6 +470,7 @@ const leagueProfiles: LeagueProfile[] = [
     name: 'Jackson',
     platform: 'sleeper',
     externalLeagueId: JACKSON_LEAGUE_ID,
+    draftSlot: 5,
     scoringPreset: 'halfPpr',
     rankingPreset: 'halfPpr',
     lineup: {
@@ -583,7 +584,7 @@ function createDraftState(profile: LeagueProfile): DraftState {
 }
 
 function normalizeLeagueProfile(profile: LeagueProfile): LeagueProfile {
-  if (profile.id === 'jackson') return { ...profile, externalLeagueId: JACKSON_LEAGUE_ID }
+  if (profile.id === 'jackson') return { ...profile, externalLeagueId: JACKSON_LEAGUE_ID, draftSlot: 5 }
   if (profile.id !== 'gvsu' && profile.externalLeagueId !== '509557') return profile
   return {
     ...profile,
@@ -3637,9 +3638,11 @@ function buildSleeperTeamNames(totalTeams: number, slotToRosterId: Record<string
   const userIdBySlot = new Map(Object.entries(draftOrder).map(([userId, slot]) => [Number(slot), userId]))
   return Array.from({ length: totalTeams }, (_, index) => {
     const slot = index + 1
+    const draftUser = usersById.get(userIdBySlot.get(slot))
+    if (draftUser) return draftUser.metadata?.team_name || draftUser.display_name || `Team ${slot}`
     const rosterId = String(slotToRosterId[String(slot)] || slot)
     const roster = rostersById.get(rosterId)
-    const user = roster?.owner_id ? usersById.get(roster.owner_id) : usersById.get(userIdBySlot.get(slot))
+    const user = roster?.owner_id ? usersById.get(roster.owner_id) : undefined
     return user?.metadata?.team_name || user?.display_name || `Team ${slot}`
   })
 }
