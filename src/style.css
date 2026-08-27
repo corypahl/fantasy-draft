@@ -2755,6 +2755,9 @@ h3 {
 .eyebrow { color: var(--text-muted); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .draftActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; }
 .liveDraftButton { min-height: 34px; font-size: 0.7rem; }
+.copyContextButton { min-height: 34px; border-color: rgba(49, 130, 206, 0.5); font-size: 0.7rem; }
+.copyContextButton.copied { border-color: rgba(56, 161, 105, 0.65); background: rgba(56, 161, 105, 0.13); color: #9ae6b4; }
+.copyContextButton.error { border-color: rgba(229, 62, 62, 0.65); color: #feb2b2; }
 .draftSlotSelector { display: grid; gap: 0.15rem; color: var(--text-muted); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .draftSlotSelector select { min-height: 34px; max-width: 220px; border: 1px solid rgba(56, 161, 105, 0.55); border-radius: 7px; background: var(--bg-card); color: #c6f6d5; padding: 0 1.8rem 0 0.55rem; font-size: 0.72rem; font-weight: 900; text-transform: none; }
 .autoSyncToggle { display: flex; align-items: center; gap: 0.4rem; color: var(--text-secondary); font-size: 0.74rem; font-weight: 800; }

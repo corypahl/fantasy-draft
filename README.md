@@ -11,6 +11,7 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Bridge ESPN draft-room picks into the GVSU Board with a private Chrome extension, including parser diagnostics, manual rescans, and optional authenticated cloud publishing.
 - Forecast upcoming selections with a rolling simulation that combines ADP, roster needs, tier scarcity, position runs, and observed owner tendencies; predicted players appear as dashed picks directly on the live board.
 - Compare the top three roster-aware recommendations at every position from the Draft Board.
+- Copy a ready-to-paste ChatGPT draft context containing league rules, scoring, roster health, recent picks, positional-run alerts, and the top available QBs, RBs, WRs, and TEs.
 - Monitor personalized positional-run alerts and live roster health, including starter and flex coverage, projected starting PPG, bye conflicts, and prioritized remaining needs.
 - Switch between position columns and an expanded all-player table while retaining position filters, drafted-player controls, and live available/total counts for each tier-color band.
 - Compare league-adjusted positional strength of schedule, Weeks 1-4 defense SOS, and kicker dome rate from current and prior-season schedule data.

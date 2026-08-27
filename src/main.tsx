@@ -2171,6 +2171,29 @@ function DraftBoardPage({
   const draftSessionType = getDraftSessionType(draft)
   const hasMockDraft = draftSessionType === 'mock'
   const hasActiveDraft = Boolean(draft.drafted.length || draft.lastSyncedAt || draft.sleeperDraftId)
+  const [copyContextState, setCopyContextState] = useState<'idle' | 'copied' | 'error'>('idle')
+  const copyContextResetTimer = useRef<number | undefined>(undefined)
+
+  useEffect(() => () => window.clearTimeout(copyContextResetTimer.current), [])
+
+  async function handleCopyContext() {
+    const context = buildDraftAdviceContext({
+      draft,
+      league,
+      positionRunAlerts,
+      recommendations,
+      rosterHealth,
+      strategy,
+    })
+    try {
+      await writeTextToClipboard(context)
+      setCopyContextState('copied')
+    } catch {
+      setCopyContextState('error')
+    }
+    window.clearTimeout(copyContextResetTimer.current)
+    copyContextResetTimer.current = window.setTimeout(() => setCopyContextState('idle'), 2500)
+  }
 
   return (
     <section className="panel pagePanel draftBoardPanel">
@@ -2209,6 +2232,15 @@ function DraftBoardPage({
           <strong>{isUserPick ? 'You are on the clock' : `${currentTeam} is on the clock`}</strong>
         </div>
         <div className="draftActions">
+          <button
+            className={`iconTextButton copyContextButton ${copyContextState}`}
+            onClick={() => void handleCopyContext()}
+            title={copyContextState === 'error' ? 'Clipboard access was blocked. Try again after allowing clipboard access.' : 'Copy current league, roster, draft, and available-player context'}
+            type="button"
+          >
+            {copyContextState === 'copied' ? <Check size={14} /> : <Copy size={14} />}
+            {copyContextState === 'copied' ? 'Context copied' : copyContextState === 'error' ? 'Copy failed' : 'Copy Context'}
+          </button>
           <button className="iconTextButton liveDraftButton" disabled={isSyncing || !league.externalLeagueId.trim()} onClick={onSyncLiveDraft} type="button">
             <RefreshCw className={isSyncing && draftSessionType === 'live' ? 'spin' : ''} size={14} /> Sync {league.platform.toUpperCase()} live
           </button>
@@ -2313,6 +2345,143 @@ function DraftBoardPage({
       </div>
     </section>
   )
+}
+
+function buildDraftAdviceContext({
+  draft,
+  league,
+  positionRunAlerts,
+  recommendations,
+  rosterHealth,
+  strategy,
+}: {
+  draft: DraftState
+  league: LeagueProfile
+  positionRunAlerts: PositionRunAlert[]
+  recommendations: Recommendation[]
+  rosterHealth: RosterHealth
+  strategy: RecommendationStrategy
+}) {
+  const totalTeams = draft.teamNames.length || league.lineup.teams
+  const totalRounds = draft.totalRounds || league.lineup.rosterSpots
+  const currentLocation = getSlotRoundForPick(draft.currentPick, totalTeams)
+  const currentTeamName = draft.teamNames[currentLocation.slot - 1] || `Team ${currentLocation.slot}`
+  const userSlot = clampLeagueDraftSlot(league, totalTeams)
+  const userTeamName = draft.teamNames[userSlot - 1] || `Team ${userSlot}`
+  const userRoster = getDraftedRosterForSlot(draft, userSlot).sort((a, b) => a.pick - b.pick)
+  const nextUserPicks: number[] = []
+  for (let pick = draft.currentPick; pick <= totalTeams * totalRounds && nextUserPicks.length < 2; pick += 1) {
+    if (getSlotRoundForPick(pick, totalTeams).slot === userSlot) nextUserPicks.push(pick)
+  }
+  const recommendationRankById = new Map(recommendations.map((item, index) => [item.player.id, index + 1]))
+  const recentPicks = [...draft.drafted].sort((a, b) => a.pick - b.pick).slice(-10)
+  const lineup = league.lineup
+  const scoring = league.scoring
+  const scoringLines = [
+    `- Reception: ${scoring.reception} points (${scoring.reception === 1 ? 'PPR' : scoring.reception === 0.5 ? 'half-PPR' : scoring.reception === 0 ? 'standard' : 'custom'})`,
+    `- Passing: 1 point per ${scoring.passingYardsPerPoint} yards; ${scoring.passingTd} per TD; ${scoring.interception} per interception`,
+    `- Rushing: 1 point per ${scoring.rushingYardsPerPoint} yards; ${scoring.rushReceiveTd} per rushing/receiving TD`,
+    `- Receiving: 1 point per ${scoring.receivingYardsPerPoint} yards`,
+    `- Fumble lost: ${scoring.fumbleLost} points`,
+    `- Kicking: ${scoring.fieldGoal} per field goal; ${scoring.extraPoint} per extra point`,
+    `- DST: ${scoring.dstSack} sack; ${scoring.dstInterception} interception; ${scoring.dstFumbleRecovery} fumble recovery; ${scoring.dstTouchdown} TD; ${scoring.dstSafety} safety`,
+  ]
+  const rosterLines = userRoster.length
+    ? userRoster.map((pick) => `- #${pick.pick} (R${pick.round}): ${pick.playerName || pick.playerId} — ${pick.position || '?'} ${pick.team || ''}`.trimEnd())
+    : ['- No players drafted yet']
+  const recentPickLines = recentPicks.length
+    ? recentPicks.map((pick) => `- #${pick.pick}: ${pick.playerName || pick.playerId} (${pick.position || '?'} ${pick.team || ''}) — ${pick.teamName}`)
+    : ['- Draft has not started']
+  const runAlertLines = positionRunAlerts.length
+    ? positionRunAlerts.map((alert) => `- ${alert.position} ${alert.severity.toUpperCase()}: ${alert.message}`)
+    : ['- No meaningful positional run is currently detected']
+  const contextPlayerLimits: [Position, number][] = [['QB', 5], ['RB', 10], ['WR', 10], ['TE', 5]]
+  const availablePlayerLines = contextPlayerLimits.flatMap(([position, limit]) => {
+    const players = recommendations.filter((item) => item.player.position === position).slice(0, limit)
+    if (!players.length) return [`${position}: none available`]
+    return [
+      `${position}:`,
+      ...players.map((item) => {
+        const player = item.player
+        const details = [
+          `Rec #${recommendationRankById.get(player.id)}`,
+          `Rank #${player.rank}`,
+          player.posRank || undefined,
+          player.tier ? `Tier ${player.tier}` : undefined,
+          player.adp ? `ADP ${player.adp.toFixed(1)} (${getAdpValueBand(player).label})` : 'ADP unavailable',
+          `${formatProjectedPointsPerGame(player.projectedPoints)} proj PPG`,
+          player.bye ? `Bye ${player.bye}` : undefined,
+          player.strengthOfSchedule ? `SOS #${player.strengthOfSchedule.rank}` : undefined,
+          player.injury ? `Injury: ${formatHealth(player)}` : undefined,
+          formatNextPickAvailability(item),
+        ].filter(Boolean)
+        return `- ${player.name} (${player.team}) — ${details.join(' | ')} | ${item.reason}`
+      }),
+    ]
+  })
+  const isUserPick = currentLocation.slot === userSlot
+
+  return [
+    'I need advice for my next fantasy football draft pick. Be decisive and recommend:',
+    '1. The best pick now',
+    '2. Two alternatives',
+    '3. Whether each option is likely to survive until my next pick',
+    '4. Any positional-run or roster-construction risk that should change the decision',
+    '',
+    'LEAGUE',
+    `- Name: ${league.name}`,
+    `- Platform: ${league.platform.toUpperCase()}`,
+    `- Format: ${totalTeams}-team snake draft, ${totalRounds} rounds`,
+    `- Lineup: ${lineup.qb} QB, ${lineup.rb} RB, ${lineup.wr} WR, ${lineup.te} TE, ${lineup.flex} FLEX, ${lineup.superflex} SUPERFLEX, ${lineup.k} K, ${lineup.dst} DST, ${lineup.bench} bench (${lineup.rosterSpots} total)`,
+    `- Ranking/recommendation strategy: ${RECOMMENDATION_STRATEGIES[strategy].label} — ${RECOMMENDATION_STRATEGIES[strategy].description}`,
+    '',
+    'SCORING',
+    ...scoringLines,
+    '',
+    'CURRENT DRAFT STATUS',
+    `- Current pick: #${draft.currentPick} (Round ${currentLocation.round}, slot ${currentLocation.slot})`,
+    `- On the clock: ${currentTeamName}${isUserPick ? ' — ME' : ''}`,
+    `- My draft position/team: Pick ${userSlot} — ${userTeamName}`,
+    `- My next picks: ${nextUserPicks.length ? nextUserPicks.map((pick) => `#${pick}`).join(', ') : 'none remaining'}`,
+    `- Last synced: ${draft.lastSyncedAt ? new Date(draft.lastSyncedAt).toLocaleString() : 'not connected'}`,
+    '',
+    'MY ROSTER',
+    ...rosterLines,
+    '',
+    'ROSTER HEALTH',
+    `- ${rosterHealth.status}; starters ${rosterHealth.startersFilled}/${rosterHealth.starterSlots}; projected starter PPG ${rosterHealth.projectedStarterPpg.toFixed(1)}; bye conflicts ${rosterHealth.byeConflicts}`,
+    `- Needs: ${rosterHealth.urgentNeeds.length ? rosterHealth.urgentNeeds.join('; ') : 'none flagged'}`,
+    '',
+    'RECENT PICKS',
+    ...recentPickLines,
+    '',
+    'POSITIONAL-RUN ALERTS',
+    ...runAlertLines,
+    '',
+    'TOP AVAILABLE PLAYERS (5 QB, 10 RB, 10 WR, 5 TE; ordered by the tool within each position)',
+    ...availablePlayerLines,
+  ].join('\n')
+}
+
+async function writeTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return
+    } catch {
+      // Fall back to a temporary text area when browser clipboard permission is unavailable.
+    }
+  }
+  const textArea = document.createElement('textarea')
+  textArea.value = text
+  textArea.setAttribute('readonly', '')
+  textArea.style.position = 'fixed'
+  textArea.style.opacity = '0'
+  document.body.appendChild(textArea)
+  textArea.select()
+  const copied = document.execCommand('copy')
+  textArea.remove()
+  if (!copied) throw new Error('Clipboard copy failed')
 }
 
 function PositionRunAlerts({
