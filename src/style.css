@@ -2903,6 +2903,11 @@ h3 {
 .drawerRecommendation span { color: var(--text-primary); font-size: 0.82rem; line-height: 1.45; }
 .drawerRecommendation .recommendationSignals { margin: 0.3rem 0 0; }
 .drawerRecommendation .recommendationSignals span { color: #90cdf4; font-size: 0.62rem; line-height: 1; }
+.drawerAiOutlook { display: flex; align-items: flex-start; gap: 0.65rem; border: 1px solid rgba(128, 90, 213, 0.48); border-radius: 8px; background: rgba(128, 90, 213, 0.12); padding: 0.85rem; }
+.drawerAiOutlook > svg { flex: 0 0 auto; color: #d6bcfa; margin-top: 0.12rem; }
+.drawerAiOutlook > div { display: grid; gap: 0.45rem; }
+.drawerAiOutlook p { margin: 0; color: var(--text-primary); font-size: 0.82rem; line-height: 1.55; }
+.drawerAiOutlook small { color: #b794f4; font-size: 0.62rem; font-weight: 800; }
 .drawerNews { display: flex; gap: 0.65rem; align-items: flex-start; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); padding: 0.75rem; }
 .drawerNews > div { display: grid; gap: 0.15rem; }
 .drawerNews strong { color: var(--text-primary); font-size: 0.78rem; }

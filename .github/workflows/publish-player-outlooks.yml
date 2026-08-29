@@ -1,0 +1,83 @@
+name: Publish player outlooks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - public/data/player-outlooks-2026.json
+      - .github/workflows/publish-player-outlooks.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-player-outlooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate workflow configuration
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
+        run: |
+          test -n "$AWS_GITHUB_ACTIONS_ROLE_ARN" || { echo "::error::Missing repository secret AWS_GITHUB_ACTIONS_ROLE_ARN"; exit 1; }
+          test -n "$RANKINGS_BUCKET" || { echo "::error::Missing repository secret RANKINGS_BUCKET"; exit 1; }
+
+      - name: Validate outlook data
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("public/data/player-outlooks-2026.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          players = [player for values in payload.get("positions", {}).values() for player in values]
+          ids = [player.get("id") for player in players]
+          assert payload.get("metadata", {}).get("season") == 2026
+          assert len(players) == payload.get("metadata", {}).get("playerCount")
+          assert len(ids) == len(set(ids))
+          assert all(player.get("outlook") for player in players)
+          print(f"Validated {len(players)} player outlooks")
+          PY
+
+      - name: Configure AWS credentials
+        env:
+          AWS_GITHUB_ACTIONS_ROLE_ARN: ${{ secrets.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+        run: |
+          oidc_token="$(
+            curl -sSfL \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" \
+              | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])'
+          )"
+          read -r access_key secret_key session_token <<< "$(
+            aws sts assume-role-with-web-identity \
+              --role-arn "$AWS_GITHUB_ACTIONS_ROLE_ARN" \
+              --role-session-name fantasy-draft-player-outlooks \
+              --web-identity-token "$oidc_token" \
+              --duration-seconds 3600 \
+              --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
+              --output text
+          )"
+          {
+            echo "AWS_ACCESS_KEY_ID=$access_key"
+            echo "AWS_SECRET_ACCESS_KEY=$secret_key"
+            echo "AWS_SESSION_TOKEN=$session_token"
+            echo "AWS_REGION=$AWS_REGION"
+            echo "AWS_DEFAULT_REGION=$AWS_REGION"
+          } >> "$GITHUB_ENV"
+
+      - name: Upload player outlooks
+        env:
+          RANKINGS_BUCKET: ${{ secrets.RANKINGS_BUCKET }}
+        run: |
+          aws s3 cp \
+            public/data/player-outlooks-2026.json \
+            "s3://$RANKINGS_BUCKET/data/player-outlooks-2026.json" \
+            --content-type application/json \
+            --cache-control "public, max-age=300"

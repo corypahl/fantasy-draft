@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Sparkles,
   Star,
   Table2,
   Trash2,
@@ -48,6 +49,28 @@ type Player = {
   rookie?: RookieDetail
   previousYear?: PreviousYearResult
   sleeper?: SleeperDetail
+  aiOutlook?: string
+}
+
+type PlayerOutlookEntry = {
+  id: string
+  name: string
+  team: string
+  position: Position
+  rank?: number
+  posRank?: string
+  outlook: string
+}
+
+type PlayerOutlooksFile = {
+  metadata?: {
+    season?: number
+    generatedAt?: string
+    playerCount?: number
+    methodology?: string
+    sources?: string[]
+  }
+  positions?: Partial<Record<Position, PlayerOutlookEntry[]>>
 }
 
 type ScheduleGame = {
@@ -323,6 +346,7 @@ type RankingsFile = {
   previousYearResults?: Partial<Record<Position, PreviousYearResult[]>>
   previousYearWeeklyResults?: Partial<Record<Position, PreviousYearWeeklyResult[]>>
   schedules?: ScheduleData
+  playerOutlooks?: PlayerOutlooksFile
 }
 
 type TeamWinTotal = {
@@ -346,6 +370,7 @@ type SplitDataFiles = {
   previousYearResults: { previousYearResults?: RankingsFile['previousYearResults']; previousSeason?: number }
   previousYearWeeklyResults?: { previousYearWeeklyResults?: RankingsFile['previousYearWeeklyResults']; previousSeason?: number }
   schedules?: { schedules?: ScheduleData }
+  playerOutlooks: PlayerOutlooksFile
 }
 
 type LineupSettings = {
@@ -705,16 +730,18 @@ function App() {
         fetch(DATA_URL, { cache: 'no-store' })
           .then((response) => (response.ok ? response.json() : Promise.reject(new Error(response.statusText))))
           .then(async (payload: RankingsFile) => {
-            const [scheduleFile, weeklyFile, depthChartFile, injuryFile] = await Promise.all([
+            const [scheduleFile, weeklyFile, depthChartFile, injuryFile, outlookFile] = await Promise.all([
               fetchJson<NonNullable<SplitDataFiles['schedules']>>(`${DATA_BASE_URL}/schedules.json`).catch(() => undefined),
               fetchJson<NonNullable<SplitDataFiles['previousYearWeeklyResults']>>(`${DATA_BASE_URL}/previous-year-weekly-results.json`).catch(() => undefined),
               fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`).catch(() => undefined),
               fetchJson<SplitDataFiles['injuries']>(`${DATA_BASE_URL}/injuries.json`).catch(() => undefined),
+              fetchJson<PlayerOutlooksFile>(`${DATA_BASE_URL}/player-outlooks-2026.json`).catch(() => undefined),
             ])
             const depthCharts = Object.keys(payload.depthCharts || {}).length ? payload.depthCharts : depthChartFile?.depthCharts
             const teamWinTotals = Object.keys(payload.teamWinTotals || {}).length ? payload.teamWinTotals : depthChartFile?.teamWinTotals
             const injuries = payload.injuries?.length ? payload.injuries : injuryFile?.injuries || []
             const enrichments = buildClientEnrichments(depthCharts, injuries, payload.rookies || [], payload.previousYearResults)
+            const outlooksById = buildPlayerOutlookIndex(outlookFile)
             setData({
               ...payload,
               scoring: Object.fromEntries(Object.entries(payload.scoring).map(([preset, players]) => [
@@ -722,6 +749,7 @@ function App() {
                 (players || []).map((player) => ({
                   ...player,
                   ...(enrichments.get(playerKey(player.name, player.team)) || enrichments.get(playerKey(player.name)) || {}),
+                  aiOutlook: outlooksById.get(player.id)?.outlook,
                 })),
               ])) as RankingsFile['scoring'],
               depthCharts,
@@ -731,6 +759,7 @@ function App() {
               previousYearWeeklyResults: Object.keys(payload.previousYearWeeklyResults || {}).length
                 ? payload.previousYearWeeklyResults
                 : weeklyFile?.previousYearWeeklyResults,
+              playerOutlooks: outlookFile,
             })
           })
           .catch(() => setData(seedData)),
@@ -1295,6 +1324,7 @@ function App() {
           playerByKey={playerByKey}
           recommendation={recommendationByPlayerId.get(selectedPlayer.id)}
           scoring={selectedLeague.scoring}
+          outlookGeneratedAt={data.playerOutlooks?.metadata?.generatedAt}
           weeklyResults={data.previousYearWeeklyResults}
           onClose={() => setSelectedPlayer(null)}
           onPlayerSelect={setSelectedPlayer}
@@ -1723,6 +1753,7 @@ function PlayerDrawer({
   playerByKey,
   recommendation,
   scoring,
+  outlookGeneratedAt,
   weeklyResults,
   isWatched,
   onClose,
@@ -1734,6 +1765,7 @@ function PlayerDrawer({
   playerByKey: Map<string, RankedPlayer>
   recommendation?: Recommendation
   scoring: ScoringRules
+  outlookGeneratedAt?: string
   weeklyResults: RankingsFile['previousYearWeeklyResults']
   isWatched: boolean
   onClose: () => void
@@ -1765,6 +1797,21 @@ function PlayerDrawer({
             <DrawerMetric label="Team" value={player.team || 'FA'} />
             <DrawerMetric label="Bye" value={player.bye ? String(player.bye) : '—'} />
           </div>
+        </section>
+
+        <section className="drawerSection">
+          <h3>AI Player Outlook</h3>
+          {player.aiOutlook ? (
+            <div className="drawerAiOutlook">
+              <Sparkles size={17} />
+              <div>
+                <p>{player.aiOutlook}</p>
+                <small>2026 redraft outlook{outlookGeneratedAt ? ` · Generated ${formatOutlookDate(outlookGeneratedAt)}` : ''}</small>
+              </div>
+            </div>
+          ) : (
+            <div className="drawerEmptyNotice">No AI outlook is available for this player ID.</div>
+          )}
         </section>
 
         <TeamDepthChart
@@ -1829,7 +1876,7 @@ function PlayerDrawer({
         </section>
 
         <section className="drawerSection">
-          <h3>Outlook</h3>
+          <h3>Draft Recommendation</h3>
           {recommendation ? <div className="drawerRecommendation"><strong>Why now · {RECOMMENDATION_STRATEGIES[recommendation.strategy].label}</strong><span>{recommendation.reason}. {recommendation.outlook}</span><RecommendationSignals recommendation={recommendation} /></div> : <div className="drawerEmptyNotice">No active recommendation context is available.</div>}
         </section>
 
@@ -3943,7 +3990,7 @@ function normalizeSleeperTeam(team: string | undefined) {
 }
 
 async function fetchSplitData(): Promise<RankingsFile> {
-  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules] = await Promise.all([
+  const [rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules, playerOutlooks] = await Promise.all([
     fetchJson<SplitDataFiles['rankings']>(`${DATA_BASE_URL}/rankings.json`),
     fetchJson<SplitDataFiles['projections']>(`${DATA_BASE_URL}/projections.json`),
     fetchJson<SplitDataFiles['depthCharts']>(`${DATA_BASE_URL}/depth-charts.json`),
@@ -3954,9 +4001,10 @@ async function fetchSplitData(): Promise<RankingsFile> {
       previousYearWeeklyResults: {},
     })),
     fetchJson<NonNullable<SplitDataFiles['schedules']>>(`${DATA_BASE_URL}/schedules.json`).catch(() => ({ schedules: undefined })),
+    fetchJson<PlayerOutlooksFile>(`${DATA_BASE_URL}/player-outlooks-2026.json`).catch(() => ({ positions: {} })),
   ])
 
-  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules })
+  return composeSplitData({ rankings, projections, depthCharts, injuries, rookies, previousYearResults, previousYearWeeklyResults, schedules, playerOutlooks })
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -3973,6 +4021,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
   const previousYearResults = files.previousYearResults.previousYearResults || {}
   const previousYearWeeklyResults = files.previousYearWeeklyResults?.previousYearWeeklyResults || {}
   const enrichments = buildClientEnrichments(depthCharts, injuries, rookies, previousYearResults)
+  const outlooksById = buildPlayerOutlookIndex(files.playerOutlooks)
 
   return {
     generatedAt: files.rankings.generatedAt,
@@ -3989,6 +4038,7 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
             points: projection?.points ?? player.points,
             projections: projection?.projections ?? player.projections,
             ...enrichment,
+            aiOutlook: outlooksById.get(player.id)?.outlook,
           }
         }),
       ]),
@@ -4000,7 +4050,17 @@ function composeSplitData(files: SplitDataFiles): RankingsFile {
     previousYearResults,
     previousYearWeeklyResults,
     schedules: files.schedules?.schedules,
+    playerOutlooks: files.playerOutlooks,
   }
+}
+
+function buildPlayerOutlookIndex(file: PlayerOutlooksFile | undefined) {
+  return new Map(
+    Object.values(file?.positions || {})
+      .flatMap((entries) => entries || [])
+      .filter((entry) => entry.id && entry.outlook)
+      .map((entry) => [entry.id, entry] as const),
+  )
 }
 
 function buildClientEnrichments(
@@ -4469,6 +4529,13 @@ function formatScheduleStrength(strength: ScheduleStrength | undefined) {
 
 function formatDomeRate(domeRate: DomeRate | undefined) {
   return domeRate ? `${domeRate.indoorGames}/${domeRate.totalGames} · ${Math.round(domeRate.rate * 100)}%` : '—'
+}
+
+function formatOutlookDate(value: string) {
+  const date = new Date(`${value}T12:00:00`)
+  return Number.isFinite(date.getTime())
+    ? date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+    : value
 }
 
 function getCompactScheduleStats(player: RankedPlayer) {

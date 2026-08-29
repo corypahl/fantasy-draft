@@ -16,12 +16,14 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 - Switch between position columns and an expanded all-player table while retaining position filters, drafted-player controls, and live available/total counts for each tier-color band.
 - Compare league-adjusted positional strength of schedule, Weeks 1-4 defense SOS, and kicker dome rate from current and prior-season schedule data.
 - Use VOR-based, roster-aware recommendations with Balanced, Upside, Safe Floor, and Zero-RB strategies, plus a persistent watchlist and player detail drawers across every research view.
+- Read ID-matched, AI-generated 2026 redraft outlooks in each player detail drawer from the separately published S3 outlook dataset.
 - Use a mobile-first draft-day command center with compact research cards and deep-linked tabs.
 
 ## Architecture
 
 - React + Vite app hosted by GitHub Pages.
 - Daily GitHub Action scrapes rankings/projections and uploads `data/fantasy-data.json` to S3.
+- A dedicated publish workflow validates and uploads `data/player-outlooks-2026.json` to S3 whenever the checked-in outlook dataset changes.
 - S3 serves the generated JSON with CORS enabled for the browser app.
 - DynamoDB stores league profiles and draft state per league/draft.
 - API Gateway + Lambda exposes `GET`/`PUT /drafts/{draftId}` for browser-safe state sync.
