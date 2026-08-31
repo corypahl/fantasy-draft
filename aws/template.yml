@@ -25,6 +25,13 @@ Parameters:
   GitHubRepo:
     Type: String
     Default: fantasy-draft
+  GitHubDataRepo:
+    Type: String
+    Default: fantasy-data
+  GitHubDataSubjectPrefix:
+    Type: String
+    Default: repo:corypahl@93232566/fantasy-data@1352801730
+    Description: GitHub's immutable OIDC subject prefix for the fantasy-data repository.
 
 Globals:
   Function:
@@ -171,7 +178,10 @@ Resources:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOrg}/${GitHubRepo}:*"
+                token.actions.githubusercontent.com:sub:
+                  - !Sub "repo:${GitHubOrg}/${GitHubRepo}:*"
+                  - !Sub "repo:${GitHubOrg}/${GitHubDataRepo}:*"
+                  - !Sub "${GitHubDataSubjectPrefix}:*"
       Policies:
         - PolicyName: UploadRankingsJson
           PolicyDocument:
@@ -180,11 +190,14 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                Resource: !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/data/*"
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/data/*"
+                  - !Sub "arn:${AWS::Partition}:s3:::${RankingsBucketName}/v1/*"
               - Effect: Allow
                 Action:
                   - dynamodb:PutItem
                   - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
                 Resource: !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${LeagueTableName}"
 
 Outputs:

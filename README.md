@@ -22,7 +22,7 @@ A React draft assistant for live fantasy football drafts. The app reads public r
 ## Architecture
 
 - React + Vite app hosted by GitHub Pages.
-- Daily GitHub Action scrapes rankings/projections and uploads `data/fantasy-data.json` to S3.
+- The separate [`corypahl/fantasy-data`](https://github.com/corypahl/fantasy-data) repository collects and publishes the `data/*.json` feeds consumed by this app.
 - A dedicated publish workflow validates and uploads `data/player-outlooks-2026.json` to S3 whenever the checked-in outlook dataset changes.
 - S3 serves the generated JSON with CORS enabled for the browser app.
 - DynamoDB stores league profiles and draft state per league/draft.
@@ -57,9 +57,9 @@ The app is set up for two draft companion profiles:
 - `Jackson`: Sleeper league `1389737302812553216`; its active slow draft is `1389737302812553217`
 - `GVSU`: ESPN league `509557`
 
-Each profile has its own platform, league/team IDs, lineup rules, scoring rules, and ranking set. The scraper pulls one common projection dataset, and the browser recalculates projected fantasy points per selected league. Ranking context can still differ by league through the selected `standard`, `halfPpr`, or `ppr` ranking set.
+Each profile has its own platform, league/team IDs, lineup rules, scoring rules, and ranking set. The shared data feed supplies one common projection dataset, and the browser recalculates projected fantasy points per selected league. Ranking context can still differ by league through the selected `standard`, `halfPpr`, or `ppr` ranking set.
 
-League settings are synced into the `fantasy-leagues` DynamoDB table by `scripts/sync_leagues.py`. Sleeper settings come from public league endpoints. ESPN settings use repository secrets for the private ESPN cookies.
+Provider collection and league snapshots now live in [`corypahl/fantasy-data`](https://github.com/corypahl/fantasy-data). This app remains a read-only consumer of the public data feed while its draft-state API continues to use DynamoDB.
 
 Opening the Jackson Draft Board connects to the active Sleeper slow draft automatically and enables 15-second auto-sync after the first successful refresh.
 
@@ -94,16 +94,10 @@ Repository secrets:
 
 - `AWS_GITHUB_ACTIONS_ROLE_ARN`: stack output `GitHubActionsRoleArn`.
 - `RANKINGS_BUCKET`: the S3 bucket name.
-- `ESPN_SWID`: ESPN `SWID` cookie for the GVSU league.
-- `ESPN_S2`: ESPN `espn_s2` cookie for the GVSU league.
 
 Repository variables:
 
 - `AWS_REGION`: AWS region, for example `us-east-1`.
-- `RANKINGS_KEY`: usually `data/fantasy-data.json`.
-- `NFL_SEASON`: for example `2026`.
-- `LEAGUE_TABLE_NAME`: usually `fantasy-leagues`.
-- `ESPN_TEAM_ID`: optional team ID for the ESPN league.
 - `VITE_RANKINGS_URL`: stack output `RankingsUrl`.
 - `VITE_DRAFT_API_URL`: stack output `DraftApiUrl`.
 
@@ -136,9 +130,9 @@ Optional cloud publishing keeps other devices current. Deploy the SAM stack with
 
 ## Data refresh
 
-The scheduled workflow runs daily at `10:17 UTC` and can also be started manually from the Actions tab. It refreshes draft data in S3, then syncs league settings into DynamoDB.
+Scheduled scraping has moved to [`corypahl/fantasy-data`](https://github.com/corypahl/fantasy-data). That repository targets public FantasyPros, Sleeper, CBS Sports, nflverse, and Wikipedia data and publishes the split `data/*.json` files this app loads.
 
-The scraper currently targets public FantasyPros, Sleeper, CBS Sports, nflverse, and Wikipedia data when available. It normalizes them into:
+The combined legacy shape remains:
 
 ```json
 {
@@ -180,4 +174,4 @@ Player rows are enriched when matching data is available:
 ## Next integration points
 
 - Calibrate ESPN selector adapters against the live draft-room diagnostics before the real draft begins.
-- Move scraper source adapters toward the `fantasy-core` package layout as more sources are added.
+- Evolve scraper source adapters in `corypahl/fantasy-data` as providers and schemas change.
