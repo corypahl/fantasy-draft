@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fantasy Draft Wizard - ESPN Bridge",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Watches an ESPN fantasy draft and keeps Fantasy Draft Wizard picks current.",
   "permissions": [
     "activeTab",

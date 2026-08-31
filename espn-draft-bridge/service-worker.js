@@ -30,6 +30,17 @@ function normalizedTeamNames(snapshot, config, totalTeams) {
   return Array.from({ length: totalTeams }, (_, index) => `Team ${index + 1}`)
 }
 
+function getSourceDraftKey(pageUrl, detectedLeagueId) {
+  try {
+    const url = new URL(pageUrl)
+    const leagueId = url.searchParams.get('leagueId') || detectedLeagueId || ''
+    const seasonId = url.searchParams.get('seasonId') || ''
+    return leagueId ? `espn:${seasonId}:${leagueId}` : undefined
+  } catch {
+    return detectedLeagueId ? `espn::${detectedLeagueId}` : undefined
+  }
+}
+
 function buildDraft(snapshot, config) {
   const totalTeams = Math.max(2, Number(snapshot.totalTeams) || snapshot.teamNames?.length || Number(config.totalTeams) || 10)
   const totalRounds = Math.max(1, Number(snapshot.totalRounds) || Number(config.totalRounds) || 16)
@@ -50,8 +61,64 @@ function buildDraft(snapshot, config) {
     status: snapshot.status,
     totalRounds,
     leagueName: config.leagueName,
-    lastSyncedAt: snapshot.capturedAt
+    lastSyncedAt: snapshot.capturedAt,
+    sourceDraftKey: getSourceDraftKey(snapshot.pageUrl, snapshot.detectedLeagueId)
   }
+}
+
+function mergeDraftHistory(previousDraft, incomingDraft, previousStatus, snapshot) {
+  if (!previousDraft || previousDraft.source !== 'espn') return incomingDraft
+  if (previousDraft.id !== incomingDraft.id || previousDraft.leagueId !== incomingDraft.leagueId) return incomingDraft
+
+  const previousKey = previousDraft.sourceDraftKey
+    || getSourceDraftKey(previousStatus?.activePage, previousStatus?.detectedLeagueId)
+  const incomingKey = incomingDraft.sourceDraftKey
+    || getSourceDraftKey(snapshot?.pageUrl, snapshot?.detectedLeagueId)
+  if (previousKey && incomingKey && previousKey !== incomingKey) return incomingDraft
+
+  const incomingPicks = Array.isArray(incomingDraft.drafted) ? incomingDraft.drafted : []
+  const previousPicks = Array.isArray(previousDraft.drafted) ? previousDraft.drafted : []
+  const firstIncomingPick = incomingPicks.reduce((minimum, pick) => Math.min(minimum, Number(pick.pick) || Infinity), Infinity)
+
+  // If either snapshot predates source IDs, a scan beginning at pick 1 is the
+  // safest signal that a fresh draft has started. Identified snapshots can be
+  // merged because ESPN only runs one draft per league and season.
+  if ((!previousKey || !incomingKey) && firstIncomingPick === 1) return incomingDraft
+
+  const picksByNumber = new Map()
+  previousPicks.forEach((pick) => {
+    const pickNumber = Number(pick.pick)
+    if (Number.isInteger(pickNumber) && pickNumber > 0) picksByNumber.set(pickNumber, pick)
+  })
+  incomingPicks.forEach((pick) => {
+    const pickNumber = Number(pick.pick)
+    if (Number.isInteger(pickNumber) && pickNumber > 0) picksByNumber.set(pickNumber, pick)
+  })
+  const drafted = [...picksByNumber.values()].sort((a, b) => Number(a.pick) - Number(b.pick))
+  const latestPick = drafted.reduce((maximum, pick) => Math.max(maximum, Number(pick.pick) || 0), 0)
+  const totalPicks = incomingDraft.teamNames.length * incomingDraft.totalRounds
+  const status = drafted.length >= totalPicks
+    ? 'complete'
+    : incomingDraft.status === 'pre_draft' && drafted.length ? 'drafting' : incomingDraft.status
+
+  return {
+    ...previousDraft,
+    ...incomingDraft,
+    currentPick: latestPick + 1,
+    drafted,
+    status,
+    sourceDraftKey: incomingKey || previousKey
+  }
+}
+
+function getMissingPickNumbers(drafted) {
+  const pickNumbers = new Set(drafted.map((pick) => Number(pick.pick)).filter((pick) => Number.isInteger(pick) && pick > 0))
+  const latestPick = Math.max(0, ...pickNumbers)
+  const missing = []
+  for (let pick = 1; pick <= latestPick; pick += 1) {
+    if (!pickNumbers.has(pick)) missing.push(pick)
+  }
+  return missing
 }
 
 async function relayToDraftWizard(draft, status) {
@@ -89,7 +156,14 @@ async function publishDraft(draft, config, capturedAt) {
 
 async function handleSnapshot(snapshot) {
   const config = await getConfig()
-  const draft = buildDraft(snapshot, config)
+  const stored = await chrome.storage.local.get(['bridgeStatus', 'latestEspnDraft'])
+  const incomingDraft = buildDraft(snapshot, config)
+  const draft = mergeDraftHistory(stored.latestEspnDraft, incomingDraft, stored.bridgeStatus, snapshot)
+  const recoveredPickCount = Math.max(0, draft.drafted.length - incomingDraft.drafted.length)
+  const missingPickNumbers = getMissingPickNumbers(draft.drafted)
+  const historyWarning = missingPickNumbers.length
+    ? `Missing ${missingPickNumbers.length} earlier pick${missingPickNumbers.length === 1 ? '' : 's'} (starting with #${missingPickNumbers[0]}). Open Pick History in ESPN, then click Rescan.`
+    : undefined
   const baseStatus = {
     activePage: snapshot.pageUrl,
     candidateCount: snapshot.diagnostics?.candidateCount || 0,
@@ -97,24 +171,34 @@ async function handleSnapshot(snapshot) {
     diagnostics: snapshot.diagnostics,
     enabled: config.enabled,
     lastScanAt: snapshot.capturedAt,
-    pickCount: draft.drafted.length
+    pickCount: draft.drafted.length,
+    recoveredPickCount,
+    missingPickCount: missingPickNumbers.length
   }
   if (!config.enabled) {
-    const status = { ...baseStatus, state: 'preview', message: `Preview found ${draft.drafted.length} picks` }
+    const status = { ...baseStatus, state: historyWarning ? 'partial' : 'preview', message: historyWarning || `Preview found ${draft.drafted.length} picks` }
     await chrome.storage.local.set({ bridgeStatus: status, latestEspnDraft: draft })
     return status
   }
 
-  const tabCount = await relayToDraftWizard(draft, baseStatus)
+  const relayStatus = historyWarning
+    ? { ...baseStatus, state: 'partial', message: historyWarning }
+    : baseStatus
+  const tabCount = await relayToDraftWizard(draft, relayStatus)
   try {
     const published = await publishDraft(draft, config, snapshot.capturedAt)
     const status = {
       ...baseStatus,
       ...published,
+      state: historyWarning ? 'partial' : published.state,
       lastSentAt: new Date().toISOString(),
-      message: draft.drafted.length === 0 && snapshot.diagnostics?.apiError
+      message: historyWarning || (draft.drafted.length === 0 && snapshot.diagnostics?.apiError
         ? snapshot.diagnostics.apiError
-        : config.publishToApi ? published.message : `Updated ${tabCount} open Draft Wizard tab${tabCount === 1 ? '' : 's'}`
+        : config.publishToApi
+          ? published.message
+          : recoveredPickCount
+            ? `Updated ${tabCount} Draft Wizard tab${tabCount === 1 ? '' : 's'} and restored ${recoveredPickCount} earlier pick${recoveredPickCount === 1 ? '' : 's'}`
+            : `Updated ${tabCount} open Draft Wizard tab${tabCount === 1 ? '' : 's'}`)
     }
     await chrome.storage.local.set({ bridgeStatus: status, latestEspnDraft: draft })
     return status
@@ -167,3 +251,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   return false
 })
+
+globalThis.EspnDraftBridgeWorker = {
+  buildDraft,
+  getMissingPickNumbers,
+  getSourceDraftKey,
+  mergeDraftHistory
+}

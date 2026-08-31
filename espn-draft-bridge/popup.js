@@ -24,9 +24,10 @@ function relativeTime(value) {
 function renderStatus(status) {
   latestStatus = status
   const dot = document.getElementById('statusDot')
-  dot.className = status?.state === 'error' ? 'error' : status?.enabled && status?.lastSentAt ? 'live' : ''
+  dot.className = status?.state === 'error' || status?.state === 'partial' ? 'error' : status?.enabled && status?.lastSentAt ? 'live' : ''
   document.getElementById('statusTitle').textContent = status?.state === 'error'
     ? 'Needs attention'
+    : status?.state === 'partial' ? 'Partial draft history'
     : status?.enabled ? 'Bridge enabled' : 'Preview mode'
   document.getElementById('statusMessage').textContent = status?.message || 'Open the ESPN draft room to preview its picks.'
   document.getElementById('pickCount').textContent = String(status?.pickCount || 0)

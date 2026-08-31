@@ -442,6 +442,7 @@ type DraftState = {
   totalRounds?: number
   leagueName?: string
   lastSyncedAt?: string
+  sourceDraftKey?: string
 }
 
 type EspnBridgeStatus = {
@@ -3083,7 +3084,7 @@ function normalizeEspnBridgeDraft(incoming: DraftState, current: DraftState, lea
     : current.teamNames.length === totalTeams
       ? current.teamNames
       : Array.from({ length: totalTeams }, (_, index) => `Team ${index + 1}`)
-  const drafted = incoming.drafted
+  const incomingDrafted = incoming.drafted
     .reduce<DraftPick[]>((normalizedPicks, pick) => {
       const pickNumber = Number(pick.pick)
       const round = Number(pick.round)
@@ -3104,6 +3105,20 @@ function normalizeEspnBridgeDraft(incoming: DraftState, current: DraftState, lea
       return normalizedPicks
     }, [])
     .sort((a, b) => a.pick - b.pick)
+  const firstIncomingPick = incomingDrafted[0]?.pick
+  const sameSourceDraft = !current.sourceDraftKey
+    || !incoming.sourceDraftKey
+    || current.sourceDraftKey === incoming.sourceDraftKey
+  const shouldRestoreEarlierPicks = current.source === 'espn'
+    && current.id === incoming.id
+    && sameSourceDraft
+    && Boolean(firstIncomingPick && firstIncomingPick > 1)
+  const draftedByNumber = new Map<number, DraftPick>()
+  if (shouldRestoreEarlierPicks) {
+    current.drafted.forEach((pick) => draftedByNumber.set(pick.pick, pick))
+  }
+  incomingDrafted.forEach((pick) => draftedByNumber.set(pick.pick, pick))
+  const drafted = [...draftedByNumber.values()].sort((a, b) => a.pick - b.pick)
   const latestPick = drafted.reduce((maximum, pick) => Math.max(maximum, pick.pick), 0)
   return {
     ...current,

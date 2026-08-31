@@ -126,6 +126,7 @@ Install it locally:
 The popup remains useful during the draft:
 
 - **Rescan** rebuilds the entire pick history instead of relying on a possibly missed incremental event.
+- If Chrome or the laptop restarts, the bridge merges new scans with its saved history instead of discarding earlier rounds. If the popup reports **Partial draft history**, open ESPN's **Pick History** tab once and click **Rescan** to backfill the missing selections.
 - **Copy diagnostics** copies locally captured selector samples and parsed picks for quick parser adjustments if ESPN changes its markup.
 - The status card shows detected candidates, parsed picks, the last scan, and publishing errors.
 
